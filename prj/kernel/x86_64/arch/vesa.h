@@ -1,5 +1,5 @@
-#ifndef __VESA_H__
-#define __VESA_H__
+#ifndef __KERN_ARCH_VESA_H__
+#define __KERN_ARCH_VESA_H__
 
 #include <types.h>
 

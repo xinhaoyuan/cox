@@ -15,6 +15,7 @@
 #include <arch/pic.h>
 #include <arch/intr.h>
 #include <arch/local.h>
+#include <arch/vesa.h>
 #include <arch/init.h>
 
 /* Grub info filled by entry32.S */
@@ -64,6 +65,7 @@ __kern_cpu_init(void)
 	if (lapic_id() == sysconf_x86.cpu.boot)
 	{
 		malloc_init();
+		vesa_init();
 		/* Stage 0 ends */
 		__cpu_init_stage = 1;
 	}

@@ -4,10 +4,10 @@
 #include <mm/malloc.h>
 #include <mm/page.h>
 #include <lib/low_io.h>
-#include <driver/mmu.h>
-#include <driver/memlayout.h>
-#include <driver/x86emu/include/x86emu.h>
-#include <driver/vesa.h>
+#include <arch/mmu.h>
+#include <arch/memlayout.h>
+#include <arch/x86emu/include/x86emu.h>
+#include <arch/vesa.h>
 
 x86emu_t *emu;
 char *rm_image;
@@ -101,7 +101,7 @@ static void flush_log(x86emu_t *emu, char *buf, unsigned size)
 
 static int init_emu_mem()
 {
-	rm_image = page_alloc(RM_IMAGE_PAGES);
+	rm_image = VADDR_DIRECT(page_alloc_atomic(RM_IMAGE_PAGES));
 	memmove(rm_image, VADDR_DIRECT(0), RM_IMAGE_PAGES << PGSHIFT);
 	 
 	emu = x86emu_new(X86EMU_PERM_VALID | X86EMU_PERM_RWX, X86EMU_PERM_RW);
@@ -265,8 +265,6 @@ int vesa_set_mode(int mode)
 			}
 
 			fBuf = VADDR_DIRECT(modeInfo[i].physbase);
-			cprintf("fBuf = %p\n", fBuf);
-			cgetchar();
 			curMode = i;
 
 			if ((modeInfo[i].bpp == 8) && (modeInfo[i].memory_model == 4))
