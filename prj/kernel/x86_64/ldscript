@@ -1,0 +1,79 @@
+OUTPUT_FORMAT("elf64-x86-64", "elf64-x86-64", "elf64-x86-64")
+OUTPUT_ARCH(i386:x86-64)
+ENTRY(kern_entry32)
+
+KERN_BASE     = 0xFFFFFFFF80000000;
+ENTRY32_BASE  =         0x00200000;
+/* BOOT_AP_BASE + BOOT_AP_MAGIC = ENTRY32_BASE */
+BOOT_AP_BASE  =         0x00008000;
+BOOT_AP_MAGIC =         0x001F8000;
+
+SECTIONS {
+
+	. = BOOT_AP_BASE;
+
+	PROVIDE(boot_ap_entry_64 = . + BOOT_AP_MAGIC + KERN_BASE);
+
+	PROVIDE(__text = . + BOOT_AP_MAGIC);
+
+	/* Boot code for app-cpus */
+    .boot_ap : AT(ADDR(.boot_ap) + BOOT_AP_MAGIC) {
+        *boot_1ap.S.o*(.text .rodata .data)
+    }
+
+	. = ALIGN(0x1000);
+	. += BOOT_AP_MAGIC;
+
+	/* for 32-bit boot code */
+    .entry32 : AT(ADDR(.entry32)) {
+        *entry32.S.o*(.text .rodata .data)
+    }
+
+    . = ALIGN(0x1000);
+    . += KERN_BASE;
+
+	/* other code */
+    .text : AT(ADDR(.text) - KERN_BASE) {
+        *(.text .stub .text.* .gnu.linkonce.t.*)
+    }
+
+    PROVIDE(__rodata = . - KERN_BASE);
+
+    .rodata : AT(ADDR(.rodata) - KERN_BASE) {
+        *(.rodata .rodata.* .gnu.linkonce.r.*)
+    }
+
+    /* Adjust the address for the data segment to the next page */
+    . = ALIGN(0x1000);
+	PROVIDE(__data = . - KERN_BASE);
+
+	PROVIDE(pls_start = .);
+
+    .pls : {
+	   *(.pls)				
+	}
+							
+	. = ALIGN(0x1000);
+	PROVIDE(pls_end = .);
+
+    /* The data segment */
+    .data : AT(ADDR(.data) - KERN_BASE) {
+        *(.data)
+    }
+
+	. = ALIGN(0x1000);
+
+    PROVIDE(__bss = . - KERN_BASE);
+
+    .bss : AT(ADDR(.bss) - KERN_BASE) {
+        *(.bss)
+    }
+
+	. = ALIGN(0x1000);
+
+    PROVIDE(__end = . - KERN_BASE);
+
+    /DISCARD/ : {
+        *(.eh_frame .note.GNU-stack)
+    }
+}

@@ -1,0 +1,18 @@
+#!/bin/bash
+
+SRCDIR=${1%"/"}/
+PREFIX=${2}
+DEPPREFIX=${3}
+PRJS=$(find $SRCDIR -mindepth 1 -maxdepth 1 -type d)
+
+for i in $PRJS; do
+	echo "OBJ_${i#$SRCDIR} := ${PREFIX}${i#$SRCDIR}"
+	echo "DEP_${i#$SRCDIR} := ${DEPPREFIX}${i#$SRCDIR}"
+	echo "${PREFIX}${i#$SRCDIR}: ${DEPPREFIX}${i#$SRCDIR}"
+	echo ".PHONY: ${i#$SRCDIR}"
+	echo "${i#$SRCDIR}: \${OBJ_${i#$SRCDIR}}"
+done
+
+for i in $PRJS; do
+	echo "include $i/dep.mk"
+done

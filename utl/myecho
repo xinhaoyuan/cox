@@ -1,0 +1,9 @@
+#!/bin/bash
+
+level=$1
+shift
+
+# Double the indentation
+printf "%*s" $level ""
+printf "%*s" $level ""
+echo $*
