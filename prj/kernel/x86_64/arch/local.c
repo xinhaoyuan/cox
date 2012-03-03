@@ -3,12 +3,12 @@
 
 #include <mm/page.h>
 #include <lib/low_io.h>
-#include <driver/mem.h>
-#include <driver/lapic.h>
-#include <driver/mmu.h>
-#include <driver/memlayout.h>
+#include <arch/mem.h>
+#include <arch/lapic.h>
+#include <arch/mmu.h>
+#include <arch/memlayout.h>
 
-#include <proc/local.h>
+#include <arch/local.h>
 
 extern char pls_start[];
 extern char pls_end[];
@@ -19,13 +19,7 @@ pls_init(void)
 	size_t pls_pages = (pls_end - pls_start + PGSIZE - 1) >> PGSHIFT;
 	void *pls;
 
-	/* XXX: better lock here */
-	static int lock = 0;
-	while (__xchg32(&lock, 1) == 1) ;
-	
 	pls = VADDR_DIRECT(page_alloc_atomic(pls_pages));
-	
-	__xchg32(&lock, 0);
 
 	/* copy the initial data */
 	memmove(pls, pls_start, pls_end - pls_start);

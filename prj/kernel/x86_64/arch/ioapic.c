@@ -1,11 +1,12 @@
 #include <io.h>
 
+#include <mm/mmio.h>
 #include <lib/low_io.h>
 
-#include <driver/memlayout.h>
-#include <driver/intr.h>
-#include <driver/sysconf_x86.h>
-#include <driver/ioapic.h>
+#include <arch/memlayout.h>
+#include <arch/intr.h>
+#include <arch/sysconf_x86.h>
+#include <arch/ioapic.h>
 
 /* I/O APIC Code from xv6 */
 
@@ -61,28 +62,27 @@ ioapic_init(void)
 	
 	int i, j, id, maxintr;
 	int ioapic_id;
-	ioapic_mmio_s *ioapic_mmio;
-	 
+
 	for (i = 0; i != sysconf_x86.ioapic.count; ++ i)
 	{
 		ioapic_id = ioapic_id_set[i];
 
 		// cprintf("IOAPIC %d phys %08x\n", ioapic_id, ioapic[ioapic_id].phys);
-		ioapic_mmio = (ioapic_mmio_s *)VADDR_DIRECT(ioapic[ioapic_id].phys);
+		ioapic[ioapic_id].mmio = mmio_open(ioapic[ioapic_id].phys, sizeof(struct ioapic_mmio_s));
 
-		int v = ioapic_read(ioapic_mmio, REG_VER);
+		int v = ioapic_read(ioapic[ioapic_id].mmio, REG_VER);
 		maxintr = (v >> 16) & 0xFF;
 		// cprintf("VERSION: %02x\n", v & 0xFF);
 		// cprintf("MAXINTR: %d\n", maxintr);
 		if ((v & 0xFF) >= 0x20)
 			sysconf_x86.ioapic.use_eoi = 1;
 		else sysconf_x86.ioapic.use_eoi = 0;
-		id = (ioapic_read(ioapic_mmio, REG_ID) >> 24) & 0xF;
+		id = (ioapic_read(ioapic[ioapic_id].mmio, REG_ID) >> 24) & 0xF;
 		if (id != ioapic_id)
 		{
 			cprintf("ioapic_init: id %08x isn't equal to ioapic_id %08x ; Fixing\n",
 					id, ioapic_id);
-			ioapic_write(ioapic_mmio, REG_ID, ioapic_id << 24);
+			ioapic_write(ioapic[ioapic_id].mmio, REG_ID, ioapic_id << 24);
 		}
 
 #if 1
@@ -90,8 +90,8 @@ ioapic_init(void)
 		// and not routed to any CPUs.
 		for(j = 0; j <= maxintr; j++)
 		{
-			ioapic_write(ioapic_mmio, REG_TABLE + 2 * j, INT_DISABLED | (IRQ_OFFSET + j));
-			ioapic_write(ioapic_mmio, REG_TABLE + 2 * j + 1, 0);
+			ioapic_write(ioapic[ioapic_id].mmio, REG_TABLE + 2 * j, INT_DISABLED | (IRQ_OFFSET + j));
+			ioapic_write(ioapic[ioapic_id].mmio, REG_TABLE + 2 * j + 1, 0);
 		}
 #else
 		// Redirect all interrupt to cpu 0
@@ -99,8 +99,8 @@ ioapic_init(void)
 		{
 			/* Omit the 2nd IRQ controller? */
 			// if (i == IRQ_SCTL) continue;
-			ioapic_write(ioapic_mmio, REG_TABLE + 2 * j, (IRQ_OFFSET + j));
-			ioapic_write(ioapic_mmio, REG_TABLE + 2 * j + 1, 0);
+			ioapic_write(ioapic[ioapic_id].mmio, REG_TABLE + 2 * j, (IRQ_OFFSET + j));
+			ioapic_write(ioapic[ioapic_id].mmio, REG_TABLE + 2 * j + 1, 0);
 		}
 #endif
 	}
@@ -118,28 +118,25 @@ ioapic_init(void)
 void
 ioapic_send_eoi(int apic_id, int irq)
 {
-	ioapic_mmio_s *ioapic_mmio = (ioapic_mmio_s *)VADDR_DIRECT(ioapic[apic_id].phys);
-	ioapic_mmio->eoi = irq & 0xFF;
+	ioapic[apic_id].mmio->eoi = irq & 0xFF;
 }
 
 void
 ioapic_enable(int apic_id, int irq, int cpunum)
 {
-	ioapic_mmio_s *ioapic_mmio = (ioapic_mmio_s *)VADDR_DIRECT(ioapic[apic_id].phys);
 	// Mark interrupt edge-triggered, active high,
 	// enabled, and routed to the given cpunum,
 	// which happens to be that cpu's APIC ID.
-	ioapic_write(ioapic_mmio, REG_TABLE + 2 * irq, IRQ_OFFSET + irq);
-	ioapic_write(ioapic_mmio, REG_TABLE + 2 * irq + 1, cpunum << 24);
+	ioapic_write(ioapic[apic_id].mmio, REG_TABLE + 2 * irq, IRQ_OFFSET + irq);
+	ioapic_write(ioapic[apic_id].mmio, REG_TABLE + 2 * irq + 1, cpunum << 24);
 }
 
 void
 ioapic_disable(int apic_id, int irq)
 {
-	ioapic_mmio_s *ioapic_mmio = (ioapic_mmio_s *)VADDR_DIRECT(ioapic[apic_id].phys);
 	// Mark interrupt edge-triggered, active high,
 	// enabled, and routed to the given cpunum,
 	// which happens to be that cpu's APIC ID.
-	ioapic_write(ioapic_mmio, REG_TABLE + 2 * irq, INT_DISABLED | (IRQ_OFFSET + irq));
-	ioapic_write(ioapic_mmio, REG_TABLE + 2 * irq + 1, 0);
+	ioapic_write(ioapic[apic_id].mmio, REG_TABLE + 2 * irq, INT_DISABLED | (IRQ_OFFSET + irq));
+	ioapic_write(ioapic[apic_id].mmio, REG_TABLE + 2 * irq + 1, 0);
 }

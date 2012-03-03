@@ -1,4 +1,4 @@
-#include <driver/memlayout.h>
+#include <arch/memlayout.h>
 
 # vectors.S sends all traps here.
 .text

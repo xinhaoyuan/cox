@@ -1,6 +1,6 @@
 #!/bin/sh
 
-qemu-system-x86_64 -smp 4 -m 1024 \
+qemu-system-x86_64 -smp 4 -m 512m \
 	-hda obj/bootimage \
 	-s -S \
 	-serial file:obj/serial.log \

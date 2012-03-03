@@ -4,12 +4,12 @@
 #include <lib/low_io.h>
 #include <mm/page.h>
 
-#include <driver/mem.h>
-#include <driver/boot_ap.S.h>
-#include <driver/sysconf_x86.h>
-#include <driver/cpu.h>
-#include <driver/intr.h>
-#include <driver/lapic.h>
+#include <arch/mem.h>
+#include <arch/boot_ap.S.h>
+#include <arch/sysconf_x86.h>
+#include <arch/cpu.h>
+#include <arch/intr.h>
+#include <arch/lapic.h>
 
 /* Provided by link script */
 extern char boot_ap_entry_64[];

@@ -1,8 +1,8 @@
 #include <lib/low_io.h>
 
-#include <driver/memlayout.h>
-#include <driver/memmap.h>
-#include <driver/boot_alloc.h>
+#include <arch/memlayout.h>
+#include <arch/memmap.h>
+#include <arch/boot_alloc.h>
 
 /* Boot alloc is a naive allocator that get free memory directly after
  * the kernel data. There are symbol provided in the link-script which

@@ -1,8 +1,8 @@
 #include <string.h>
 #include <bit.h>
 
-#include <driver/memlayout.h>
-#include <driver/mmu.h>
+#include <arch/memlayout.h>
+#include <arch/mmu.h>
 #include <mm/page.h>
 #include <mm/malloc.h>
 

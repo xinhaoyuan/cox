@@ -5,16 +5,17 @@
 #include <lib/buddy.h>
 #include <lib/low_io.h>
 #include <mm/page.h>
+#include <mm/mmio.h>
 #include <irq.h>
 
 #include <sync/spinlock.h>
 
-#include <driver/memmap.h>
-#include <driver/e820.h>
-#include <driver/boot_alloc.h>
-#include <driver/sysconf_x86.h>
-#include <driver/ioapic.h>
-#include <driver/mem.h>
+#include <arch/memmap.h>
+#include <arch/e820.h>
+#include <arch/boot_alloc.h>
+#include <arch/sysconf_x86.h>
+#include <arch/ioapic.h>
+#include <arch/mem.h>
 
 uintptr_t kern_start;
 uintptr_t kern_end;
@@ -260,6 +261,14 @@ mmu_init(void)
 
 	cprintf("phys max boundary: %p\n", phys_end);
 	cprintf("number of pages: %d\n", nr_pages);
+
+	/* touch all pud page for PHYSBASE ~ PHYSBASE + PHYSSIZE, so all
+	 * page tables shares the same mmio mapping*/
+	int num_of_pudtables = (PHYSSIZE + PUSIZE - 1) / PUSIZE;
+	for (i = 0; i < num_of_pudtables; ++ i)
+	{
+		boot_get_pud(boot_pgdir, PHYSSIZE + PUSIZE * i, 1);
+	}
 	
     /* map all physical memory at PHYSBASE by 2m pages*/
 	int num_of_2m_pages = (phys_end + 0x1fffff) / 0x200000;
@@ -267,7 +276,7 @@ mmu_init(void)
 	{
 		uintptr_t phys = i << 21;
 		pmd_t *pmd = boot_get_pmd(boot_pgdir, PHYSBASE + phys, 1);
-		*pmd = phys | PTE_W | PTE_P;
+		*pmd = phys | PTE_PS | PTE_W | PTE_P;
 	}
 
 	/* and map the first 1MB for the ap booting */
@@ -306,7 +315,7 @@ mmu_init(void)
 	volatile uint16_t tss = GD_TSS_BOOT;
 	__ltr(tss);
 
-	// print_pgdir();
+	print_pgdir();
 }
 
 struct buddy_context_s page_buddy_context;
@@ -318,6 +327,7 @@ config_by_memmap(buddy_node_id_t num)
 }
 
 static spinlock_s page_atomic_lock;
+static spinlock_s mmio_fix_lock;
 
 int
 mem_init(void)
@@ -331,11 +341,11 @@ mem_init(void)
 	memmap_append(kern_start, kern_end, MEMMAP_FLAG_RESERVED);
 
 	page_buddy_context.node = boot_alloc(BUDDY_CALC_ARRAY_SIZE(nr_pages) * sizeof(struct buddy_node_s), PGSIZE, 0);
-	
+
 	uintptr_t start, end;
 	boot_alloc_get_area(&start, &end);
-	memmap_append(start, end, MEMMAP_FLAG_RESERVED);
 
+	memmap_append(start, end, MEMMAP_FLAG_RESERVED);
 	memmap_process(1);
 
 	/* Initialize the page allocator with free areas */
@@ -344,11 +354,109 @@ mem_init(void)
 	buddy_build(&page_buddy_context, nr_pages, config_by_memmap);
 
 	spinlock_init(&page_atomic_lock);
+	spinlock_init(&mmio_fix_lock);
 
 	return 0;
 }
 
 /* INIT CODE END ================================================== */
+
+static pgd_t *
+get_pgd(pgd_t *pgdir, uintptr_t la, bool create) {
+    return &pgdir[PGX(la)];
+}
+
+static pud_t *
+get_pud(pgd_t *pgdir, uintptr_t la, bool create) {
+    pgd_t *pgdp;
+    if ((pgdp = get_pgd(pgdir, la, create)) == NULL) {
+        return NULL;
+    }
+    if (!(*pgdp & PTE_P)) {
+		pud_t *pud;
+		uintptr_t pa;
+        if (!create || (pa = page_alloc_atomic(1)) == 0) {
+            return NULL;
+        }
+        pud = VADDR_DIRECT(pa);
+        memset(pud, 0, PGSIZE);
+        *pgdp = pa | PTE_U | PTE_W | PTE_P;
+    }
+    return &((pud_t *)VADDR_DIRECT(PGD_ADDR(*pgdp)))[PUX(la)];
+}
+
+static pmd_t *
+get_pmd(pgd_t *pgdir, uintptr_t la, bool create) {
+    pud_t *pudp;
+    if ((pudp = get_pud(pgdir, la, create)) == NULL) {
+        return NULL;
+    }
+    if (!(*pudp & PTE_P)) {
+		pmd_t *pmd;
+		uintptr_t pa;
+        if (!create || (pa = page_alloc_atomic(1)) == 0) {
+            return NULL;
+        }
+		pmd = VADDR_DIRECT(pa);
+        memset(pmd, 0, PGSIZE);
+        *pudp = pa | PTE_U | PTE_W | PTE_P;
+    }
+    return &((pmd_t *)VADDR_DIRECT(PUD_ADDR(*pudp)))[PMX(la)];
+}
+
+static pte_t *
+get_pte(pgd_t *pgdir, uintptr_t la, bool create) {
+    pmd_t *pmdp;
+    if ((pmdp = get_pmd(pgdir, la, create)) == NULL) {
+        return NULL;
+    }
+	
+    if (!(*pmdp & PTE_P)) {
+        pte_t *pte;
+		uintptr_t pa;
+        if (!create || (pa = page_alloc_atomic(1)) == 0) {
+            return NULL;
+        }
+		pte = VADDR_DIRECT(pa);
+        memset(pte, 0, PGSIZE);
+        *pmdp = pa | PTE_U | PTE_W | PTE_P;
+    }
+
+    return &((pte_t *)VADDR_DIRECT(PMD_ADDR(*pmdp)))[PTX(la)];
+}
+
+void
+pgflt_handler(unsigned int err, uintptr_t la)
+{
+	if (PHYSBASE <= la && la < PHYSBASE + PHYSSIZE)
+	{
+		if (err & 4)
+		{
+			/* MMIO AREA IS NOT ALLOWED FOR USER */
+			cprintf("PANIC: MMIO FROM USER\n");
+			while (1) ;
+		}
+		else
+		{
+			/* KERNEL MMIO PG FAULT, fix it */
+			la = la & ~(uintptr_t)0x1fffff;
+			
+			spinlock_acquire(&mmio_fix_lock);
+			pmd_t *pmd = get_pmd(boot_pgdir, la, 1);
+			spinlock_release(&mmio_fix_lock);
+
+			/* All mmio mappings are the same across all page tables, so just
+			 * modify it for one place */
+			if (pmd)
+				*pmd = PADDR_DIRECT(la) | PTE_PS | PTE_W | PTE_P;
+		}
+	}
+	else
+	{
+		cprintf("page fault(%08x) at %016lx\n", err, la);
+		while (1) ;
+	}
+}
 
 uintptr_t
 page_alloc_atomic(size_t num)
@@ -378,3 +486,13 @@ page_free_atomic(uintptr_t addr)
 	spinlock_release(&page_atomic_lock);
 	irq_restore();
 }
+
+volatile void *
+mmio_open(uintptr_t addr, size_t size)
+{
+	return VADDR_DIRECT(addr);
+}
+
+void
+mmio_close(volatile void *addr)
+{ }

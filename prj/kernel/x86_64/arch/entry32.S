@@ -1,5 +1,5 @@
-#include <driver/mmu.h>
-#include <driver/memlayout.h>
+#include <arch/mmu.h>
+#include <arch/memlayout.h>
 
 #define	MULTIBOOT_PAGE_ALIGN   (1<<0)
 #define	MULTIBOOT_MEMORY_INFO  (1<<1)

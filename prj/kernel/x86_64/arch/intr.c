@@ -1,12 +1,12 @@
 #include <types.h>
 #include <cpu.h>
 
+#include <irq.h>
 #include <lib/low_io.h>
 
-#include <driver/mmu.h>
-#include <driver/memlayout.h>
-#include <driver/lapic.h>
-#include <driver/intr.h>
+#include <arch/mem.h>
+#include <arch/lapic.h>
+#include <arch/intr.h>
 
 static struct gatedesc idt[256] = {{0}};
 
@@ -21,9 +21,13 @@ idt_init(void) {
     for (i = 0; i < sizeof(idt) / sizeof(struct gatedesc); i ++) {
         SETGATE(idt[i], 0, GD_KTEXT, __vectors[i], DPL_KERNEL);
     }
+	
 	SETGATE(idt[T_SYSCALL], 0, GD_KTEXT, __vectors[T_SYSCALL], DPL_USER);
 	SETGATE(idt[T_IPI], 0, GD_KTEXT, __vectors[T_IPI], DPL_USER);
 	SETGATE(idt[T_IPI_DOS], 0, GD_KTEXT, __vectors[T_IPI_DOS], DPL_USER);
+
+	/* Load IDT for BOOT CPU */
+	__lidt(&idt_pd);
 }
 
 static const char *
@@ -72,7 +76,8 @@ static const char *IA32flags[] = {
 };
 
 void
-print_trapframe(struct trapframe *tf) {
+print_trapframe(struct trapframe *tf)
+{
     cprintf("trapframe at %p\n", tf);
     print_regs(&tf->tf_regs);
     cprintf("  trap 0x--------%08x %s\n", tf->tf_trapno, trapname(tf->tf_trapno));
@@ -95,7 +100,8 @@ print_trapframe(struct trapframe *tf) {
 }
 
 void
-print_regs(struct pushregs *regs) {
+print_regs(struct pushregs *regs)
+{
     cprintf("  rdi  0x%016llx\n", regs->reg_rdi);
     cprintf("  rsi  0x%016llx\n", regs->reg_rsi);
     cprintf("  rdx  0x%016llx\n", regs->reg_rdx);
@@ -114,32 +120,32 @@ print_regs(struct pushregs *regs) {
 }
 
 static void
-pgflt_handler(unsigned int err, uintptr_t addr)
+trap_dispatch(struct trapframe *tf)
 {
-	cprintf("page fault(%08x) at %016lx\n", err, addr);
-	while (1) ;
-}
-
-static void
-trap_dispatch(struct trapframe *tf) {
-	switch (tf->tf_trapno) {
-    case T_PGFLT:
-		pgflt_handler(tf->tf_err, __rcr2());
-        break;
-
-    default:
-        print_trapframe(tf);
-		cprintf("unhandled trap.\n");
-		while (1) ;
-    }
-
-	if (tf->tf_trapno >= IRQ_OFFSET &&
-		tf->tf_trapno <  IRQ_OFFSET + IRQ_COUNT)
-		lapic_eoi_send();
+	if (tf->tf_trapno < EXCEPTION_COUNT) {
+		switch (tf->tf_trapno)
+		{
+		case T_PGFLT:
+			pgflt_handler(tf->tf_err, __rcr2());
+			break;
+			
+		default:
+			print_trapframe(tf);
+			cprintf("unhandled exception %d.\n", tf->tf_trapno);
+			while (1) ;
+		}
+	}
+	else if (tf->tf_trapno >= IRQ_OFFSET &&
+			 tf->tf_trapno <  IRQ_OFFSET + IRQ_COUNT)
+	{
+		bool eoi = irq_handler(tf->tf_trapno - IRQ_OFFSET);
+		if (!eoi) lapic_eoi_send();
+	}
 }
 
 void
-trap(struct trapframe *tf) {
+trap(struct trapframe *tf)
+{
     // dispatch based on what type of trap occurred
     trap_dispatch(tf);
 }

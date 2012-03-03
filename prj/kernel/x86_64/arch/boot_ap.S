@@ -1,7 +1,7 @@
-#include <driver/mmu.h>
-#include <driver/memlayout.h>
+#include <arch/mmu.h>
+#include <arch/memlayout.h>
 
-#include <driver/boot_ap.S.h>
+#include <arch/boot_ap.S.h>
 
 	.text
 	.code16

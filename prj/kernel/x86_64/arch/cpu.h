@@ -3,9 +3,9 @@
 
 #include <types.h>
 
-#include <driver/memlayout.h>
-#include <driver/lapic.h>
-#include <driver/intr.h>
+#include <arch/memlayout.h>
+#include <arch/lapic.h>
+#include <arch/intr.h>
 
 typedef void(*intr_handler_f)(struct trapframe *tf);
 

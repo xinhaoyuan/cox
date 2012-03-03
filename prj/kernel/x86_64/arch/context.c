@@ -1,5 +1,5 @@
 #include <lib/low_io.h>
-#include <context/context.h>
+#include <arch/context.h>
 
 extern void __context_switch(uintptr_t *from_esp, uintptr_t *from_pc, uintptr_t to_esp, uintptr_t to_pc);
 extern void __context_init(void);
@@ -9,8 +9,8 @@ extern void __context_deadend(void);
 
 #if __TEST
 
-#include <driver/mem.h>
-#include <mmu.h>
+#include <arch/mem.h>
+#include <arch/mmu.h>
 
 context_s ca, cb;
 

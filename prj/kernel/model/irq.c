@@ -12,3 +12,8 @@ irq_restore(void)
 	/* EMPTY HERE */
 }
 
+bool
+irq_handler(int irq)
+{
+	return FALSE;
+}

@@ -1,5 +1,5 @@
-#include <driver/mmu.h>
-#include <driver/memlayout.h>
+#include <arch/mmu.h>
+#include <arch/memlayout.h>
 
 .text
 .code64

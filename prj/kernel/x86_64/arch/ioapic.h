@@ -7,9 +7,10 @@
 
 typedef struct ioapic_s
 {
-	 int       id;
-	 uintptr_t phys;
-	 uint32_t  intr_base;
+	int       id;
+	uintptr_t phys;
+	uint32_t  intr_base;
+	volatile struct ioapic_mmio_s *mmio;
 } ioapic_s;
 
 extern int      ioapic_id_set[IOAPIC_COUNT];

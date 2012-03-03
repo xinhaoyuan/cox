@@ -4,9 +4,9 @@
 
 #include <lib/low_io.h>
 
-#include <driver/memlayout.h>
-#include <driver/early_cons.h>
-#include <driver/kbdreg.h>
+#include <arch/memlayout.h>
+#include <arch/early_cons.h>
+#include <arch/kbdreg.h>
 
 /* stupid I/O delay routine necessitated by historical PC design flaws */
 static void

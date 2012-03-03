@@ -1,9 +1,11 @@
 #include <io.h>
 
-#include <driver/memlayout.h>
-#include <driver/intr.h>
-#include <driver/sysconf_x86.h>
-#include <driver/lapic.h>
+#include <mm/mmio.h>
+
+#include <arch/mem.h>
+#include <arch/intr.h>
+#include <arch/sysconf_x86.h>
+#include <arch/lapic.h>
 
 /* The LAPIC access */
 // Local APIC registers, divided by 4 for use as uint32[] indices.
@@ -38,17 +40,19 @@
 
 #define LAPIC_PERIODIC 10000000
 
+static volatile uint32_t *lapic_mmio;
+
 static uint32_t
 lapicr(int index)
 {
-	return ((volatile uint32_t *)VADDR_DIRECT(sysconf_x86.lapic.phys))[index];
+	return lapic_mmio[index];
 }
 
 static uint32_t
 lapicw(int index, uint32_t value)
 {
-	((volatile uint32_t *)VADDR_DIRECT(sysconf_x86.lapic.phys))[index] = value;
-	return ((volatile uint32_t *)VADDR_DIRECT(sysconf_x86.lapic.phys))[ID];
+	lapic_mmio[index] = value;
+	return lapic_mmio[ID];
 }
 
 int
@@ -110,6 +114,8 @@ int
 lapic_init(void)
 {
 	if (!sysconf_x86.lapic.enable) return 0;
+
+	lapic_mmio = mmio_open(sysconf_x86.lapic.phys, PGSIZE);
 	
 	// Enable local APIC; set spurious interrupt vector.
 	lapicw(SVR, ENABLE | (IRQ_OFFSET + IRQ_SPURIOUS));

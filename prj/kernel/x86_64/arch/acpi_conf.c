@@ -4,12 +4,13 @@
 #include <cpu.h>
 
 #include <lib/low_io.h>
-#include <driver/memlayout.h>
-#include <driver/mmu.h>
-#include <driver/sysconf_x86.h>
-#include <driver/ioapic.h>
-#include <driver/cpu.h>
-#include <driver/acpi_conf.h>
+
+#include <arch/memlayout.h>
+#include <arch/mmu.h>
+#include <arch/sysconf_x86.h>
+#include <arch/ioapic.h>
+#include <arch/cpu.h>
+#include <arch/acpi_conf.h>
 
 struct acpi_rsdp_s
 {

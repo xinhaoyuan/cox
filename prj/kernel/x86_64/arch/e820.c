@@ -1,13 +1,13 @@
 #include <types.h>
 #include <error.h>
 
-#include <init/init.h>
+#include <arch/init.h>
 #include <lib/low_io.h>
 
-#include <driver/memlayout.h>
-#include <driver/memmap.h>
+#include <arch/memlayout.h>
+#include <arch/memmap.h>
 
-#include <driver/e820.h>
+#include <arch/e820.h>
 
 #define E820MAX             20      // number of entries in E820MAP
 #define E820_ARM            1       // address range memory
@@ -76,6 +76,5 @@ memmap_process_e820(void)
 	}
 
 	memmap_process(1);
-	while (1);
 	return 0;
 }

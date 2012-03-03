@@ -4,20 +4,18 @@
 #include <mm/page.h>
 #include <mm/malloc.h>
 
-#include <driver/early_cons.h>
-#include <driver/acpi_conf.h>
-#include <driver/mem.h>
-#include <driver/sysconf_x86.h>
-#include <driver/ioapic.h>
-#include <driver/lapic.h>
-#include <driver/cpu.h>
-#include <driver/mp.h>
-#include <driver/pic.h>
-#include <driver/intr.h>
-
-#include <proc/local.h>
-
-#include <init/init.h>
+#include <arch/early_cons.h>
+#include <arch/acpi_conf.h>
+#include <arch/mem.h>
+#include <arch/sysconf_x86.h>
+#include <arch/ioapic.h>
+#include <arch/lapic.h>
+#include <arch/cpu.h>
+#include <arch/mp.h>
+#include <arch/pic.h>
+#include <arch/intr.h>
+#include <arch/local.h>
+#include <arch/init.h>
 
 /* Grub info filled by entry32.S */
 uint32_t mb_magic;
