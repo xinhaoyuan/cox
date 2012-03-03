@@ -138,7 +138,7 @@ trap_dispatch(struct trapframe *tf)
 	else if (tf->tf_trapno >= IRQ_OFFSET &&
 			 tf->tf_trapno <  IRQ_OFFSET + IRQ_COUNT)
 	{
-		bool eoi = irq_handler(tf->tf_trapno - IRQ_OFFSET);
+		bool eoi = irq_entry(tf->tf_trapno - IRQ_OFFSET);
 		if (!eoi) lapic_eoi_send();
 	}
 }

@@ -13,7 +13,7 @@ irq_restore(void)
 }
 
 bool
-irq_handler(int irq)
+irq_entry(int irq)
 {
 	return FALSE;
 }

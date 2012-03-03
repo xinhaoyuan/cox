@@ -5,6 +5,6 @@
 
 void irq_save(void);
 void irq_restore(void);
-bool irq_handler(int irq);
+bool irq_entry(int irq);
 
 #endif
