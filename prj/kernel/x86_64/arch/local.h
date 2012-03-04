@@ -3,10 +3,10 @@
 
 #define PLS_PTR_DEFINE(type, name, init)  __attribute__((section(".pls"))) type * name = (init)
 #define PLS_PTR_DECLARE(type, name) extern type *name
-#define PLS_PTR(name) ({											\
+#define PLS_PTR(name) ({												\
 			typeof(name) __result;										\
 			__asm__ __volatile__("movq %%fs:(%1), %0" : "=r" (__result) : "r"(&name)) ;	\
-			__result;														\
+			__result;													\
 		})
 #define PLS_PTR_SET(name, value) do {									\
 		typeof(name) __value = (value);									\

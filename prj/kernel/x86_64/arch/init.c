@@ -16,9 +16,10 @@
 #include <arch/intr.h>
 #include <arch/local.h>
 #include <arch/vesa.h>
+#include <arch/hpet.h>
 #include <arch/init.h>
 
-/* Grub info filled by entry32.S */
+/* GRUB info filled by entry32.S */
 uint32_t mb_magic;
 uint32_t mb_info_phys;
 
@@ -45,6 +46,9 @@ __kern_early_init(void) {
 
 	lapic_init();
 	ioapic_init();
+	if (sysconf_x86.hpet.enable)
+		hpet_init();
+	
 	if (sysconf_x86.cpu.count > 1)
 		mp_init();
 
