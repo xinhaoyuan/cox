@@ -461,13 +461,13 @@ pgflt_handler(unsigned int err, uintptr_t la)
 uintptr_t
 page_alloc_atomic(size_t num)
 {
-	irq_save();
+	int irq = irq_save();
 	spinlock_acquire(&page_atomic_lock);
 	
 	buddy_node_id_t result = buddy_alloc(&page_buddy_context, num);
 
 	spinlock_release(&page_atomic_lock);
-	irq_restore();
+	irq_restore(irq);
 	
 	if (result == BUDDY_NODE_ID_NULL) return 0;
 	else return result << PGSHIFT;
@@ -478,13 +478,13 @@ page_free_atomic(uintptr_t addr)
 {
 	if (addr == 0) return;
 	
-	irq_save();
+	int irq = irq_save();
 	spinlock_acquire(&page_atomic_lock);
 	
 	buddy_free(&page_buddy_context, addr >> PGSHIFT);
 
 	spinlock_release(&page_atomic_lock);
-	irq_restore();
+	irq_restore(irq);
 }
 
 volatile void *

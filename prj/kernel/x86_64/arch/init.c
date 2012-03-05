@@ -1,5 +1,7 @@
 #include <string.h>
 
+#include <proc.h>
+
 #include <lib/low_io.h>
 #include <mm/page.h>
 #include <mm/malloc.h>
@@ -18,6 +20,9 @@
 #include <arch/vesa.h>
 #include <arch/hpet.h>
 #include <arch/init.h>
+
+static proc_s init_proc;
+void init(void *);
 
 /* GRUB info filled by entry32.S */
 uint32_t mb_magic;
@@ -60,22 +65,46 @@ __kern_early_init(void) {
 	while (1) ;
 }
 
-volatile int __cpu_init_stage = 0;
+volatile int __cpu_global_init = 0;
 
 void
 __kern_cpu_init(void)
 {
-	/* Stage 0: global data */
+	/* Stage 0: global */
 	if (lapic_id() == sysconf_x86.cpu.boot)
 	{
 		malloc_init();
-		vesa_init();
+		sched_init();
 		/* Stage 0 ends */
-		__cpu_init_stage = 1;
+		__cpu_global_init = 1;
+	}
+	else while (__cpu_global_init == 0) __cpu_relax();
+	
+	/* Stage 1: processor local */
+	/* local data support */
+	pls_init();
+	/* put self into idle proc */
+	sched_init_mp();
+
+	if (lapic_id() == sysconf_x86.cpu.boot)
+	{
+		uintptr_t stack_top_phys = page_alloc_atomic(4);
+		stack_top_phys += PGSIZE * 4;
+		
+		/* create the init proc */
+		proc_init(&init_proc, ".init", SCHED_CLASS_RR, init, NULL, (uintptr_t)VADDR_DIRECT(stack_top_phys));
+		proc_notify(&init_proc);
+
+		schedule();
 	}
 
-	/* Stage 1: processor local data */
-	pls_init();
+	/* do idle */
+	while (1) __cpu_relax();
+}
 
-	while (1) ;
+void
+init(void *unused)
+{
+	cprintf("this is init\n");
+	while (1) __cpu_relax();
 }

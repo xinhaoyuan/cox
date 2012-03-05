@@ -15,7 +15,7 @@ pagebuf_alloc(pagebuf_t buf, int num, uintptr_t *addr)
 {
 	int i;
 	
-	irq_save();
+	int irq = irq_save();
 	spinlock_acquire(&buf->lock);
 	
 	for (i = 0; i < num; -- i)
@@ -30,7 +30,7 @@ pagebuf_alloc(pagebuf_t buf, int num, uintptr_t *addr)
 	}
 
 	spinlock_release(&buf->lock);
-	irq_restore();
+	irq_restore(irq);
 
 	return i;
 }
@@ -40,7 +40,7 @@ pagebuf_free(pagebuf_t buf, int num, uintptr_t *addr)
 {
 	int i;
 	
-	irq_save();
+	int irq = irq_save();
 	spinlock_acquire(&buf->lock);
 	
 	for (i = 0; i < num; -- i)
@@ -51,5 +51,5 @@ pagebuf_free(pagebuf_t buf, int num, uintptr_t *addr)
 	}
 
 	spinlock_release(&buf->lock);
-	irq_restore();
+	irq_restore(irq);
 }

@@ -4,6 +4,8 @@
 #include <types.h>
 #include <cpu.h>
 
+#include <arch/mmu.h>
+
 /* Trap Numbers */
 #define T_SYSCALL               0x80
 #define T_IPI                   0x81
@@ -88,5 +90,24 @@ void print_regs(struct pushregs *regs);
 bool trap_in_kernel(struct trapframe *tf);
 
 extern struct pseudodesc idt_pd;
+
+#define intr_enable() __sti()
+#define intr_disable() __cli()
+
+static inline int
+intr_save(void) {
+    if (__read_rflags() & FL_IF) {
+        intr_disable();
+        return 1;
+    }
+    return 0;
+}
+
+static inline void
+intr_restore(int flag) {
+    if (flag) {
+        intr_enable();
+    }
+}
 
 #endif

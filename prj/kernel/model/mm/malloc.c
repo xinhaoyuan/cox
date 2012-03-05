@@ -1,8 +1,9 @@
 #include <string.h>
 #include <bit.h>
-
+#include <irq.h>
 #include <arch/memlayout.h>
 #include <arch/mmu.h>
+#include <sync/spinlock.h>
 #include <mm/page.h>
 #include <mm/malloc.h>
 
@@ -106,11 +107,14 @@ ekl_free(void *ptr)
 	ctrl->head = (uintptr_t)head;
 }
 
+spinlock_s malloc_lock;
+
 int
 malloc_init(void)
 {
 	int result;
 	if ((result = ekl_init()) < 0) return result;
+	spinlock_init(&malloc_lock);
 
 	return 0;
 }
@@ -122,12 +126,20 @@ kmalloc(size_t size)
 	if (size < 8) size = 8;
 
 	void *result;
+	
+	int irq = irq_save();
+	spinlock_acquire(&malloc_lock);
+	
 	if (size + EKL_META_SIZE > EKL_MAX_ALLOC)
 	{
 		size_t pages = (size + PGSIZE - 1) >> PGSHIFT;
 		result = VADDR_DIRECT(page_alloc_atomic(pages));
 	}
 	else result = ekl_alloc(size);
+
+	spinlock_release(&malloc_lock);
+	irq_restore(irq);
+	
 	return result;
 }
 
@@ -135,9 +147,16 @@ void
 kfree(void *ptr)
 {
 	if (ptr == NULL) return;
+
+	int irq = irq_save();
+	spinlock_acquire(&malloc_lock);
+	
 	if (((uintptr_t)ptr & (PGSIZE - 1)) == 0)
 	{
 		page_free_atomic(PADDR_DIRECT(ptr));
 	}
 	else ekl_free(ptr);
+
+	spinlock_release(&malloc_lock);
+	irq_restore(irq);
 }
