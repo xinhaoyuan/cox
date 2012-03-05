@@ -1,5 +1,10 @@
 #include <irq.h>
 #include <bit.h>
+#include <string.h>
+#include <error.h>
+
+#include <mm/malloc.h>
+#include <lib/low_io.h>
 
 #include <arch/local.h>
 #include <arch/intr.h>
@@ -13,7 +18,28 @@ typedef struct irq_info_s
 } irq_info_s;
 
 PLS_PTR_DEFINE(irq_info_s, __irq_info, NULL);
-irq_handler_f irq_handler[IRQ_COUNT] = { 0 };
+irq_handler_f irq_handler[IRQ_COUNT];
+
+int
+irq_init(void)
+{
+	memset(irq_handler, 0, sizeof(irq_handler));
+	return 0;
+}
+
+int
+irq_init_mp(void)
+{
+	irq_info_s *info = kmalloc(sizeof(irq_info_s));
+	if (info == NULL) return -E_NO_MEM;
+	
+	PLS_SET(__irq_save, 0);
+	info->irq_mask = 0;
+	memset(info->irq_accumulate, 0, sizeof(info->irq_accumulate));
+	PLS_SET(__irq_info, info);
+	
+	return 0;
+}
 
 static void
 irq_process(void)
@@ -58,19 +84,17 @@ irq_save(void)
 void
 irq_restore(int state)
 {
-	int intr = intr_save();
+	int intr = intr_save();	
+	struct irq_info_s *info = PLS(__irq_info);
 	PLS_SET(__irq_save, state);
-	if (state == 0)
+	if (info && state == 0 && info->irq_mask)
 	{
-		if (PLS(__irq_info)->irq_mask)
-		{
-			irq_process();
-		}
+		irq_process();
 	}
 	intr_restore(intr);
 }
 
-bool
+void
 irq_entry(int irq)
 {
 	int intr = intr_save();
@@ -87,5 +111,4 @@ irq_entry(int irq)
 	}
 
 	intr_restore(intr);
-	return FALSE;
 }

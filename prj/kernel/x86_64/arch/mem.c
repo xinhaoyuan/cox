@@ -309,7 +309,9 @@ mmu_init(void)
 
     // reload all segment registers
     lgdt(&gdt_pd);
-
+	/* Make all PLS access to origin data */
+	__asm__ __volatile__("movw %w0, %%fs" : : "a"(GD_KDATA));
+	
 	// load the TSS, a little work around about gcc -O
 	// ltr(GD_TSS_BOOT); // may crash
 	volatile uint16_t tss = GD_TSS_BOOT;
@@ -463,7 +465,7 @@ page_alloc_atomic(size_t num)
 {
 	int irq = irq_save();
 	spinlock_acquire(&page_atomic_lock);
-	
+
 	buddy_node_id_t result = buddy_alloc(&page_buddy_context, num);
 
 	spinlock_release(&page_atomic_lock);

@@ -57,9 +57,11 @@ typedef struct proc_s *proc_t;
 typedef struct proc_s
 {
 	char name[PROC_NAME_MAX];
+	void (*entry)(void *arg);
 	
 	spinlock_s lock;
 	int status;
+	int irq;
 	
 	context_s ctx;
 	sched_node_s sched_node;

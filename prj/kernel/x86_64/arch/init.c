@@ -1,5 +1,7 @@
 #include <string.h>
 
+#include <irq.h>
+#include <timer.h>
 #include <proc.h>
 
 #include <lib/low_io.h>
@@ -41,7 +43,7 @@ __kern_early_init(void) {
 	acpi_conf_init();
 	idt_init();
 	pic_init();
-
+	
 	if (!sysconf_x86.ioapic.enable ||
 		!sysconf_x86.lapic.enable)
 	{
@@ -53,7 +55,7 @@ __kern_early_init(void) {
 	ioapic_init();
 	if (sysconf_x86.hpet.enable)
 		hpet_init();
-	
+
 	if (sysconf_x86.cpu.count > 1)
 		mp_init();
 
@@ -70,19 +72,25 @@ volatile int __cpu_global_init = 0;
 void
 __kern_cpu_init(void)
 {
+	/* local data support */
+	pls_init();
+	/* irq buffering */
+	irq_init_mp();
+	
 	/* Stage 0: global */
 	if (lapic_id() == sysconf_x86.cpu.boot)
 	{
 		malloc_init();
+		irq_init();
 		sched_init();
+		timer_init();
 		/* Stage 0 ends */
 		__cpu_global_init = 1;
 	}
 	else while (__cpu_global_init == 0) __cpu_relax();
+
+	/* Stage 1: local */
 	
-	/* Stage 1: processor local */
-	/* local data support */
-	pls_init();
 	/* put self into idle proc */
 	sched_init_mp();
 
@@ -94,9 +102,10 @@ __kern_cpu_init(void)
 		/* create the init proc */
 		proc_init(&init_proc, ".init", SCHED_CLASS_RR, init, NULL, (uintptr_t)VADDR_DIRECT(stack_top_phys));
 		proc_notify(&init_proc);
-
-		schedule();
 	}
+
+	lapic_timer_set(100);
+	intr_enable();
 
 	/* do idle */
 	while (1) __cpu_relax();
@@ -106,5 +115,4 @@ void
 init(void *unused)
 {
 	cprintf("this is init\n");
-	while (1) __cpu_relax();
 }

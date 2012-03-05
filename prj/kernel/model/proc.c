@@ -1,11 +1,13 @@
 #include <error.h>
 #include <proc.h>
 #include <irq.h>
+#include <cpu.h>
 #include <string.h>
 #include <sync/spinlock.h>
 #include <sched/idle.h>
 #include <sched/rr.h>
 #include <mm/malloc.h>
+#include <lib/low_io.h>
 #include <arch/context.h>
 
 PLS_PTR_DEFINE(runqueue_s, __runqueue, NULL);
@@ -15,6 +17,7 @@ PLS_PTR_DEFINE(proc_s, __current, NULL);
 #define current_set(proc) PLS_SET(__current, proc)
 
 static inline void __schedule(int external);
+static inline void __post_schedule();
 
 static int
 sched_class_init(void)
@@ -35,6 +38,18 @@ sched_class_init_mp(void)
 	return 0;
 }
 
+static void
+__proc_entry(void *arg)
+{
+	current->irq = 0;
+	__post_schedule();
+	
+	current->entry(arg);
+
+	cprintf("PROC END\n");
+	while (1) __cpu_relax();
+}
+
 int
 proc_init(proc_t proc, const char *name, int class, void (*entry)(void *arg), void *arg, uintptr_t stack_top)
 {
@@ -45,7 +60,8 @@ proc_init(proc_t proc, const char *name, int class, void (*entry)(void *arg), vo
 	memset(&proc->sched_node, sizeof(sched_node_s), 0);
 	proc->sched_node.class = sched_class[class];
 	proc->status = PROC_STATUS_WAITING;
-	context_fill(&proc->ctx, entry, arg, stack_top);
+	proc->entry  = entry;
+	context_fill(&proc->ctx, __proc_entry, arg, stack_top);
 
 	return 0;
 }
@@ -106,7 +122,8 @@ proc_switch(proc_t proc)
 	current_set(proc);
 	proc->sched_prev = prev;
 
-	context_switch(&prev->ctx, &proc->ctx);
+	if (prev != proc)
+		context_switch(&prev->ctx, &proc->ctx);
 }
 
 int
@@ -160,14 +177,16 @@ __schedule(int external)
 	runqueue_t rq = runqueue;
 	if (external) spinlock_acquire(&self->lock);
 	spinlock_acquire(&rq->lock);
-	
+
+	self->irq = irq;
+
 	if (self->status == PROC_STATUS_RUNNABLE_WEAK ||
 		self->status == PROC_STATUS_RUNNABLE_STRONG)
 		self->sched_node.class->enqueue(rq, &self->sched_node);
 	
 	sched_node_t next_sched_node = rq_pick(rq);
 	proc_t next;
-	
+
 	next_sched_node->class->dequeue(rq, next_sched_node);
 	next = CONTAINER_OF(next_sched_node, proc_s, sched_node);
 
@@ -175,9 +194,15 @@ __schedule(int external)
 	/* Maybe on different CPU */
 	rq = runqueue;
 
-	spinlock_release(&self->sched_prev->lock);
-	spinlock_release(&rq->lock);
-	irq_restore(irq);
+	__post_schedule();
+}
+
+static inline void
+__post_schedule()
+{
+	spinlock_release(&current->sched_prev->lock);
+	spinlock_release(&runqueue->lock);
+	irq_restore(current->irq);
 }
 
 void

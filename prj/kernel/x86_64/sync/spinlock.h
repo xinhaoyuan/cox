@@ -3,6 +3,7 @@
 
 #include <atom.h>
 #include <types.h>
+#include <lib/low_io.h>
 
 typedef volatile uint32_t spinlock_s;
 typedef spinlock_s *spinlock_t;
