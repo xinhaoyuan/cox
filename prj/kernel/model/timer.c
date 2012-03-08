@@ -1,6 +1,6 @@
-#include <timer.h>
-#include <irq.h>
-#include <proc.h>
+#include <kernel/timer.h>
+#include <kernel/irq.h>
+#include <kernel/proc.h>
 #include <lib/low_io.h>
 #include <arch/intr.h>
 

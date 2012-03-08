@@ -1,3 +1,4 @@
+#include <cpu.h>
 #include <atom.h>
 #include <string.h>
 
@@ -20,13 +21,23 @@ pls_init(void)
 	void *pls;
 
 	pls = VADDR_DIRECT(page_alloc_atomic(pls_pages));
-
+	
 	/* copy the initial data */
 	memmove(pls, pls_start, pls_end - pls_start);
 	
 	uintptr_t base = (uintptr_t)pls - (uintptr_t)pls_start;
 
 	/* set and load segment */
-	gdt[SEG_PLS(lapic_id())] = SEG_BASE(STA_W, base, DPL_KERNEL);
+	gdt[SEG_PLS(lapic_id())] = SEG(STA_W, DPL_KERNEL);
 	__asm__ __volatile__("movw %w0, %%fs" : : "a"(GD_PLS(lapic_id())));
+	/* write the 64-bit segment base by msr */		
+	__write_msr(0xC0000100, base);
+
+	uintptr_t test;
+	__asm__ __volatile__("mov %%fs:(%1), %0": "=r"(test) : "r"((uintptr_t)&base - base));
+	if (base != test)
+	{
+		cprintf("PANIC: processor local storage failed to initailize.", base, test);
+		while (1) asm volatile("pause");
+	}
 }

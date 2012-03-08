@@ -6,7 +6,7 @@
 #include <lib/low_io.h>
 #include <mm/page.h>
 #include <mm/mmio.h>
-#include <irq.h>
+#include <kernel/irq.h>
 
 #include <sync/spinlock.h>
 
@@ -23,6 +23,7 @@ uintptr_t phys_end;
 uintptr_t nr_pages;
 
 // virtual address of boot-time page directory
+pgd_t *pgdir_scratch = NULL;
 static pgd_t *boot_pgdir = NULL;
 // physical address of boot-time page directory
 static uintptr_t boot_cr3;
@@ -245,7 +246,7 @@ mmu_init(void)
 {
 	int i;
 		
-	boot_pgdir = boot_alloc(PGSIZE, PGSIZE, 0);
+	pgdir_scratch = boot_pgdir = boot_alloc(PGSIZE, PGSIZE, 0);
     memset(boot_pgdir, 0, PGSIZE);
     boot_cr3 = PADDR_DIRECT(boot_pgdir);
 
@@ -309,8 +310,6 @@ mmu_init(void)
 
     // reload all segment registers
     lgdt(&gdt_pd);
-	/* Make all PLS access to origin data */
-	__asm__ __volatile__("movw %w0, %%fs" : : "a"(GD_KDATA));
 	
 	// load the TSS, a little work around about gcc -O
 	// ltr(GD_TSS_BOOT); // may crash
@@ -406,7 +405,7 @@ get_pmd(pgd_t *pgdir, uintptr_t la, bool create) {
     return &((pmd_t *)VADDR_DIRECT(PUD_ADDR(*pudp)))[PMX(la)];
 }
 
-static pte_t *
+pte_t *
 get_pte(pgd_t *pgdir, uintptr_t la, bool create) {
     pmd_t *pmdp;
     if ((pmdp = get_pmd(pgdir, la, create)) == NULL) {
@@ -428,7 +427,7 @@ get_pte(pgd_t *pgdir, uintptr_t la, bool create) {
 }
 
 void
-pgflt_handler(unsigned int err, uintptr_t la)
+pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
 {
 	if (PHYSBASE <= la && la < PHYSBASE + PHYSSIZE)
 	{
@@ -455,7 +454,7 @@ pgflt_handler(unsigned int err, uintptr_t la)
 	}
 	else
 	{
-		cprintf("page fault(%08x) at %016lx\n", err, la);
+		cprintf("page fault(%08x) at %016lx by %016lx\n", err, la, pc);
 		while (1) ;
 	}
 }

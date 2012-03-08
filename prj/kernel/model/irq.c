@@ -1,11 +1,9 @@
-#include <irq.h>
 #include <bit.h>
 #include <string.h>
-#include <error.h>
-
+#include <kernel/irq.h>
+#include <kernel/error.h>
 #include <mm/malloc.h>
 #include <lib/low_io.h>
-
 #include <arch/local.h>
 #include <arch/intr.h>
 

@@ -71,6 +71,7 @@
 
 #ifndef __ASSEMBLER__
 
+#define ARCH_STACKTOP(base, size) ((void *)((uintptr_t)(base) + (size)))
 #define VADDR_DIRECT(paddr) ((void *)((paddr) + PHYSBASE))
 #define PADDR_DIRECT(paddr) (((uintptr_t)(paddr)) - PHYSBASE)
 

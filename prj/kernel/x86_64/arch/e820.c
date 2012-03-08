@@ -1,5 +1,5 @@
 #include <types.h>
-#include <error.h>
+#include <kernel/error.h>
 
 #include <arch/init.h>
 #include <lib/low_io.h>

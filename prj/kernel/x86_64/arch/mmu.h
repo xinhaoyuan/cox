@@ -148,7 +148,7 @@ struct segdesc {
 	}
 
 
-#define SEG_BASE(type, base, dpl)										\
+#define SEG_BASE(type, base, dpl)									\
 	(struct segdesc) {												\
 		0, (base) & 0xffff, ((base) >> 16) & 0xff,					\
 		type, 1, dpl, 1, 0, 0, 1, 0, 1,								\

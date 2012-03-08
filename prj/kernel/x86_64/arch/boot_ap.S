@@ -72,6 +72,7 @@ longmode_entry:
 		mov $KERNEL_DS, %ax
 		mov %ax, %ds
 		mov %ax, %es
+		mov %ax, %fs
 		mov %ax, %ss
 
 		// GET THE APIC ID

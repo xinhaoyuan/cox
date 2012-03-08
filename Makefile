@@ -39,7 +39,10 @@ ${T_OBJ}/__ts_%: force
 	@test "(" -e $@ ")" -a "(" "!" "(" ${T_OBJ}/__ts_dep_$* -nt $@ ")" ")" || \
 		( ${PRINT} "MAKING $*:"; PRJ=$* ${MAKE} -C prj/$* all && touch $@ )
 
+stat: all
+	${V}./loc.sh
+
 run: all
-	${V}./run
+	${V}./run gdb
 
 endif

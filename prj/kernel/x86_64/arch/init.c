@@ -1,8 +1,9 @@
 #include <string.h>
 
-#include <irq.h>
-#include <timer.h>
-#include <proc.h>
+#include <kernel/irq.h>
+#include <kernel/timer.h>
+#include <kernel/proc.h>
+#include <kernel/entry.h>
 
 #include <lib/low_io.h>
 #include <mm/page.h>
@@ -24,7 +25,6 @@
 #include <arch/init.h>
 
 static proc_s init_proc;
-void init(void *);
 
 /* GRUB info filled by entry32.S */
 uint32_t mb_magic;
@@ -74,9 +74,7 @@ __kern_cpu_init(void)
 {
 	/* local data support */
 	pls_init();
-	/* irq buffering */
-	irq_init_mp();
-	
+
 	/* Stage 0: global */
 	if (lapic_id() == sysconf_x86.cpu.boot)
 	{
@@ -90,7 +88,8 @@ __kern_cpu_init(void)
 	else while (__cpu_global_init == 0) __cpu_relax();
 
 	/* Stage 1: local */
-	
+	/* irq buffering */
+	irq_init_mp();
 	/* put self into idle proc */
 	sched_init_mp();
 
@@ -98,21 +97,20 @@ __kern_cpu_init(void)
 	{
 		uintptr_t stack_top_phys = page_alloc_atomic(4);
 		stack_top_phys += PGSIZE * 4;
-		
+
 		/* create the init proc */
-		proc_init(&init_proc, ".init", SCHED_CLASS_RR, init, NULL, (uintptr_t)VADDR_DIRECT(stack_top_phys));
+		proc_init(&init_proc, ".init", SCHED_CLASS_RR, (void(*)(void *))kernel_start, NULL, (uintptr_t)VADDR_DIRECT(stack_top_phys));
 		proc_notify(&init_proc);
 	}
 
+	/* XXX: TEMP CODE FOR SETUP U->K TRAP STACK */
+	uintptr_t stacktop = page_alloc_atomic(4);
+	stacktop += 4 * PGSIZE;
+	cpu_set_trap_stacktop((uintptr_t)VADDR_DIRECT(stacktop));
+
 	lapic_timer_set(100);
 	intr_enable();
-
+	
 	/* do idle */
 	while (1) __cpu_relax();
-}
-
-void
-init(void *unused)
-{
-	cprintf("this is init\n");
 }

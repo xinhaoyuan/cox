@@ -42,5 +42,6 @@ extern cpu_static_s  cpu_static[LAPIC_COUNT];
 extern cpu_dynamic_s cpu_dynamic[LAPIC_COUNT];
 
 void cpu_init(void) __attribute__((noreturn));
+void cpu_set_trap_stacktop(uintptr_t stacktop);
 
 #endif

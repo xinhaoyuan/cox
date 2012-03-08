@@ -1,6 +1,6 @@
 #include <string.h>
 #include <bit.h>
-#include <irq.h>
+#include <kernel/irq.h>
 #include <arch/memlayout.h>
 #include <arch/mmu.h>
 #include <sync/spinlock.h>
@@ -50,7 +50,7 @@ ekl_init(void)
 static void *
 ekl_ialloc(struct ekl_ctrl_s *ctrl)
 {
-	if (ctrl->head == -1)
+	if (ctrl->head == (uintptr_t)-1)
 	{
 		size_t size = ctrl->block_size;
 		if (ctrl->block_size < EKL_MAX_BLOCK_PAGE)
@@ -129,7 +129,7 @@ kmalloc(size_t size)
 	
 	int irq = irq_save();
 	spinlock_acquire(&malloc_lock);
-	
+
 	if (size + EKL_META_SIZE > EKL_MAX_ALLOC)
 	{
 		size_t pages = (size + PGSIZE - 1) >> PGSHIFT;

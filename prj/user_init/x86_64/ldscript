@@ -1,0 +1,50 @@
+/* Simple linker script for ucore user-level programs.
+   See the GNU ld 'info' manual ("info ld") to learn the syntax. */
+
+OUTPUT_FORMAT("elf64-x86-64", "elf64-x86-64", "elf64-x86-64")
+OUTPUT_ARCH(i386:x86-64)
+ENTRY(__entry)
+
+SECTIONS {
+    /* Load programs at this address: "." means the current address */
+    . = 0x0000000001000000;
+
+	PROVIDE(start = .);
+
+    .init : {
+        *init.S.o*(.text .rodata .data)
+	}
+
+    .text : {
+        *(.text .stub .text.* .gnu.linkonce.t.*)
+    }
+
+	. = ALIGN(0x1000);
+    PROVIDE(etext = .); /* Define the 'etext' symbol to this value */
+
+    .rodata : {
+        *(.rodata .rodata.* .gnu.linkonce.r.*)
+    }
+
+    /* Adjust the address for the data segment to the next page */
+    . = ALIGN(0x1000);
+
+    .data : {
+        *(.data)
+    }
+
+	. = ALIGN(0x1000);
+
+    PROVIDE(edata = .);
+
+    .bss : {
+        *(.bss)
+    }
+
+	. = ALIGN(0x1000);
+    PROVIDE(end = .);
+
+    /DISCARD/ : {
+        *(.eh_frame .note.GNU-stack .comment)
+    }
+}

@@ -24,6 +24,7 @@ static inline void __invlpg(void *addr) __attribute__((always_inline));
 static inline uint64_t __read_rbp(void) __attribute__((always_inline));
 static inline uint64_t __read_rflags(void) __attribute__((always_inline));
 static inline void __write_rflags(uint64_t rflags) __attribute__((always_inline));
+static inline void __write_msr(uint32_t idx, uint64_t value) __attribute__((always_inline));
 
 static inline void
 __cpu_relax(void)
@@ -128,6 +129,14 @@ __cpuid(uint32_t info, uint32_t *eaxp, uint32_t *ebxp, uint32_t *ecxp, uint32_t 
 	  *ecxp = ecx;
      if (edxp)
 	  *edxp = edx;
+}
+
+
+static inline void
+__write_msr(uint32_t idx, uint64_t value)
+{
+	asm volatile("wrmsr"
+				 : : "a" (value & 0xFFFFFFFF), "c" (idx), "d" ((value >> 32) & 0xFFFFFFFF));
 }
 
 #endif

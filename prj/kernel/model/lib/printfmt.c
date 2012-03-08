@@ -1,5 +1,5 @@
 #include <types.h>
-#include <error.h>
+#include <kernel/error.h>
 #include <string.h>
 
 #include "printfmt.h"

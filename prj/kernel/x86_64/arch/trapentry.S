@@ -65,3 +65,8 @@ __trapret:
     addq $0x10, %rsp
     iretq
 
+	.globl __user_jump
+__user_jump:
+    # set stack to this new process's trapframe
+    movq %rdi, %rsp
+    jmp __trapret

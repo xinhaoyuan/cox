@@ -7,9 +7,11 @@
 
 extern struct pseudodesc gdt_pd;
 extern struct segdesc gdt[SEG_COUNT + 1];
+extern pgd_t *pgdir_scratch;
 
 int  mem_init(void);
 void print_pgdir(void);
-void pgflt_handler(unsigned int err, uintptr_t la);
+void pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc);
+pte_t *get_pte(pgd_t *pgdir, uintptr_t la, bool create);
 
 #endif

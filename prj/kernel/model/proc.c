@@ -1,8 +1,8 @@
-#include <error.h>
-#include <proc.h>
-#include <irq.h>
 #include <cpu.h>
 #include <string.h>
+#include <kernel/error.h>
+#include <kernel/proc.h>
+#include <kernel/irq.h>
 #include <sync/spinlock.h>
 #include <sched/idle.h>
 #include <sched/rr.h>
@@ -17,7 +17,7 @@ PLS_PTR_DEFINE(proc_s, __current, NULL);
 #define current_set(proc) PLS_SET(__current, proc)
 
 static inline void __schedule(int external);
-static inline void __post_schedule();
+static inline void __post_schedule(proc_t proc);
 
 static int
 sched_class_init(void)
@@ -41,10 +41,11 @@ sched_class_init_mp(void)
 static void
 __proc_entry(void *arg)
 {
-	current->irq = 0;
-	__post_schedule();
+	proc_t proc = current;
+	proc->irq = 0;
+	__post_schedule(proc);
 	
-	current->entry(arg);
+	proc->entry(arg);
 
 	cprintf("PROC END\n");
 	while (1) __cpu_relax();
@@ -126,6 +127,7 @@ proc_switch(proc_t proc)
 		context_switch(&prev->ctx, &proc->ctx);
 }
 
+/* Initialize context support and sched classes */
 int
 sched_init(void)
 {
@@ -135,7 +137,8 @@ sched_init(void)
 
 	return 0;
 }
-	
+
+/* Initialize local data for scheduler and idle proc */
 int
 sched_init_mp(void)
 {
@@ -161,6 +164,7 @@ sched_init_mp(void)
 	return 0;
 }
 
+/* Define the strategy for pick proc from each sched class */
 static inline sched_node_t
 rq_pick(runqueue_t rq)
 {
@@ -194,15 +198,16 @@ __schedule(int external)
 	/* Maybe on different CPU */
 	rq = runqueue;
 
-	__post_schedule();
+	__post_schedule(current);
 }
 
 static inline void
-__post_schedule()
+__post_schedule(proc_t proc)
 {
-	spinlock_release(&current->sched_prev->lock);
+	proc->switched = 1;
+	spinlock_release(&proc->sched_prev->lock);
 	spinlock_release(&runqueue->lock);
-	irq_restore(current->irq);
+	irq_restore(proc->irq);
 }
 
 void

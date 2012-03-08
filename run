@@ -1,9 +1,21 @@
 #!/bin/sh
 
-qemu-system-x86_64 -smp 4 -m 512m \
+smp=4
+mem=512m
+
+if [ "$1" = "gdb" ]; then
+	
+	qemu-system-x86_64 -smp $smp -m $mem \
 	-hda obj/bootimage \
-	-s -S \
 	-serial file:obj/serial.log \
-	-vga std \
-	&
-ucore-mp64-gdb
+	-vga std -s -S &
+	ucore-mp64-gdb
+	
+elif [ "$1" = "console" ]; then
+	
+	qemu-system-x86_64 -smp $smp -m $mem \
+	-hda obj/bootimage \
+	-serial file:obj/serial.log \
+	-vga std -S -monitor stdio
+	
+fi

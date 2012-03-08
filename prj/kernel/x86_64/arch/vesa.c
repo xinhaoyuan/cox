@@ -279,7 +279,7 @@ int vesa_set_mode(int mode)
 					buf[j * 4 + 3] = (j & 0x7) << 5;
 				}
 
-				if (ret = vesa_set_palette(buf, 256, 0))
+				if ((ret = vesa_set_palette((char *)buf, 256, 0)))
 					if (debug)
 						cprintf("Warn: set palette failed: %d\n", ret);
 
@@ -679,7 +679,7 @@ int vesa_get_palette_width(int *width)
 {
 	regs.bx = 1;
 	int ret;
-	if (ret = vesa_call(&regs, 8, 0))
+	if ((ret = vesa_call(&regs, 8, 0)))
 		return ret;
 	*width = regs.bx >> 8;
 	return 0;
@@ -689,7 +689,7 @@ int vesa_set_palette_width(int *width)
 {
 	regs.bx = (*width & 0xFF) << 8;
 	int ret;
-	if (ret = vesa_call(&regs, 8, 0))
+	if ((ret = vesa_call(&regs, 8, 0)))
 		return ret;
 	*width = regs.bx >> 8;
 	return 0;
@@ -736,7 +736,7 @@ static int vesa_demo()
 	if (vesa_get_state_size(&ssize))
 		cprintf("FAILED to get state size\n");
 	char *buf = kmalloc(ssize);
-	if (ret = vesa_save_state(buf, ssize))
+	if ((ret = vesa_save_state(buf, ssize)))
 		cprintf("FAILED to save state err %d\n", ret);
 	int modeno = 0x110;
 	for (; modeno < 0x150; modeno++)
@@ -792,7 +792,7 @@ static int vesa_demo()
 		for (i=0; i<100000000; i++) {}
 	}
 
-	if (ret = vesa_restore_state(buf, ssize))
+	if ((ret = vesa_restore_state(buf, ssize)))
 		cprintf("FAILED to restore state err %d\n", ret);
 
 	cprintf("TEST finished!\n");

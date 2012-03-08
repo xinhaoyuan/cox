@@ -1,4 +1,4 @@
-#include <irq.h>
+#include <kernel/irq.h>
 #include <mm/page.h>
 #include <mm/pagebuf.h>
 

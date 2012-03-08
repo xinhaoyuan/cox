@@ -13,7 +13,7 @@ cpu_static_s   cpu_static[LAPIC_COUNT];
 cpu_dynamic_s  cpu_dynamic[LAPIC_COUNT];
 
 static volatile int cpu_init_count = 0;
-
+static volatile int cpu_boot_pgtab_clean = 0;
 static struct taskstate ts[NR_LCPU] = {{0}};
 
 void
@@ -33,5 +33,21 @@ cpu_init(void)
 
 	/* A barrier waiting for all cpu ready */
 	while (cpu_init_count != sysconf_x86.cpu.count) ;
+
+	/* clear the boot pgdir */
+	if (lapic_id() == sysconf_x86.cpu.boot)
+	{
+		memset(pgdir_scratch, 0, PGX(PHYSBASE) * sizeof(pgd_t));
+		cpu_boot_pgtab_clean = 1;
+	}
+	else while (cpu_boot_pgtab_clean == 0) ;
+
+	__lcr3(__rcr3());
 	__kern_cpu_init();
+}
+
+void
+cpu_set_trap_stacktop(uintptr_t stacktop)
+{
+	ts[lapic_id()].ts_rsp0 = stacktop;
 }

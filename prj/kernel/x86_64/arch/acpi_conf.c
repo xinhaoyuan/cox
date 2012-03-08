@@ -1,5 +1,5 @@
 #include <string.h>
-#include <error.h>
+#include <kernel/error.h>
 #include <types.h>
 #include <cpu.h>
 

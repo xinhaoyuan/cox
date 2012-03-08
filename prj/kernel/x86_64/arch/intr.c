@@ -1,7 +1,7 @@
 #include <types.h>
 #include <cpu.h>
 
-#include <irq.h>
+#include <kernel/irq.h>
 #include <lib/low_io.h>
 
 #include <arch/mem.h>
@@ -126,7 +126,7 @@ trap_dispatch(struct trapframe *tf)
 		switch (tf->tf_trapno)
 		{
 		case T_PGFLT:
-			pgflt_handler(tf->tf_err, __rcr2());
+			pgflt_handler(tf->tf_err, __rcr2(), tf->tf_rip);
 			break;
 			
 		default:
@@ -140,6 +140,10 @@ trap_dispatch(struct trapframe *tf)
 	{
 		lapic_eoi_send();
 		irq_entry(tf->tf_trapno - IRQ_OFFSET);
+	}
+	else if (tf->tf_trapno == T_SYSCALL)
+	{
+		cprintf("SYSCALL\n");
 	}
 }
 
