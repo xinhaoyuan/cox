@@ -28,8 +28,8 @@ pls_init(void)
 	uintptr_t base = (uintptr_t)pls - (uintptr_t)pls_start;
 
 	/* set and load segment */
-	gdt[SEG_PLS(lapic_id())] = SEG(STA_W, DPL_KERNEL);
-	__asm__ __volatile__("movw %w0, %%fs" : : "a"(GD_PLS(lapic_id())));
+	gdt[SEG_PLS(lapic_id())] = SEG(STA_W, DPL_KERNEL | 3);
+	__asm__ __volatile__("movw %w0, %%fs" : : "a"(GD_PLS(lapic_id()) | 3));
 	/* write the 64-bit segment base by msr */		
 	__write_msr(0xC0000100, base);
 

@@ -1,6 +1,7 @@
 #include <types.h>
 #include <cpu.h>
-
+#include <kernel/proc.h>
+#include <kernel/user.h>
 #include <kernel/irq.h>
 #include <lib/low_io.h>
 
@@ -122,6 +123,12 @@ print_regs(struct pushregs *regs)
 static void
 trap_dispatch(struct trapframe *tf)
 {
+	bool from_user = !trap_in_kernel(tf);
+	if (from_user)
+	{
+		current->usr_thread->arch.tf = tf;
+	}
+
 	if (tf->tf_trapno < EXCEPTION_COUNT) {
 		switch (tf->tf_trapno)
 		{
@@ -145,6 +152,9 @@ trap_dispatch(struct trapframe *tf)
 	{
 		cprintf("SYSCALL\n");
 	}
+
+	if (from_user)
+		user_before_return(current);
 }
 
 void
