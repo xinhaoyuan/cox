@@ -16,8 +16,9 @@ struct user_thread_s
 	
 	struct
 	{
-		iobuf_index_t  tail, head, cap;
+		iobuf_index_t  cap;
 		iobuf_index_t *entry;
+		uintptr_t *head, *tail;
 		uintptr_t *busy;
 		uintptr_t  stacktop;	
 		io_callback_handler_f callback;
@@ -33,7 +34,7 @@ int user_thread_init(void);
 void user_thread_fill(uintptr_t cb, size_t cb_size, uintptr_t iobuf, size_t iobuf_size, uintptr_t entry, uintptr_t stacktop);
 void user_thread_jump(void) __attribute__((noreturn));
 /* filled by arch */
-int user_thread_arch_push_iocb(iobuf_index_t head, iobuf_index_t tail);
+int user_thread_arch_push_iocb(void);
 int user_thread_arch_init(void);
 void user_thread_arch_fill(uintptr_t entry, uintptr_t stacktop);
 void user_thread_arch_jump(void) __attribute__((noreturn));

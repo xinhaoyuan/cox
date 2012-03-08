@@ -13,6 +13,8 @@ struct startup_info_s
 
 	struct
 	{
+		uintptr_t      *head, *tail;
+		uintptr_t      *busy;
 		iobuf_index_t   cap;
 		iobuf_index_t  *entry;
 	} iocb;

@@ -73,12 +73,12 @@ user_thread_fill(uintptr_t cb, size_t cb_size, uintptr_t iobuf, size_t iobuf_siz
 	proc_t proc = current;
 	size_t cap = iobuf_size / (sizeof(io_call_entry_s) + sizeof(iobuf_index_t));
 	
-	proc->usr_thread->iocb.stacktop = (uintptr_t)ARCH_STACKTOP(cb, cb_size - sizeof(uintptr_t));
-	proc->usr_thread->iocb.busy = (uintptr_t *)(cb + cb_size - sizeof(uintptr_t));
+	proc->usr_thread->iocb.stacktop = (uintptr_t)ARCH_STACKTOP(cb, cb_size - sizeof(uintptr_t) * 3);
+	proc->usr_thread->iocb.busy = (uintptr_t *)(cb + cb_size - sizeof(uintptr_t) * 3);
+	proc->usr_thread->iocb.head = (uintptr_t *)(cb + cb_size - sizeof(uintptr_t) * 2);
+	proc->usr_thread->iocb.tail = (uintptr_t *)(cb + cb_size - sizeof(uintptr_t));
 	proc->usr_thread->iocb.callback = NULL;
 	proc->usr_thread->iocb.cap = cap;
-	proc->usr_thread->iocb.head = 0;
-	proc->usr_thread->iocb.tail = 0;
 	/* set the cb entry from end */
 	proc->usr_thread->iocb.entry = (iobuf_index_t *)(iobuf + iobuf_size - sizeof(iobuf_index_t) * cap);
 	/* ce entry is from head */
@@ -126,4 +126,13 @@ user_before_return(proc_t proc)
 {
 	user_arch_before_return(proc);
 	proc->switched = 0;
+
+	if (*proc->usr_thread->iocb.busy == 0)
+	{
+		iobuf_index_t head = *proc->usr_thread->iocb.head;
+		iobuf_index_t tail = *proc->usr_thread->iocb.tail;
+
+		if (head != tail)
+			user_thread_arch_push_iocb();
+	}	
 }

@@ -10,7 +10,7 @@
 #include <user/info.h>
 
 int
-user_thread_arch_push_iocb(iobuf_index_t head, iobuf_index_t tail)
+user_thread_arch_push_iocb(void)
 {
 	proc_t proc = current;
 	if (proc->usr_thread == NULL) return -E_INVAL;
@@ -25,8 +25,6 @@ user_thread_arch_push_iocb(iobuf_index_t head, iobuf_index_t tail)
 		(*pte & (PTE_P | PTE_W | PTE_U)) != (PTE_P | PTE_W | PTE_U)) return -E_INVAL;
 #endif
 
-
-	if (*proc->usr_thread->iocb.busy != 0) return -E_BUSY;
 	char *stacktop = (char *)proc->usr_thread->iocb.stacktop;
 	
 	stacktop -= sizeof(struct trapframe);
@@ -34,9 +32,6 @@ user_thread_arch_push_iocb(iobuf_index_t head, iobuf_index_t tail)
 
 	proc->usr_thread->arch.tf->tf_rip = (uintptr_t)proc->usr_thread->iocb.callback;
 	proc->usr_thread->arch.tf->tf_rsp = (uintptr_t)stacktop;
-	/* calling conversion */	
-	proc->usr_thread->arch.tf->tf_regs.reg_rdi = head;
-	proc->usr_thread->arch.tf->tf_regs.reg_rsi = tail;
 
 	return 0;
 }
@@ -66,6 +61,9 @@ void user_thread_arch_fill(uintptr_t entry, uintptr_t stacktop)
 		info.ioce.head  = proc->usr_thread->ioce.head;
 		info.iocb.cap   = proc->usr_thread->iocb.cap;
 		info.iocb.entry = proc->usr_thread->iocb.entry;
+		info.iocb.busy  = proc->usr_thread->iocb.busy;
+		info.iocb.head  = proc->usr_thread->iocb.head;
+		info.iocb.tail  = proc->usr_thread->iocb.tail;
 		user_mm_arch_copy(proc->usr_mm, stacktop, &info, sizeof(info));
 		proc->usr_thread->arch.init_stacktop = stacktop;
 	}
