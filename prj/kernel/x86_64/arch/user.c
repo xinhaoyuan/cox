@@ -90,6 +90,7 @@ user_thread_arch_jump(void)
 		tf.tf_ss = GD_UDATA | 3;
 		tf.tf_ds = GD_UDATA | 3;
 		tf.tf_es = GD_UDATA | 3;
+		tf.tf_rflags = FL_IF;
 		tf.tf_rip = proc->usr_thread->arch.init_entry;
 		tf.tf_rsp = proc->usr_thread->arch.init_stacktop;
 		__user_jump(&tf);

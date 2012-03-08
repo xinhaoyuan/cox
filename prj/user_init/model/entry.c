@@ -112,7 +112,6 @@ void
 __cputchar(int c)
 {
 	io_a2(IO_DEBUG_PUTCHAR, c);
-	__io();
 }
 
 
