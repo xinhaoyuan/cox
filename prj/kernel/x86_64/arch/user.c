@@ -118,7 +118,14 @@ user_mm_arch_copy_page(user_mm_t mm, uintptr_t addr, uintptr_t phys, int flag)
 		uintptr_t phys = page_alloc_atomic(1);
 		*pte = phys | PTE_W | PTE_U | PTE_P;
 	}
-	memmove(VADDR_DIRECT(PTE_ADDR(*pte)), VADDR_DIRECT(phys), PGSIZE);
+	if (phys == 0)
+	{
+		memset(VADDR_DIRECT(PTE_ADDR(*pte)), 0, PGSIZE);
+	}
+	else
+	{
+		memmove(VADDR_DIRECT(PTE_ADDR(*pte)), VADDR_DIRECT(phys), PGSIZE);
+	}
 	return 0;
 }
 
