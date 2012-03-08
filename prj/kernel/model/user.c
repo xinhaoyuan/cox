@@ -5,6 +5,8 @@
 #include <kernel/user.h>
 #include <arch/mem.h>
 
+static void io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx);
+
 int
 user_proc_load(void *bin, size_t bin_size)
 {
@@ -126,13 +128,63 @@ user_before_return(proc_t proc)
 {
 	user_arch_before_return(proc);
 	proc->switched = 0;
+	/* Now the address base should be of current */
+	
+	/* process IO request */
+	io_call_entry_t head = proc->usr_thread->ioce.head;
+	while (head->head.head != 0 &&
+		   head->head.head != head->head.tail)
+	{
+		head->head.head %= proc->usr_thread->ioce.cap;
 
+		if (head[head->head.head].ce.status == IO_CALL_STATUS_PROC) break;
+		head[head->head.head].ce.status = IO_CALL_STATUS_PROC;
+		
+		io_process(proc, head + head->head.head, head->head.head);
+		
+		head->head.head = head[head->head.head].ce.next;
+	}
+	
 	if (*proc->usr_thread->iocb.busy == 0)
 	{
 		iobuf_index_t head = *proc->usr_thread->iocb.head;
 		iobuf_index_t tail = *proc->usr_thread->iocb.tail;
 
 		if (head != tail)
+		{
+			*proc->usr_thread->iocb.busy = 1;
 			user_thread_arch_push_iocb();
+		}
 	}	
 }
+
+static void
+iocb_push(proc_t proc, iobuf_index_t idx)
+{
+	*proc->usr_thread->iocb.tail %= proc->usr_thread->iocb.cap;
+	proc->usr_thread->iocb.entry[*proc->usr_thread->iocb.tail] = idx;
+	(*proc->usr_thread->iocb.tail) ++;
+}
+
+static void
+io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
+{
+	switch (entry->ce.data[0])
+	{
+	case IO_SET_HANDLER:
+		proc->usr_thread->iocb.callback = (io_callback_handler_f)entry->ce.data[1];
+
+		iocb_push(proc, idx);
+		break;
+
+	case IO_DEBUG_PUTCHAR:
+		
+		cputchar(entry->ce.data[1]);
+		iocb_push(proc, idx);
+		break;
+
+	default: break;
+	}
+}
+
+

@@ -150,7 +150,7 @@ trap_dispatch(struct trapframe *tf)
 	}
 	else if (tf->tf_trapno == T_SYSCALL)
 	{
-		cprintf("SYSCALL\n");
+		/* Kick to kernel, nothing to do */
 	}
 
 	if (from_user)

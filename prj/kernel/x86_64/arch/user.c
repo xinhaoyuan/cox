@@ -30,8 +30,11 @@ user_thread_arch_push_iocb(void)
 	stacktop -= sizeof(struct trapframe);
 	memmove(stacktop, proc->usr_thread->arch.tf, sizeof(struct trapframe));
 
+	proc->usr_thread->arch.tf->tf_regs.reg_rbp = 0;
 	proc->usr_thread->arch.tf->tf_rip = (uintptr_t)proc->usr_thread->iocb.callback;
 	proc->usr_thread->arch.tf->tf_rsp = (uintptr_t)stacktop;
+	/* pass the trapframe addr */
+	proc->usr_thread->arch.tf->tf_regs.reg_rdi = (uintptr_t)stacktop;
 
 	return 0;
 }

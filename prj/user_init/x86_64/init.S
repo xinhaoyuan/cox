@@ -9,4 +9,4 @@
 
 __entry:
 		movq $0, %rbp
-		jmp entry
+		call entry

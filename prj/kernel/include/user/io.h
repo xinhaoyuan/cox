@@ -31,18 +31,15 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_CALL_STATUS_FREE 0
 #define IO_CALL_STATUS_USED 1
 #define IO_CALL_STATUS_WAIT 2
-#define IO_CALL_STATUS_FIN  3
+#define IO_CALL_STATUS_PROC 3
+#define IO_CALL_STATUS_FIN  4
 
-/* non std io call  */
-#define IO_DEBUG 0
-
-#define IO_STD_START 32
-#define IO_STD_COUNT 0
+#define IO_COUNT 3
 
 #define IO_SET_HANDLER 0
 #define IO_SET_BUF     1
+#define IO_DEBUG_PUTCHAR 2 
 
 typedef void (*io_callback_handler_f)(iobuf_index_t start, iobuf_index_t end);
-
 
 #endif
