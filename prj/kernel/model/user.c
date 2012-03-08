@@ -171,7 +171,7 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 {
 	switch (entry->ce.data[0])
 	{
-	case IO_SET_HANDLER:
+	case IO_SET_CALLBACK:
 		proc->usr_thread->iocb.callback = (io_callback_handler_f)entry->ce.data[1];
 
 		iocb_push(proc, idx);

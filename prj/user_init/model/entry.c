@@ -7,7 +7,7 @@
 struct startup_info_s info;
 
 void
-__iocb_handler(void *ret)
+__iocb(void *ret)
 {
 	*info.iocb.head = *info.iocb.tail;
 	*info.iocb.busy = 0;
@@ -19,8 +19,8 @@ entry(struct startup_info_s __info)
 {
 	memmove(&info, &__info, sizeof(info));
 			
-	info.ioce.head[1].ce.data[0] = IO_SET_HANDLER;
-	info.ioce.head[1].ce.data[1] = (uintptr_t)__iocb_handler;
+	info.ioce.head[1].ce.data[0] = IO_SET_CALLBACK;
+	info.ioce.head[1].ce.data[1] = (uintptr_t)__iocb;
 	info.ioce.head[1].ce.next = 2;
 
 	info.ioce.head->head.tail = 2;

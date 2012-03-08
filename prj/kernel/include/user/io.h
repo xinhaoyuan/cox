@@ -36,10 +36,10 @@ typedef struct io_call_entry_s *io_call_entry_t;
 
 #define IO_COUNT 3
 
-#define IO_SET_HANDLER 0
-#define IO_SET_BUF     1
+#define IO_SET_CALLBACK  0
+#define IO_SET_BUF       1
 #define IO_DEBUG_PUTCHAR 2 
 
-typedef void (*io_callback_handler_f)(iobuf_index_t start, iobuf_index_t end);
+typedef void (*io_callback_handler_f)(void *ret);
 
 #endif
