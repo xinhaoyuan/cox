@@ -1,6 +1,5 @@
 #include <bit.h>
-
-#include "buddy.h"
+#include <lib/buddy.h>
 
 /* A not that simple but tricky abstract buddy allocator, which would
  * manage a range of address space and allocate/free blocks. Now the

@@ -1,8 +1,8 @@
-#include <kernel/timer.h>
-#include <kernel/irq.h>
-#include <kernel/proc.h>
+#include <timer.h>
+#include <irq.h>
+#include <proc.h>
 #include <lib/low_io.h>
-#include <arch/intr.h>
+#include <arch/irq.h>
 
 static void timer_tick(int irq_no, uint64_t acc);
 

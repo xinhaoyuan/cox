@@ -1,10 +1,11 @@
+#include <string.h>
 #include <atom.h>
 
-#include <arch/init.h>
-#include <arch/sysconf_x86.h>
-#include <arch/intr.h>
-#include <arch/mem.h>
-#include <arch/cpu.h>
+#include "init.h"
+#include "sysconf_x86.h"
+#include "intr.h"
+#include "mem.h"
+#include "cpu.h"
 
 irq_control_s  irq_control[IRQ_COUNT];
 unsigned int   cpu_id_set[LAPIC_COUNT];

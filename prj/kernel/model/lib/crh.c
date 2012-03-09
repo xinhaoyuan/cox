@@ -1,7 +1,6 @@
 #include <string.h>
 #include <bit.h>
-
-#include "crh.h"
+#include <lib/crh.h>
 
 void
 crh_init(crh_t crh)

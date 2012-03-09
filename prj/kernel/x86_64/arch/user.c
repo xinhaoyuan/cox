@@ -1,13 +1,14 @@
 #include <cpu.h>
 #include <string.h>
-#include <kernel/error.h>
-#include <kernel/proc.h>
-#include <kernel/user.h>
-#include <mm/page.h>
+#include <error.h>
+#include <proc.h>
+#include <user.h>
+#include <page.h>
 #include <arch/user.h>
-#include <arch/intr.h>
-#include <arch/mem.h>
 #include <user/info.h>
+
+#include "intr.h"
+#include "mem.h"
 
 int
 user_thread_arch_push_iocb(void)

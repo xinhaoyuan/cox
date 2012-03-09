@@ -2,10 +2,10 @@
 #define __KERN_ARCH_CPU_H__
 
 #include <types.h>
-
 #include <arch/memlayout.h>
-#include <arch/lapic.h>
-#include <arch/intr.h>
+
+#include "lapic.h"
+#include "intr.h"
 
 typedef void(*intr_handler_f)(struct trapframe *tf);
 

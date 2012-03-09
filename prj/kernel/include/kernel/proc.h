@@ -2,9 +2,9 @@
 #define __KERN_PROC_H__
 
 #include <types.h>
+#include <spinlock.h>
 #include <arch/context.h>
 #include <arch/local.h>
-#include <sync/spinlock.h>
 
 /* ==  SCHEDULE CLASS INTERFACE  ============================== */
 

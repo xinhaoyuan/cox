@@ -1,4 +1,4 @@
-#include <sched/rr.h>
+#include "rr.h"
 
 static void
 rr_init(runqueue_t rq) {

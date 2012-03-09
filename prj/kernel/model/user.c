@@ -1,9 +1,8 @@
+#include <malloc.h>
+#include <error.h>
+#include <proc.h>
+#include <user.h>
 #include <lib/low_io.h>
-#include <mm/malloc.h>
-#include <kernel/error.h>
-#include <kernel/proc.h>
-#include <kernel/user.h>
-#include <arch/mem.h>
 
 static void io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx);
 

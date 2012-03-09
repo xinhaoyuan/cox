@@ -1,10 +1,10 @@
-#include <mm/mmio.h>
+#include <mmio.h>
 #include <lib/low_io.h>
 
-#include <arch/mp.h>
-#include <arch/sysconf_x86.h>
-#include <arch/mem.h>
-#include <arch/hpet.h>
+#include "mp.h"
+#include "sysconf_x86.h"
+#include "mem.h"
+#include "hpet.h"
 
 
 

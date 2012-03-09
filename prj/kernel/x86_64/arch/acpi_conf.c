@@ -1,5 +1,5 @@
 #include <string.h>
-#include <kernel/error.h>
+#include <error.h>
 #include <types.h>
 #include <cpu.h>
 
@@ -7,10 +7,11 @@
 
 #include <arch/memlayout.h>
 #include <arch/mmu.h>
-#include <arch/sysconf_x86.h>
-#include <arch/ioapic.h>
-#include <arch/cpu.h>
-#include <arch/acpi_conf.h>
+
+#include "sysconf_x86.h"
+#include "ioapic.h"
+#include "cpu.h"
+#include "acpi_conf.h"
 
 struct acpi_rsdp_s
 {

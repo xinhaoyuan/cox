@@ -1,7 +1,7 @@
 #include <arch/mmu.h>
 #include <arch/memlayout.h>
 
-#include <arch/boot_ap.S.h>
+#include "boot_ap.S.h"
 
 	.text
 	.code16

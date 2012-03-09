@@ -44,8 +44,8 @@
 
 #include <stdarg.h>
 #include <string.h>
+#include <malloc.h>
 #include <lib/printfmt.h>
-#include <mm/malloc.h>
 
 #define malloc(s) kmalloc(s)
 #define calloc(c,s) ({void *r = malloc((c)*(s)); if (r != NULL) memset(r, 0, (c)*(s)); r; })

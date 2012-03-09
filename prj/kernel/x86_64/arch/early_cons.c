@@ -1,12 +1,11 @@
 #include <types.h>
 #include <string.h>
 #include <io.h>
-
 #include <lib/low_io.h>
-
 #include <arch/memlayout.h>
-#include <arch/early_cons.h>
-#include <arch/kbdreg.h>
+
+#include "early_cons.h"
+#include "kbdreg.h"
 
 /* stupid I/O delay routine necessitated by historical PC design flaws */
 static void

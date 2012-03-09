@@ -2,14 +2,14 @@
 #include <atom.h>
 #include <string.h>
 
-#include <mm/page.h>
+#include <page.h>
 #include <lib/low_io.h>
-#include <arch/mem.h>
-#include <arch/lapic.h>
 #include <arch/mmu.h>
 #include <arch/memlayout.h>
-
 #include <arch/local.h>
+
+#include "mem.h"
+#include "lapic.h"
 
 extern char pls_start[];
 extern char pls_end[];

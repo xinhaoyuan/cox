@@ -1,21 +1,19 @@
 #include <types.h>
 #include <string.h>
 #include <cpu.h>
-
+#include <page.h>
+#include <mmio.h>
+#include <irq.h>
+#include <spinlock.h>
 #include <lib/buddy.h>
 #include <lib/low_io.h>
-#include <mm/page.h>
-#include <mm/mmio.h>
-#include <kernel/irq.h>
 
-#include <sync/spinlock.h>
-
-#include <arch/memmap.h>
-#include <arch/e820.h>
-#include <arch/boot_alloc.h>
-#include <arch/sysconf_x86.h>
-#include <arch/ioapic.h>
-#include <arch/mem.h>
+#include "memmap.h"
+#include "e820.h"
+#include "boot_alloc.h"
+#include "sysconf_x86.h"
+#include "ioapic.h"
+#include "mem.h"
 
 uintptr_t kern_start;
 uintptr_t kern_end;

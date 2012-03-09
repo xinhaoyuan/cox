@@ -1,13 +1,12 @@
 #include <types.h>
-#include <kernel/error.h>
+#include <error.h>
 
-#include <arch/init.h>
 #include <lib/low_io.h>
-
 #include <arch/memlayout.h>
-#include <arch/memmap.h>
 
-#include <arch/e820.h>
+#include "memmap.h"
+#include "init.h"
+#include "e820.h"
 
 #define E820MAX             20      // number of entries in E820MAP
 #define E820_ARM            1       // address range memory

@@ -1,14 +1,16 @@
 #include <cpu.h>
 #include <string.h>
-#include <kernel/error.h>
-#include <kernel/proc.h>
-#include <kernel/irq.h>
-#include <sync/spinlock.h>
-#include <sched/idle.h>
-#include <sched/rr.h>
-#include <mm/malloc.h>
+#include <error.h>
+#include <proc.h>
+#include <irq.h>
+#include <spinlock.h>
+#include <malloc.h>
+
 #include <lib/low_io.h>
 #include <arch/context.h>
+
+#include "sched/idle.h"
+#include "sched/rr.h"
 
 PLS_PTR_DEFINE(runqueue_s, __runqueue, NULL);
 #define runqueue (PLS(__runqueue))

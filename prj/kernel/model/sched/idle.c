@@ -1,4 +1,4 @@
-#include <sched/idle.h>
+#include "idle.h"
 
 static void
 idle_init(runqueue_t rq)

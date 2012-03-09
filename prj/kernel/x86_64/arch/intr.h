@@ -4,8 +4,8 @@
 #include <types.h>
 #include <cpu.h>
 #include <user/syscall.h>
-
 #include <arch/mmu.h>
+#include <arch/irq.h>
 
 /* Trap Numbers */
 #define T_IPI                   0x81
@@ -37,16 +37,6 @@
 
 /* Hardware IRQ numbers. We receive these as (IRQ_OFFSET + IRQ_xx) */
 #define IRQ_OFFSET              32  // IRQ 0 corresponds to int IRQ_OFFSET
-
-#define IRQ_TIMER               0
-#define IRQ_KBD                 1
-#define IRQ_COM1                4
-#define IRQ_IDE1                14
-#define IRQ_IDE2                15
-#define IRQ_ERROR               19
-#define IRQ_SPURIOUS            31
-
-#define IRQ_COUNT               32
 
 /* registers as pushed by pushal */
 struct pushregs {
@@ -91,24 +81,5 @@ void print_regs(struct pushregs *regs);
 bool trap_in_kernel(struct trapframe *tf);
 
 extern struct pseudodesc idt_pd;
-
-#define intr_enable() __sti()
-#define intr_disable() __cli()
-
-static inline int
-intr_save(void) {
-    if (__read_rflags() & FL_IF) {
-        intr_disable();
-        return 1;
-    }
-    return 0;
-}
-
-static inline void
-intr_restore(int flag) {
-    if (flag) {
-        intr_enable();
-    }
-}
 
 #endif

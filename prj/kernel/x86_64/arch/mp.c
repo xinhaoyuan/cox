@@ -1,15 +1,14 @@
 #include <string.h>
 #include <cpu.h>
-
+#include <page.h>
 #include <lib/low_io.h>
-#include <mm/page.h>
 
-#include <arch/mem.h>
-#include <arch/boot_ap.S.h>
-#include <arch/sysconf_x86.h>
-#include <arch/cpu.h>
-#include <arch/intr.h>
-#include <arch/lapic.h>
+#include "mem.h"
+#include "boot_ap.S.h"
+#include "sysconf_x86.h"
+#include "cpu.h"
+#include "intr.h"
+#include "lapic.h"
 
 /* Provided by link script */
 extern char boot_ap_entry_64[];

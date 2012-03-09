@@ -1,7 +1,7 @@
 #include <cpu.h>
-#include <kernel/entry.h>
+#include <entry.h>
+#include <user.h>
 #include <lib/low_io.h>
-#include <kernel/user.h>
 
 void
 kernel_start(void)

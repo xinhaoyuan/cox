@@ -1,13 +1,13 @@
 #include <types.h>
 #include <cpu.h>
-#include <kernel/proc.h>
-#include <kernel/user.h>
-#include <kernel/irq.h>
+#include <proc.h>
+#include <user.h>
+#include <irq.h>
 #include <lib/low_io.h>
 
-#include <arch/mem.h>
-#include <arch/lapic.h>
-#include <arch/intr.h>
+#include "mem.h"
+#include "lapic.h"
+#include "intr.h"
 
 static struct gatedesc idt[256] = {{0}};
 

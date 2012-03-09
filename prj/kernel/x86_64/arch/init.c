@@ -1,28 +1,26 @@
 #include <string.h>
-
-#include <kernel/irq.h>
-#include <kernel/timer.h>
-#include <kernel/proc.h>
-#include <kernel/entry.h>
-
-#include <lib/low_io.h>
-#include <mm/page.h>
-#include <mm/malloc.h>
-
-#include <arch/early_cons.h>
-#include <arch/acpi_conf.h>
-#include <arch/mem.h>
-#include <arch/sysconf_x86.h>
-#include <arch/ioapic.h>
-#include <arch/lapic.h>
-#include <arch/cpu.h>
-#include <arch/mp.h>
-#include <arch/pic.h>
-#include <arch/intr.h>
+#include <irq.h>
+#include <timer.h>
+#include <proc.h>
+#include <entry.h>
+#include <page.h>
+#include <malloc.h>
 #include <arch/local.h>
-#include <arch/vesa.h>
-#include <arch/hpet.h>
-#include <arch/init.h>
+#include <lib/low_io.h>
+
+#include "early_cons.h"
+#include "acpi_conf.h"
+#include "mem.h"
+#include "sysconf_x86.h"
+#include "ioapic.h"
+#include "lapic.h"
+#include "cpu.h"
+#include "mp.h"
+#include "pic.h"
+#include "intr.h"
+#include "vesa.h"
+#include "hpet.h"
+#include "init.h"
 
 static proc_s init_proc;
 
@@ -109,7 +107,7 @@ __kern_cpu_init(void)
 	cpu_set_trap_stacktop((uintptr_t)VADDR_DIRECT(stacktop));
 
 	lapic_timer_set(100);
-	intr_enable();
+	__irq_enable();
 	
 	/* do idle */
 	while (1) __cpu_relax();

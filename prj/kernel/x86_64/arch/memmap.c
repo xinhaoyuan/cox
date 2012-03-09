@@ -1,5 +1,5 @@
 #include <lib/low_io.h>
-#include <arch/memmap.h>
+#include "memmap.h"
 
 /* Store the final physical memory map */
 static unsigned int memmap_count;

@@ -1,11 +1,10 @@
 #include <io.h>
+#include <mmio.h>
 
-#include <mm/mmio.h>
-
-#include <arch/mem.h>
-#include <arch/intr.h>
-#include <arch/sysconf_x86.h>
-#include <arch/lapic.h>
+#include "mem.h"
+#include "intr.h"
+#include "sysconf_x86.h"
+#include "lapic.h"
 
 /* The LAPIC access */
 // Local APIC registers, divided by 4 for use as uint32[] indices.

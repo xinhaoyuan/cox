@@ -1,8 +1,7 @@
 #include <types.h>
-#include <kernel/error.h>
+#include <error.h>
 #include <string.h>
-
-#include "printfmt.h"
+#include <lib/printfmt.h>
 
 #define do_div(n, base) ({								\
             uint64_t __mod, __base = (uint64_t)base;	\

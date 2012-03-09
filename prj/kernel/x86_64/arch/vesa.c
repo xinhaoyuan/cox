@@ -1,13 +1,14 @@
 #include <string.h>
 #include <io.h>
 
-#include <mm/malloc.h>
-#include <mm/page.h>
+#include <malloc.h>
+#include <page.h>
 #include <lib/low_io.h>
 #include <arch/mmu.h>
 #include <arch/memlayout.h>
-#include <arch/x86emu/include/x86emu.h>
-#include <arch/vesa.h>
+
+#include "x86emu/include/x86emu.h"
+#include "vesa.h"
 
 x86emu_t *emu;
 char *rm_image;

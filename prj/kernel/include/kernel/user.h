@@ -2,7 +2,7 @@
 #define __KERN_USER_H__
 
 #include <types.h>
-#include <kernel/proc.h>
+#include <proc.h>
 #include <user/io.h>
 #include <arch/user.h>
 

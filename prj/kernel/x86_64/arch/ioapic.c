@@ -1,12 +1,11 @@
 #include <io.h>
-
-#include <mm/mmio.h>
+#include <mmio.h>
+#include <arch/memlayout.h>
 #include <lib/low_io.h>
 
-#include <arch/memlayout.h>
-#include <arch/intr.h>
-#include <arch/sysconf_x86.h>
-#include <arch/ioapic.h>
+#include "intr.h"
+#include "sysconf_x86.h"
+#include "ioapic.h"
 
 /* I/O APIC Code from xv6 */
 
