@@ -33,11 +33,17 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_CALL_STATUS_WAIT 2
 #define IO_CALL_STATUS_PROC 3
 #define IO_CALL_STATUS_FIN  4
+
+/* IO FUNC ID LIST */
+/* refer to doc/io.txt */
+
 /* BASE */
 #define IO_SET_CALLBACK     0x000
 #define IO_SET_BUF          0x001
 #define IO_CREATE_PROC      0x010
 #define IO_EXIT             0x011
+#define IO_BRK              0x020
+#define IO_PAGE_TRANSFER    0x030
 /* DEBUG */
 #define IO_DEBUG_PUTCHAR    0x101
 #define IO_DEBUG_GETCHAR    0x102
@@ -66,9 +72,9 @@ typedef struct io_call_entry_s *io_call_entry_t;
 /* SERVICE */
 #define IO_SERVICE_ATTACH   0x300
 /* DRIVER NODE */
-#define IO_MMIO_OPEN        0x400
-#define IO_MMIO_CLOSE       0x401
-#define IO_IRQ_LISTEN       0x402
+#define IO_IRQ_LISTEN       0x400
+#define IO_MMIO_OPEN        0x401
+#define IO_MMIO_CLOSE       0x402
 #define IO_PHYS_ALLOC       0x403
 #define IO_PHYS_FREE        0x404
 #define IO_NIC_OPEN         0x410
