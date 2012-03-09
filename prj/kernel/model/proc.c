@@ -49,7 +49,7 @@ __proc_entry(void *arg)
 	
 	proc->entry(arg);
 
-	cprintf("PROC END\n");
+	cprintf("PROC[%016lx] %s END\n", proc, proc->name);
 	while (1) __cpu_relax();
 }
 
@@ -62,6 +62,7 @@ proc_init(proc_t proc, const char *name, int class, void (*entry)(void *arg), vo
 	strncpy(proc->name, name, PROC_NAME_MAX);
 	memset(&proc->sched_node, sizeof(sched_node_s), 0);
 	proc->sched_node.class = sched_class[class];
+	proc_timer_init(&proc->timer);
 	proc->status = PROC_STATUS_WAITING;
 	proc->entry  = entry;
 	context_fill(&proc->ctx, __proc_entry, arg, stack_top);
@@ -116,6 +117,13 @@ proc_notify(proc_t proc)
 	}
 	spinlock_release(&proc->lock);
 	irq_restore(irq);
+}
+
+int
+proc_delayed_self_notify_set(uintptr_t ticks)
+{
+	proc_t proc = current;	
+	return proc_timer_set(&proc->timer, timer_tick + ticks);
 }
 
 static inline void

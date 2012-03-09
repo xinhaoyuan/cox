@@ -135,7 +135,7 @@ void
 mutex_release(mutex_t mutex)
 {
 	proc_t notify = NULL;
-	if (MUTEX_HOLD(mutex)) return;
+	if (!MUTEX_HOLD(mutex)) return;
 	
 	int irq = irq_save();
 	spinlock_acquire(&mutex->lock);
@@ -155,7 +155,7 @@ mutex_release(mutex_t mutex)
 	else MUTEX_HOLD_CLEAR(mutex);
 	spinlock_release(&mutex->lock);
 	irq_restore(irq);
-	
+
 	if (notify != NULL)
 		proc_notify(notify);
 }

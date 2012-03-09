@@ -80,6 +80,7 @@ __kern_cpu_init(void)
 		irq_init();
 		sched_init();
 		timer_init();
+		timer_master_cpu_set();
 		/* Stage 0 ends */
 		__cpu_global_init = 1;
 	}

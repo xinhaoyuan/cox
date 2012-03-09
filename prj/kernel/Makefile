@@ -11,7 +11,7 @@ T_CC_DEBUG_FLAGS := -Wall -ggdb
 
 SRCFILES := $(shell find ${ARCH} '(' '!' -regex '.*/_.*' ')' -and '(' -iname "*.c" -or -iname "*.S" ')' | sed -e 's!\./!!g') \
 			$(shell find model '(' '!' -regex '.*/_.*' ')' -and '(' -iname "*.c" -or -iname "*.S" ')' | sed -e 's!\./!!g') \
-#			$(shell find lwip '(' '!' -regex '.*/_.*' ')' -and '(' '!' -regex '.*ipv6.*' ')' -and '(' -iname "*.c" -or -iname "*.S" ')' \
+#			$(shell find lwip/src '(' '!' -regex '.*/_.*' ')' -and '(' '!' -regex '.*ipv6.*' ')' -and '(' -iname "*.c" -or -iname "*.S" ')' \
 				| sed -e 's!\./!!g')
 
 include ${T_BASE}/utl/template.mk

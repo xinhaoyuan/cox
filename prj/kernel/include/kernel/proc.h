@@ -3,6 +3,7 @@
 
 #include <types.h>
 #include <spinlock.h>
+#include <timer.h>
 #include <arch/context.h>
 #include <arch/local.h>
 
@@ -73,6 +74,8 @@ typedef struct proc_s
 	int switched;
 	proc_t sched_prev;
 
+	proc_timer_s timer;
+
 	/* USER DATA */
 
 	struct user_thread_s  *usr_thread;
@@ -90,6 +93,7 @@ int  proc_init(proc_t proc, const char *name, int class, void (*entry)(void *arg
 void proc_wait_pretend(void);
 void proc_wait_try(void);
 void proc_notify(proc_t proc);
+int  proc_delayed_self_notify_set(crh_key_t ticks);
 
 /* ==  SCHEDULER  ============================================= */
 
