@@ -55,7 +55,7 @@ typedef mutex_s *mutex_t;
 struct semaphore_s
 {
 	spinlock_s lock;
-	uintptr_t   count;
+	uintptr_t  count;
 	uintptr_t data;
 };
 

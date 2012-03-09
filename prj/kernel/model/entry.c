@@ -65,7 +65,7 @@ test_1(void)
 		return;
 	}
 
-	void *stack = VADDR_DIRECT(page_alloc_atomic(4));
+	void *stack = kmalloc(PGSIZE * 4);
 	proc_init(&p2, ".test-2", SCHED_CLASS_RR, (void(*)(void *))test_2, NULL, (uintptr_t)ARCH_STACKTOP(stack, 4 * PGSIZE));
 	proc_notify(&p2);
 	
@@ -159,11 +159,11 @@ kernel_start(void)
 
 	void *stack;
 
-	stack = VADDR_DIRECT(page_alloc_atomic(4));
+	stack = kmalloc(PGSIZE * 4);
 	proc_init(&p1, ".test-1", SCHED_CLASS_RR, (void(*)(void *))test_1, NULL, (uintptr_t)ARCH_STACKTOP(stack, 4 * PGSIZE));
 	proc_notify(&p1);
 	
-	stack = VADDR_DIRECT(page_alloc_atomic(4));
+	stack = kmalloc(PGSIZE * 4);
 	proc_init(&p2, ".test-2", SCHED_CLASS_RR, (void(*)(void *))test_2, NULL, (uintptr_t)ARCH_STACKTOP(stack, 4 * PGSIZE));
 	proc_notify(&p2);
 
@@ -171,7 +171,7 @@ kernel_start(void)
 
 	void *stack;
 
-	stack = VADDR_DIRECT(page_alloc_atomic(4));
+	stack = kmalloc(PGSIZE * 4);
 	proc_init(&p1, ".test-1", SCHED_CLASS_RR, (void(*)(void *))test_1, NULL, (uintptr_t)ARCH_STACKTOP(stack, 4 * PGSIZE));
 	proc_notify(&p1);
 
@@ -181,7 +181,7 @@ kernel_start(void)
 
 	void *stack;
 
-	stack = VADDR_DIRECT(page_alloc_atomic(4));
+	stack = kmalloc(PGSIZE * 4);
 	proc_init(&p1, ".test-1", SCHED_CLASS_RR, (void(*)(void *))test_1, NULL, (uintptr_t)ARCH_STACKTOP(stack, 4 * PGSIZE));
 	proc_notify(&p1);
 	

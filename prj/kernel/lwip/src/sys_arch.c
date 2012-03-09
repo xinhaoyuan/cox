@@ -341,11 +341,11 @@ sys_thread_new(const char *name, void (*func)(void *arg), void *arg, int stacksi
 	w->proc = proc;
 	memset(&w->timeouts, 0, sizeof(struct sys_timeouts));
 	
-	if (stacksize < 8192) stacksize = 8192;
-	stacksize = (stacksize + PGSIZE - 1) / PGSIZE;
-	uintptr_t stack = page_alloc_atomic(stacksize);
+	if (stacksize < 4 * PGSIZE) stacksize = 4 * PGSIZE;
+	stacksize = (stacksize + PGSIZE - 1) & ~(PGSIZE - 1);
+	void *stack = kmalloc(stacksize);
 
-	proc_init(proc, name, SCHED_CLASS_RR, &_wrapper_thread, w, (uintptr_t)ARCH_STACKTOP(VADDR_DIRECT(stack), stacksize * PGSIZE));
+	proc_init(proc, name, SCHED_CLASS_RR, &_wrapper_thread, w, (uintptr_t)ARCH_STACKTOP(stack, stacksize));
 	proc_notify(proc);
 	return w;
 }
