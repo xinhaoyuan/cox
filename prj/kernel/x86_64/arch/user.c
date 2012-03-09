@@ -25,7 +25,7 @@ user_thread_arch_push_iocb(void)
 		(*pte & (PTE_P | PTE_W | PTE_U)) != (PTE_P | PTE_W | PTE_U)) return -E_INVAL;
 #endif
 
-	char *stacktop = (char *)proc->usr_thread->iocb.stacktop;
+	char *stacktop = ARCH_STACKTOP(proc->usr_thread->iocb.stack, proc->usr_thread->iocb.stack_size);
 	
 	stacktop -= sizeof(struct trapframe);
 	memmove(stacktop, proc->usr_thread->arch.tf, sizeof(struct trapframe));
@@ -69,6 +69,22 @@ void user_thread_arch_fill(uintptr_t entry, uintptr_t stacktop)
 		info.iocb.tail  = proc->usr_thread->iocb.tail;
 		user_mm_arch_copy(proc->usr_mm, stacktop, &info, sizeof(info));
 		proc->usr_thread->arch.init_stacktop = stacktop;
+	}
+}
+
+int
+user_thread_arch_in_cb_stack(void)
+{
+	proc_t proc = current;
+	if (proc->usr_thread->arch.tf != NULL)
+	{
+		return 0;
+	}
+	else
+	{
+		uintptr_t stack = proc->usr_thread->arch.tf->tf_rsp;
+		return proc->usr_thread->iocb.stack <= stack &&
+			stack < proc->usr_thread->iocb.stack + proc->usr_thread->iocb.stack_size;
 	}
 }
 

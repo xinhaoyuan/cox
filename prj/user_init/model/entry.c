@@ -12,8 +12,12 @@ void
 __iocb(void *ret)
 {
 	*info.iocb.head = *info.iocb.tail;
-	*info.iocb.busy = 0;
-	iocb_return(ret);
+	if (ret != NULL)
+	{
+		*info.iocb.busy = 2;
+		iocb_return(ret);
+	}
+	else *info.iocb.busy = 0;
 }
 
 void

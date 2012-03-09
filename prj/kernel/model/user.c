@@ -75,7 +75,8 @@ user_thread_fill(uintptr_t cb, size_t cb_size, uintptr_t iobuf, size_t iobuf_siz
 	proc_t proc = current;
 	size_t cap = iobuf_size / (sizeof(io_call_entry_s) + sizeof(iobuf_index_t));
 	
-	proc->usr_thread->iocb.stacktop = (uintptr_t)ARCH_STACKTOP(cb, cb_size - sizeof(uintptr_t) * 3);
+	proc->usr_thread->iocb.stack = cb;
+	proc->usr_thread->iocb.stack_size = cb_size - sizeof(uintptr_t) * 3;
 	proc->usr_thread->iocb.busy = (uintptr_t *)(cb + cb_size - sizeof(uintptr_t) * 3);
 	proc->usr_thread->iocb.head = (uintptr_t *)(cb + cb_size - sizeof(uintptr_t) * 2);
 	proc->usr_thread->iocb.tail = (uintptr_t *)(cb + cb_size - sizeof(uintptr_t));
@@ -144,18 +145,25 @@ user_before_return(proc_t proc)
 		
 		head->head.head = head[head->head.head].ce.next;
 	}
+
+	int busy = *proc->usr_thread->iocb.busy;
 	
-	if (*proc->usr_thread->iocb.busy == 0)
+	if (busy == 2 && !user_thread_arch_in_cb_stack())
+		busy = 0;
+	
+	if (busy == 0)
 	{
 		iobuf_index_t head = *proc->usr_thread->iocb.head;
 		iobuf_index_t tail = *proc->usr_thread->iocb.tail;
 
 		if (head != tail)
 		{
-			*proc->usr_thread->iocb.busy = 1;
+			busy = 1;
 			user_thread_arch_push_iocb();
 		}
-	}	
+	}
+	
+	*proc->usr_thread->iocb.busy = busy;
 }
 
 static void

@@ -20,7 +20,8 @@ struct user_thread_s
 		iobuf_index_t *entry;
 		uintptr_t *head, *tail;
 		uintptr_t *busy;
-		uintptr_t  stacktop;	
+		uintptr_t  stack;
+		size_t     stack_size;
 		io_callback_handler_f callback;
 	} iocb;
 
@@ -37,6 +38,7 @@ void user_thread_jump(void) __attribute__((noreturn));
 int user_thread_arch_push_iocb(void);
 int user_thread_arch_init(void);
 void user_thread_arch_fill(uintptr_t entry, uintptr_t stacktop);
+int user_thread_arch_in_cb_stack(void);
 void user_thread_arch_jump(void) __attribute__((noreturn));
 
 struct user_mm_s
