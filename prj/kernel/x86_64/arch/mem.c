@@ -329,7 +329,7 @@ static spinlock_s page_atomic_lock;
 static spinlock_s mmio_fix_lock;
 
 int
-mem_init(void)
+memory_init(void)
 {
 	memmap_process_e820();
 	boot_alloc_init();

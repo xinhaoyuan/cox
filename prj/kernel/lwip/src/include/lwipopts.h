@@ -1,6 +1,7 @@
 #ifndef __KERN_LWIP_LWIPOPTS_H__
 #define __KERN_LWIP_LWIPOPTS_H__
 
+#define NO_SYS 0
 #define LWIP_COMPAT_MUTEX 1
 
 #define LWIP_HAVE_LOOPIF 1
@@ -43,12 +44,12 @@
 #define LWIP_NOASSERT        1
 #define SYS_LIGHTWEIGHT_PROT 1
 
-/* #define LWIP_DEBUG  1 */
+#define LWIP_DEBUG  0
 /* #define MEM_DEBUG   LWIP_DBG_ON */
 /* #define MEMP_DEBUG  LWIP_DBG_ON */
 /* #define SYS_DEBUG   LWIP_DBG_ON */
-#define SOCKETS_DEBUG    LWIP_DBG_ON
-#define TCP_DEBUG        LWIP_DBG_ON
+/* #define SOCKETS_DEBUG    LWIP_DBG_ON */
+/* #define TCP_DEBUG        LWIP_DBG_ON */
 // #define TCP_INPUT_DEBUG	 LWIP_DBG_ON
 // #define TCP_OUTPUT_DEBUG LWIP_DBG_ON
 /* #define TCPIP_DEBUG LWIP_DBG_ON */

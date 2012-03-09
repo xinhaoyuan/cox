@@ -37,7 +37,7 @@ __kern_early_init(void) {
     memset(__bss, 0, __end - __bss);
 
 	early_cons_init();
-	mem_init();
+	memory_init();
 	acpi_conf_init();
 	idt_init();
 	pic_init();

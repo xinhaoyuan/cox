@@ -2,6 +2,7 @@
 #define __KERN_LWIP_CC_H__
 
 #include <types.h>
+#include <lib/low_io.h>
 
 typedef uint8_t u8_t;
 typedef int8_t  s8_t;
@@ -21,12 +22,8 @@ typedef uintptr_t mem_ptr_t;
 #define PACK_STRUCT_BEGIN
 #define PACK_STRUCT_END
 
-#define printf(x ...)  cprintf(x)
-#define memset(x ...)  memset(x)
-#define memmove(x ...) memmove(x)
-
-#define LWIP_PLATFORM_DIAG(x ...)   cprintf(x)
-#define LWIP_PLATFORM_ASSERT(x ...) cprintf(x)
+#define LWIP_PLATFORM_DIAG(x)   cprintf x
+#define LWIP_PLATFORM_ASSERT(x) // cprintf
 #define U16_F "u"
 #define S16_F "d"
 #define X16_F "04x"

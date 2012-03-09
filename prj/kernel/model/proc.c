@@ -126,6 +126,12 @@ proc_delayed_self_notify_set(uintptr_t ticks)
 	return proc_timer_set(&proc->timer, timer_tick + ticks);
 }
 
+int
+proc_dsn_active(void)
+{
+	return current->timer.in;
+}
+
 static inline void
 proc_switch(proc_t proc)
 {

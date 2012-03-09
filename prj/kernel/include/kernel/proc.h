@@ -62,6 +62,8 @@ typedef struct proc_s
 	char name[PROC_NAME_MAX];
 	void (*entry)(void *arg);
 
+	void *priv;
+
 	/* SCHEDULER DATA */
 
 	spinlock_s lock;
@@ -94,6 +96,7 @@ void proc_wait_pretend(void);
 void proc_wait_try(void);
 void proc_notify(proc_t proc);
 int  proc_delayed_self_notify_set(crh_key_t ticks);
+int  proc_dsn_active(void);
 
 /* ==  SCHEDULER  ============================================= */
 
