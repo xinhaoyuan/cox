@@ -36,6 +36,8 @@ typedef struct io_call_entry_s *io_call_entry_t;
 /* BASE */
 #define IO_SET_CALLBACK     0x000
 #define IO_SET_BUF          0x001
+#define IO_CREATE_PROC      0x010
+#define IO_EXIT             0x011
 /* DEBUG */
 #define IO_DEBUG_PUTCHAR    0x101
 #define IO_DEBUG_GETCHAR    0x102
@@ -63,12 +65,17 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_FREE_ADDR_INFO   0x222
 /* SERVICE */
 #define IO_SERVICE_ATTACH   0x300
-/* NIC NODE */
-#define IO_NIC_OPEN         0x400
-#define IO_NIC_CLAIM        0x401
-#define IO_NIC_CLOSE        0x402
-#define IO_NIC_GET_IN_REQ   0x403
-#define IO_NIC_GET_OUT_REQ  0x404
+/* DRIVER NODE */
+#define IO_MMIO_OPEN        0x400
+#define IO_MMIO_CLOSE       0x401
+#define IO_IRQ_LISTEN       0x402
+#define IO_PHYS_ALLOC       0x403
+#define IO_PHYS_FREE        0x404
+#define IO_NIC_OPEN         0x410
+#define IO_NIC_CLAIM        0x411
+#define IO_NIC_CLOSE        0x412
+#define IO_NIC_GET_IN_REQ   0x413
+#define IO_NIC_GET_OUT_REQ  0x414
 
 typedef void (*io_callback_handler_f)(void *ret);
 
