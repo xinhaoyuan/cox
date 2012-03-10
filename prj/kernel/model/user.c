@@ -196,6 +196,11 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 		iocb_push(proc, idx);
 		break;
 
+	case IO_DEBUG_GETCHAR:
+		entry->ce.data[1] = cgetchar();
+		iocb_push(proc, idx);
+		break;
+
 	default: break;
 	}
 }
