@@ -43,7 +43,6 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_CREATE_PROC      0x010
 #define IO_EXIT             0x011
 #define IO_BRK              0x020
-#define IO_PAGE_TRANSFER    0x030
 /* DEBUG */
 #define IO_DEBUG_PUTCHAR    0x101
 #define IO_DEBUG_GETCHAR    0x102
@@ -63,14 +62,13 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_SOCK_SEND_TO     0x20c
 #define IO_SOCK_SHUTDOWN    0x20d
 #define IO_SOCK_CLOSE       0x20e
-/* OWNERSHIP TRANSFER */
-#define IO_SOCK_TRANSFER    0x210
+/* PAGE TRANSFER, OPTIMIZED FOR LOCAL SOCKET */
+#define IO_SOCK_SEND_PAGE   0x210
+#define IO_SOCK_RECV_PAGE   0x211
 /* NAME RESOLVING */
 #define IO_GET_HOST_BY_NAME 0x220
 #define IO_GET_ADDR_INFO    0x221
 #define IO_FREE_ADDR_INFO   0x222
-/* SERVICE */
-#define IO_SERVICE_ATTACH   0x300
 /* DRIVER NODE */
 #define IO_IRQ_LISTEN       0x400
 #define IO_MMIO_OPEN        0x401
