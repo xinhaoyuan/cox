@@ -5,6 +5,7 @@
 #include <irq.h>
 #include <spinlock.h>
 #include <malloc.h>
+#include <user.h>
 
 #include <lib/low_io.h>
 #include <arch/context.h>
@@ -140,9 +141,16 @@ proc_switch(proc_t proc)
 	proc_t prev = current;
 	current_set(proc);
 	proc->sched_prev = prev;
-	if (proc->sched_prev->type == PROC_TYPE_USER)
-		proc->sched_prev_usr = prev;
-	else proc->sched_prev_usr = proc->sched_prev->sched_prev_usr;
+	if (prev->type != PROC_TYPE_USER)
+		proc->sched_prev_usr = prev->sched_prev_usr;
+	else if (prev->status != PROC_STATUS_RUNNABLE_WEAK ||
+			 prev->status != PROC_STATUS_RUNNABLE_STRONG)
+	{
+		/* prev no longer in current rq, save the user context*/
+		user_save_context(prev);
+		proc->sched_prev_usr = NULL;
+	}
+	else proc->sched_prev_usr = prev;
 
 	if (prev != proc)
 		context_switch(&prev->ctx, &proc->ctx);

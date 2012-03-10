@@ -64,7 +64,11 @@ int user_mm_arch_copy_page(user_mm_t mm, uintptr_t addr, uintptr_t phys, int fla
 int user_mm_arch_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size);
 
 void user_before_return(proc_t proc);
-void user_arch_before_return(proc_t proc);
+void user_save_context(proc_t proc);
+void user_restore_context(proc_t proc);
+
+void user_arch_save_context(proc_t proc);
+void user_arch_restore_context(proc_t proc);
 
 int user_proc_load(void *bin, size_t bin_size);
 

@@ -130,7 +130,12 @@ user_thread_jump(void)
 void
 user_before_return(proc_t proc)
 {
-	user_arch_before_return(proc);
+	if (proc->sched_prev_usr != proc)
+	{
+		if (proc->sched_prev_usr != NULL)
+			user_save_context(proc);
+		user_restore_context(proc);
+	}
 	/* Now the address base should be of current */
 	
 	/* process IO request */
@@ -194,3 +199,11 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 	default: break;
 	}
 }
+
+void
+user_save_context(proc_t proc)
+{ user_arch_save_context(proc); }
+
+void
+user_restore_context(proc_t proc)
+{ user_arch_restore_context(proc); }
