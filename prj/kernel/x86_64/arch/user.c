@@ -201,7 +201,7 @@ user_mm_arch_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size)
 void
 user_arch_before_return(proc_t proc)
 {
-	if (proc->switched)
+	if (proc->sched_prev_usr != proc)
 	{
 		__lcr3(proc->usr_mm->arch.cr3);
 	}

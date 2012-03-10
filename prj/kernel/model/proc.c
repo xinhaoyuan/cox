@@ -8,6 +8,7 @@
 
 #include <lib/low_io.h>
 #include <arch/context.h>
+#include <arch/irq.h>
 
 #include "sched/idle.h"
 #include "sched/rr.h"
@@ -65,6 +66,7 @@ proc_init(proc_t proc, const char *name, int class, void (*entry)(void *arg), vo
 	proc_timer_init(&proc->timer);
 	proc->status = PROC_STATUS_WAITING;
 	proc->entry  = entry;
+	proc->type   = PROC_TYPE_KERN;
 	context_fill(&proc->ctx, __proc_entry, arg, stack_top);
 
 	return 0;
@@ -138,6 +140,9 @@ proc_switch(proc_t proc)
 	proc_t prev = current;
 	current_set(proc);
 	proc->sched_prev = prev;
+	if (proc->sched_prev->type == PROC_TYPE_USER)
+		proc->sched_prev_usr = prev;
+	else proc->sched_prev_usr = proc->sched_prev->sched_prev_usr;
 
 	if (prev != proc)
 		context_switch(&prev->ctx, &proc->ctx);
@@ -173,6 +178,8 @@ sched_init_mp(void)
 	spinlock_init(&idle->lock);
    	idle->status = PROC_STATUS_RUNNABLE_WEAK;
 	idle->sched_node.class = &sched_class_idle;
+	idle->sched_prev_usr = NULL;
+	idle->type = PROC_TYPE_KERN;
 	
 	rq->idle.node = &idle->sched_node;
 	current_set(idle);
@@ -220,7 +227,6 @@ __schedule(int external)
 static inline void
 __post_schedule(proc_t proc)
 {
-	proc->switched = 1;
 	spinlock_release(&proc->sched_prev->lock);
 	spinlock_release(&runqueue->lock);
 	irq_restore(proc->irq);

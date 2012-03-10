@@ -73,7 +73,9 @@ typedef struct proc_s
 	context_s ctx;
 	sched_node_s sched_node;
 
-	int switched;
+	int type;
+
+	proc_t sched_prev_usr;
 	proc_t sched_prev;
 
 	proc_timer_s timer;
@@ -83,6 +85,10 @@ typedef struct proc_s
 	struct user_thread_s  *usr_thread;
 	struct user_mm_s      *usr_mm;
 } proc_s;
+
+#define PROC_TYPE_KERN 0
+#define PROC_TYPE_USER 1
+#define PROC_TYPE_LWIP 2
 
 #define PROC_STATUS_RUNNABLE_WEAK   0
 #define PROC_STATUS_RUNNABLE_STRONG 1

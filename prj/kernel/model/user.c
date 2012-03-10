@@ -2,6 +2,7 @@
 #include <error.h>
 #include <proc.h>
 #include <user.h>
+#include <arch/irq.h>
 #include <lib/low_io.h>
 
 static void io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx);
@@ -118,7 +119,10 @@ user_mm_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size)
 void
 user_thread_jump(void)
 {
+	__irq_disable();
+	
 	proc_t proc = current;
+	proc->type = PROC_TYPE_USER;
 	user_before_return(proc);
 	user_thread_arch_jump();
 }
@@ -127,7 +131,6 @@ void
 user_before_return(proc_t proc)
 {
 	user_arch_before_return(proc);
-	proc->switched = 0;
 	/* Now the address base should be of current */
 	
 	/* process IO request */

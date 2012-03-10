@@ -316,7 +316,7 @@ sys_arch_mbox_tryfetch(sys_mbox_t *mbox, void **msg)
 struct sys_timeouts *
 sys_arch_timeouts(void)
 {
-	if (current->priv == NULL)
+	if (current->type != PROC_TYPE_LWIP)
 		return NULL;
 	 
 	struct sys_thread_s *w = (struct sys_thread_s *)current->priv;
@@ -327,6 +327,7 @@ void
 _wrapper_thread(void *_w)
 {
 	current->priv = _w;
+	current->type = PROC_TYPE_LWIP;
 	struct sys_thread_s *w = (struct sys_thread_s *)_w;
 	w->func(w->arg);
 }
