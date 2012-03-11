@@ -62,7 +62,7 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_SOCK_SEND_TO     0x20c
 #define IO_SOCK_SHUTDOWN    0x20d
 #define IO_SOCK_CLOSE       0x20e
-/* PAGE TRANSFER, OPTIMIZED FOR LOCAL SOCKET */
+/* PAGE OPTIMIZED TRANSFER */
 #define IO_SOCK_SEND_PAGE   0x210
 #define IO_SOCK_RECV_PAGE   0x211
 /* NAME RESOLVING */
