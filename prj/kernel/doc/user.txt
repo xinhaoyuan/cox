@@ -55,7 +55,7 @@ structure is defined and documented in ``include/user/info.h''.
 When a new user process starts, it usually executes several steps to
 initialize the environment. (refer to io.txt)
 
-1. Get the initialize I/O buffer
+1. Get the initial I/O buffer
 
 2. Set the I/O callback handler
 
