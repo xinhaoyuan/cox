@@ -20,7 +20,7 @@ pls_init(void)
 	size_t pls_pages = (pls_end - pls_start + PGSIZE - 1) >> PGSHIFT;
 	void *pls;
 
-	pls = VADDR_DIRECT(page_alloc_atomic(pls_pages));
+	pls = VADDR_DIRECT(PAGE_TO_PHYS(page_alloc_atomic(pls_pages)));
 	
 	/* copy the initial data */
 	memmove(pls, pls_start, pls_end - pls_start);

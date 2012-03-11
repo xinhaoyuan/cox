@@ -24,8 +24,10 @@ pagebuf_alloc(pagebuf_t buf, int num, uintptr_t *addr)
 			addr[i] = buf->buf[-- buf->count];
 		else
 		{
-			if ((addr[i] = page_alloc_atomic(1)) == 0)
-				break;
+			page_t page = page_alloc_atomic(1);
+			if (page == NULL) break;
+			
+			addr[i] = PAGE_TO_PHYS(page);
 		}
 	}
 
@@ -47,7 +49,7 @@ pagebuf_free(pagebuf_t buf, int num, uintptr_t *addr)
 	{
 		if (buf->count < buf->size)
 			buf->buf[buf->count ++] = addr[i];
-		else page_free_atomic(addr[i]);
+		else page_free_atomic(PHYS_TO_PAGE(addr[i]));
 	}
 
 	spinlock_release(&buf->lock);

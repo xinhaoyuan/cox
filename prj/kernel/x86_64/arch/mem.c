@@ -317,16 +317,19 @@ mmu_init(void)
 	print_pgdir();
 }
 
-struct buddy_context_s page_buddy_context;
-
 static int
-config_by_memmap(buddy_node_id_t num)
+config_by_memmap(uintptr_t num)
 {
 	return memmap_test(num << PGSHIFT, (num << PGSHIFT) + PGSIZE);
 }
 
-static spinlock_s page_atomic_lock;
 static spinlock_s mmio_fix_lock;
+
+static void *
+__boot_page_alloc(size_t size)
+{
+	return boot_alloc(size, PGSIZE, 0);
+}
 
 int
 memory_init(void)
@@ -339,7 +342,7 @@ memory_init(void)
 	/* Mark the supervisor area and boot alloc area reserved */
 	memmap_append(kern_start, kern_end, MEMMAP_FLAG_RESERVED);
 
-	page_buddy_context.node = boot_alloc(BUDDY_CALC_ARRAY_SIZE(nr_pages) * sizeof(struct buddy_node_s), PGSIZE, 0);
+	page_alloc_init_struct(nr_pages, __boot_page_alloc);
 
 	uintptr_t start, end;
 	boot_alloc_get_area(&start, &end);
@@ -349,10 +352,7 @@ memory_init(void)
 
 	/* Initialize the page allocator with free areas */
 
-	buddy_init();
-	buddy_build(&page_buddy_context, nr_pages, config_by_memmap);
-
-	spinlock_init(&page_atomic_lock);
+	page_alloc_init_layout(config_by_memmap);
 	spinlock_init(&mmio_fix_lock);
 
 	return 0;
@@ -373,10 +373,11 @@ get_pud(pgd_t *pgdir, uintptr_t la, bool create) {
     }
     if (!(*pgdp & PTE_P)) {
 		pud_t *pud;
-		uintptr_t pa;
-        if (!create || (pa = page_alloc_atomic(1)) == 0) {
+		page_t page;
+        if (!create || (page = page_alloc_atomic(1)) == NULL) {
             return NULL;
         }
+		uintptr_t pa = PAGE_TO_PHYS(page);
         pud = VADDR_DIRECT(pa);
         memset(pud, 0, PGSIZE);
         *pgdp = pa | PTE_U | PTE_W | PTE_P;
@@ -392,10 +393,11 @@ get_pmd(pgd_t *pgdir, uintptr_t la, bool create) {
     }
     if (!(*pudp & PTE_P)) {
 		pmd_t *pmd;
-		uintptr_t pa;
-        if (!create || (pa = page_alloc_atomic(1)) == 0) {
+		page_t page;
+        if (!create || (page = page_alloc_atomic(1)) == NULL) {
             return NULL;
         }
+		uintptr_t pa = PAGE_TO_PHYS(page);
 		pmd = VADDR_DIRECT(pa);
         memset(pmd, 0, PGSIZE);
         *pudp = pa | PTE_U | PTE_W | PTE_P;
@@ -412,10 +414,11 @@ get_pte(pgd_t *pgdir, uintptr_t la, bool create) {
 	
     if (!(*pmdp & PTE_P)) {
         pte_t *pte;
-		uintptr_t pa;
-        if (!create || (pa = page_alloc_atomic(1)) == 0) {
+		page_t page;
+        if (!create || (page = page_alloc_atomic(1)) == 0) {
             return NULL;
         }
+		uintptr_t pa = PAGE_TO_PHYS(page);
 		pte = VADDR_DIRECT(pa);
         memset(pte, 0, PGSIZE);
         *pmdp = pa | PTE_U | PTE_W | PTE_P;
@@ -455,35 +458,6 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
 		cprintf("page fault(%08x) at %016lx by %016lx\n", err, la, pc);
 		while (1) ;
 	}
-}
-
-uintptr_t
-page_alloc_atomic(size_t num)
-{
-	int irq = irq_save();
-	spinlock_acquire(&page_atomic_lock);
-
-	buddy_node_id_t result = buddy_alloc(&page_buddy_context, num);
-
-	spinlock_release(&page_atomic_lock);
-	irq_restore(irq);
-	
-	if (result == BUDDY_NODE_ID_NULL) return 0;
-	else return result << PGSHIFT;
-}
-
-void
-page_free_atomic(uintptr_t addr)
-{
-	if (addr == 0) return;
-	
-	int irq = irq_save();
-	spinlock_acquire(&page_atomic_lock);
-	
-	buddy_free(&page_buddy_context, addr >> PGSHIFT);
-
-	spinlock_release(&page_atomic_lock);
-	irq_restore(irq);
 }
 
 volatile void *

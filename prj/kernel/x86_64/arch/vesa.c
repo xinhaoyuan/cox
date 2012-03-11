@@ -102,7 +102,7 @@ static void flush_log(x86emu_t *emu, char *buf, unsigned size)
 
 static int init_emu_mem()
 {
-	rm_image = VADDR_DIRECT(page_alloc_atomic(RM_IMAGE_PAGES));
+	rm_image = VADDR_DIRECT(PAGE_TO_PHYS(page_alloc_atomic(RM_IMAGE_PAGES)));
 	memmove(rm_image, VADDR_DIRECT(0), RM_IMAGE_PAGES << PGSHIFT);
 	 
 	emu = x86emu_new(X86EMU_PERM_VALID | X86EMU_PERM_RWX, X86EMU_PERM_RW);

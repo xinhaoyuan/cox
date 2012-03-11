@@ -56,7 +56,7 @@ ekl_ialloc(struct ekl_ctrl_s *ctrl)
 		if (ctrl->block_size < EKL_MAX_BLOCK_PAGE)
 			ctrl->block_size <<= 1;
 		 
-		void *block = VADDR_DIRECT(page_alloc_atomic(size));
+		void *block = VADDR_DIRECT(PAGE_TO_PHYS(page_alloc_atomic(size)));
 		size <<= PGSHIFT;
 		 
 		if (block == NULL)
@@ -132,8 +132,8 @@ kmalloc(size_t size)
 
 	if (size + EKL_META_SIZE > EKL_MAX_ALLOC)
 	{
-		size_t pages = (size + PGSIZE - 1) >> PGSHIFT;
-		result = VADDR_DIRECT(page_alloc_atomic(pages));
+		size_t pagesize = (size + PGSIZE - 1) >> PGSHIFT;
+		result = VADDR_DIRECT(PAGE_TO_PHYS(page_alloc_atomic(pagesize)));
 	}
 	else result = ekl_alloc(size);
 
@@ -153,7 +153,7 @@ kfree(void *ptr)
 	
 	if (((uintptr_t)ptr & (PGSIZE - 1)) == 0)
 	{
-		page_free_atomic(PADDR_DIRECT(ptr));
+		page_free_atomic(PHYS_TO_PAGE(PADDR_DIRECT(ptr)));
 	}
 	else ekl_free(ptr);
 

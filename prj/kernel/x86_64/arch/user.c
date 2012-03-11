@@ -117,8 +117,9 @@ user_thread_arch_jump(void)
 int
 user_mm_arch_init(user_mm_t mm, uintptr_t *start, uintptr_t *end)
 {
-	uintptr_t pgdir_phys = page_alloc_atomic(1);
-	if (pgdir_phys == 0) return -E_NO_MEM;
+	page_t pgdir_page = page_alloc_atomic(1);
+	if (pgdir_page == NULL) return -E_NO_MEM;
+	uintptr_t pgdir_phys = PAGE_TO_PHYS(pgdir_page);
 
 	mm->arch.cr3   = pgdir_phys;
 	mm->arch.pgdir = VADDR_DIRECT(pgdir_phys);
@@ -136,7 +137,7 @@ user_mm_arch_copy_page(user_mm_t mm, uintptr_t addr, uintptr_t phys, int flag)
 	pte_t *pte = get_pte(mm->arch.pgdir, addr, 1);
 	if (!(*pte & PTE_P))
 	{
-		uintptr_t phys = page_alloc_atomic(1);
+		uintptr_t phys = PAGE_TO_PHYS(page_alloc_atomic(1));
 		*pte = phys | PTE_W | PTE_U | PTE_P;
 	}
 	if (phys == 0)

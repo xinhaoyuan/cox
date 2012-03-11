@@ -94,7 +94,7 @@ __kern_cpu_init(void)
 
 	if (lapic_id() == sysconf_x86.cpu.boot)
 	{
-		uintptr_t stack_top_phys = page_alloc_atomic(4);
+		uintptr_t stack_top_phys = PAGE_TO_PHYS(page_alloc_atomic(4));
 		stack_top_phys += PGSIZE * 4;
 
 		/* create the init proc */
@@ -103,7 +103,7 @@ __kern_cpu_init(void)
 	}
 
 	/* XXX: TEMP CODE FOR SETUP U->K TRAP STACK */
-	uintptr_t stacktop = page_alloc_atomic(4);
+	uintptr_t stacktop = PAGE_TO_PHYS(page_alloc_atomic(4));
 	stacktop += 4 * PGSIZE;
 	cpu_set_trap_stacktop((uintptr_t)VADDR_DIRECT(stacktop));
 

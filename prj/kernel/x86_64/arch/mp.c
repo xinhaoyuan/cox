@@ -38,7 +38,7 @@ mp_init(void)
 		if (cpu_id_set[i] > max_apic) max_apic = cpu_id_set[i];
 	}
 
-	boot_ap_stack = (uintptr_t)VADDR_DIRECT(page_alloc_atomic(max_apic));
+	boot_ap_stack = (uintptr_t)VADDR_DIRECT(PAGE_TO_PHYS(page_alloc_atomic(max_apic)));
 	memset(VADDR_DIRECT(BOOT_AP_STACK_BASE), 0, 8);
 	memmove(VADDR_DIRECT(BOOT_AP_STACK_BASE), &boot_ap_stack, sizeof(boot_ap_stack));
 

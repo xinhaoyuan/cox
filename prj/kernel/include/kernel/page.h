@@ -1,5 +1,5 @@
-#ifndef __PAGE_H__
-#define __PAGE_H__
+#ifndef __KERN_PAGE_H__
+#define __KERN_PAGE_H__
 
 #include <types.h>
 #include <arch/page.h>
@@ -20,14 +20,19 @@ extern page_t pages;
 
 #define PAGE_REGION_HEAD(page) ({ page_t p = (page); p->region & 1 ? pages + (p->region & ~1) : p; })
 #define PAGE_REGION_SIZE(page) ({ page_t p = (page); p->region & 1 ? (pages[(p->region & ~1)]->region >> 1) : (p->region >> 1); })
-#define PAGE(addr) ({ size_t idx = addr >> PGSHIFT; idx < pages_count ? pages[idx] : NULL; })
+#ifndef PAGE_ARCH_MAP
+#include <arch/mmu.h>
+#define PHYS_TO_PAGE(addr) ({ size_t idx = (addr) >> PGSHIFT; idx < pages_count ? pages + idx : NULL; })
+#define PAGE_TO_PHYS(page) ({ size_t idx = (page) - pages; \
+			if (idx >= pages_count) { cprintf("PANIC: PAGE_TO_PHYS out of range"); while (1) ; } \
+			idx << PGSHIFT; })
+#endif
+/* or the arch defines the translation */
 
-uintptr_t page_alloc_atomic(size_t num);
-void      page_free_atomic(uintptr_t addr);
+void page_alloc_init_struct(size_t pcount, void*(*init_alloc)(size_t));
+void page_alloc_init_layout(int(*layout)(uintptr_t pagenum));
 
-/* implemented in arch */
-
-uintptr_t page_arch_alloc(size_t num);
-void      page_arch_free(uintptr_t addr);
+page_t page_alloc_atomic(size_t num);
+void   page_free_atomic(page_t addr);
 
 #endif
