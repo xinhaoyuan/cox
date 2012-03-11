@@ -11,9 +11,8 @@ int
 user_proc_load(void *bin, size_t bin_size)
 {
 	uintptr_t *ptr = (uintptr_t *)bin;	
-	uintptr_t entry = *(ptr ++);
 	uintptr_t start = *(ptr ++);
-	uintptr_t etext = *(ptr ++);
+	uintptr_t entry = *(ptr ++);
 	uintptr_t edata = *(ptr ++);
 	uintptr_t end   = *(ptr ++);
 

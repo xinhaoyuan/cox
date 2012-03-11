@@ -1,0 +1,1 @@
+For the introduction of user model, refer to user.txt.

@@ -1,7 +1,6 @@
 .text
-		.quad __entry		
 		.quad start
-		.quad etext
+		.quad __entry
 		.quad edata
 		.quad end
 

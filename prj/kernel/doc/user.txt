@@ -27,3 +27,25 @@ I/Os are mainly the socket operations. All IPCs are through the
 sockets, local IPCs would be optimized by hardware and
 kernel. Currently the network software stack are built in kernel,
 leaving drivers in userspace.
+
+[USER BINARY FORMAT]
+
+For a specified arch, the binary of user process should be started by
+4 unsigned, ptr-width integer with native byte order, where the
+meanings are:
+
+[0] - start, the suggested start address of the binary image.
+
+[1] - entry, indicate the entry code address, where the start
+unchanged (same for [2], [3]).
+
+[2] - edata, indicate the end of data address that should copied from
+the binary.
+
+[3] - end, indicate the end address of user process, containing the
+uninitialized data.
+
+The kernel would change the start address, while keeping the relative
+position unchanged. After initialized all data needed, kernel would
+pass the control to user process, with a data structure in stack, the
+structure is defined and documented in ``include/user/info.h''.
