@@ -2,10 +2,10 @@
 
 COX is designed to provide minimalistic user model. In COX
 environment, user code is deployed on a segment of address space. The
-interval could be suggested by user, while would finally decided by
-kernel. There is no page sharing semantic in user model (unless between
-different thread in a process). But the page aligned transfers would
-be accelerated by hardware mechanism.
+interval could be suggested by user, which would be finally decided by
+kernel. There is no page sharing semantic in user model (unless
+between different thread in a process). But the page aligned transfers
+would be accelerated by hardware mechanism.
 
 [MEMORY MODEL]
 
@@ -49,3 +49,16 @@ The kernel would change the start address, while keeping the relative
 position unchanged. After initialized all data needed, kernel would
 pass the control to user process, with a data structure in stack, the
 structure is defined and documented in ``include/user/info.h''.
+
+[USER PROCESS START SAMPLE]
+
+When a new user process starts, it usually executes several steps to
+initialize the environment. (refer to io.txt)
+
+1. Get the initialize I/O buffer
+
+2. Set the I/O callback handler
+
+3. Initialize the thread local storage
+
+4. Start the thread level execution
