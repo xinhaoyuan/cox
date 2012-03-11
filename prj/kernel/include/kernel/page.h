@@ -2,6 +2,7 @@
 #define __KERN_PAGE_H__
 
 #include <types.h>
+#include <panic.h>
 #include <arch/page.h>
 
 struct page_s
@@ -24,7 +25,7 @@ extern page_t pages;
 #include <arch/mmu.h>
 #define PHYS_TO_PAGE(addr) ({ size_t idx = (addr) >> PGSHIFT; idx < pages_count ? pages + idx : NULL; })
 #define PAGE_TO_PHYS(page) ({ size_t idx = (page) - pages; \
-			if (idx >= pages_count) { cprintf("PANIC: PAGE_TO_PHYS out of range"); while (1) ; } \
+			if (idx >= pages_count) { panic("PAGE_TO_PHYS out of range"); } \
 			idx << PGSHIFT; })
 #endif
 /* or the arch defines the translation */
