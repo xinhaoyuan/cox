@@ -138,8 +138,7 @@ proc_dsn_active(void)
 static inline void
 proc_switch(proc_t proc)
 {
-	proc_t prev = current;
-	current_set(proc);
+	proc_t prev = current;	
 	proc->sched_prev = prev;
 	if (prev->type != PROC_TYPE_USER)
 		proc->sched_prev_usr = prev->sched_prev_usr;
@@ -151,6 +150,8 @@ proc_switch(proc_t proc)
 		proc->sched_prev_usr = NULL;
 	}
 	else proc->sched_prev_usr = prev;
+
+	current_set(proc);
 
 	if (prev != proc)
 		context_switch(&prev->ctx, &proc->ctx);
