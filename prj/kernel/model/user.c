@@ -6,7 +6,20 @@
 #include <lib/low_io.h>
 
 static void io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx);
-
+static int user_mm_init(user_mm_t mm, uintptr_t *start, uintptr_t *end);
+static int user_thread_init(proc_t proc, uintptr_t entry);
+static void print_tls(proc_t proc)
+{		
+	cprintf("tls        = 0x%016lx tls_u        = 0x%016lx\n",
+			proc->usr_thread->tls, proc->usr_thread->tls_u);
+	cprintf("iocb_busy  = 0x%016lx\n"
+			"iocb_head  = 0x%016lx iocb_tail    = 0x%016lx\n",
+			proc->usr_thread->iocb.busy, proc->usr_thread->iocb.head, proc->usr_thread->iocb.tail);
+	cprintf("iocb_entry = 0x%016lx ioce_head    = 0x%016lx\n",
+			proc->usr_thread->iocb.entry, proc->usr_thread->ioce.head);
+	cprintf("iocb_stack = 0x%016lx iocb_stack_u = 0x%016lx\n",
+			proc->usr_thread->iocb.stack, proc->usr_thread->iocb.stack_u);
+}
 int
 user_proc_load(void *bin, size_t bin_size)
 {
@@ -23,73 +36,34 @@ user_proc_load(void *bin, size_t bin_size)
 	if ((proc->usr_mm = kmalloc(sizeof(user_mm_s))) == NULL) return -E_NO_MEM;
 	if ((proc->usr_thread = kmalloc(sizeof(user_thread_s))) == NULL) return -E_NO_MEM;
 
-	uintptr_t __start = start - 3 * PGSIZE;
-	uintptr_t __end   = end;
+	uintptr_t __start = start;
+	/* 3 pages for initial tls */
+	uintptr_t __end   = end + 3 * PGSIZE;
 
 	int ret;
-	if ((ret = user_thread_init()) != 0) return ret;
 	if ((ret = user_mm_init(proc->usr_mm, &__start, &__end)) != 0) return ret;
+	if ((ret = user_thread_init(proc, entry + __start - start)) != 0) return ret;
 
-	/* cb stack */
-	if ((ret = user_mm_copy_page(proc->usr_mm, __start, 0, 0))) return ret;
-	/* iobuf */
-	if ((ret = user_mm_copy_page(proc->usr_mm, __start + PGSIZE, 0, 0))) return ret;
-	/* boot stack */
-	if ((ret = user_mm_copy_page(proc->usr_mm, __start + 2 * PGSIZE, 0, 0))) return ret;
-
-	uintptr_t now = __start + 3 * PGSIZE;
+	uintptr_t now = start;
 	while (now < end)
 	{
 		if (now < edata)
 		{
-			if ((ret = user_mm_copy_page(proc->usr_mm, now, 0, 0))) return ret;
+			if ((ret = user_mm_copy_page(proc->usr_mm, now + __start - start, 0, 0))) return ret;
 		}
 		else
 		{
 			/* XXX: on demand */
-			if ((ret = user_mm_copy_page(proc->usr_mm, now, 0, 0))) return ret;
+			if ((ret = user_mm_copy_page(proc->usr_mm, now + __start - start, 0, 0))) return ret;
 		}
 		now += PGSIZE;
 	}
 	
 	/* copy the binary */
-	user_mm_copy(proc->usr_mm, __start + 3 * PGSIZE, bin, bin_size);
-
-	/* do thread setting */
-	user_thread_fill(__start, PGSIZE, (__start + PGSIZE), PGSIZE,
-					 (entry + (__end - end)), (uintptr_t)ARCH_STACKTOP(__start + 2 * PGSIZE, PGSIZE));
-
+	user_mm_copy(proc->usr_mm, __start, bin, bin_size);
+	print_tls(proc);
 	return 0;
 }
-
-int
-user_thread_init(void)
-{
-	return 0;
-}
-
-void
-user_thread_fill(uintptr_t cb, size_t cb_size, uintptr_t iobuf, size_t iobuf_size, uintptr_t entry, uintptr_t stacktop)
-{
-	proc_t proc = current;
-	size_t cap = iobuf_size / (sizeof(io_call_entry_s) + sizeof(iobuf_index_t));
-	
-	proc->usr_thread->iocb.stack = cb;
-	proc->usr_thread->iocb.stack_size = cb_size - sizeof(uintptr_t) * 3;
-	proc->usr_thread->iocb.busy = (uintptr_t *)(cb + cb_size - sizeof(uintptr_t) * 3);
-	proc->usr_thread->iocb.head = (uintptr_t *)(cb + cb_size - sizeof(uintptr_t) * 2);
-	proc->usr_thread->iocb.tail = (uintptr_t *)(cb + cb_size - sizeof(uintptr_t));
-	proc->usr_thread->iocb.callback = NULL;
-	proc->usr_thread->iocb.cap = cap;
-	/* set the cb entry from end */
-	proc->usr_thread->iocb.entry = (iobuf_index_t *)(iobuf + iobuf_size - sizeof(iobuf_index_t) * cap);
-	/* ce entry is from head */
-	proc->usr_thread->ioce.cap = cap;
-	proc->usr_thread->ioce.head = (io_call_entry_t)iobuf;
-
-	user_thread_arch_fill(entry, stacktop);
-}
-
 
 int
 user_mm_init(user_mm_t mm, uintptr_t *start, uintptr_t *end)
@@ -101,6 +75,31 @@ user_mm_init(user_mm_t mm, uintptr_t *start, uintptr_t *end)
 	mm->end =   *end;
 
 	return 0;
+}
+
+int
+user_thread_init(proc_t proc, uintptr_t entry)
+{
+	user_thread_t t = proc->usr_thread;
+	t->user_size = PGSIZE;
+	t->iobuf_size = PGSIZE;
+	t->iocb_stack_size = PGSIZE;
+	t->tls_u = proc->usr_mm->end - 3 * PGSIZE;
+
+	/* touch the memory */
+	user_mm_arch_copy_page(proc->usr_mm, t->tls_u, 0, 0);
+   	user_mm_arch_copy_page(proc->usr_mm, t->tls_u + PGSIZE, 0, 0);
+	user_mm_arch_copy_page(proc->usr_mm, t->tls_u + PGSIZE * 2, 0, 0);
+	
+	t->iocb.stack_u = t->tls_u + t->user_size;
+	proc->usr_thread->iocb.callback_u = 0;
+
+	size_t cap = t->iobuf_size / (sizeof(io_call_entry_s) + sizeof(iobuf_index_t));
+	
+	proc->usr_thread->iocb.cap = cap;
+	proc->usr_thread->ioce.cap = cap;
+
+	return user_thread_arch_init(proc, entry);
 }
 
 int
@@ -127,17 +126,8 @@ user_thread_jump(void)
 }
 
 void
-user_before_return(proc_t proc)
+user_process_io(proc_t proc)
 {
-	if (proc->sched_prev_usr != proc)
-	{
-		if (proc->sched_prev_usr != NULL)
-			user_save_context(proc);
-		user_restore_context(proc);
-	}
-	/* Now the address base should be of current */
-	
-	/* process IO request */
 	io_call_entry_t head = proc->usr_thread->ioce.head;
 	while (head->head.head != 0 &&
 		   head->head.head != head->head.tail)
@@ -151,6 +141,18 @@ user_before_return(proc_t proc)
 		
 		head->head.head = head[head->head.head].ce.next;
 	}
+}
+
+void
+user_before_return(proc_t proc)
+{
+	if (proc->sched_prev_usr != proc)
+	{
+		if (proc->sched_prev_usr != NULL)
+			user_save_context(proc);
+		user_restore_context(proc);
+	}
+	/* Now the address base should be of current */
 
 	int busy = *proc->usr_thread->iocb.busy;
 	
@@ -181,12 +183,25 @@ iocb_push(proc_t proc, iobuf_index_t idx)
 }
 
 static void
+user_set_tls(uintptr_t tls)
+{
+	/* XXX */
+}
+
+static void
 io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 {
 	switch (entry->ce.data[0])
 	{
 	case IO_SET_CALLBACK:
-		proc->usr_thread->iocb.callback = (io_callback_handler_f)entry->ce.data[1];
+		entry->ce.data[0] = 0;
+		proc->usr_thread->iocb.callback_u = entry->ce.data[1];
+		iocb_push(proc, idx);
+		break;
+
+	case IO_SET_TLS:
+		entry->ce.data[0] = 0;
+		user_set_tls(entry->ce.data[1]);
 		iocb_push(proc, idx);
 		break;
 

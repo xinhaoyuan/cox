@@ -1,12 +1,12 @@
 #include <string.h>
 #include <lib/low_io.h>
 
-struct startup_info_s info;
-
 #include <user/io.h>
-#include <user/info.h>
+#include <user/tls.h>
 #include <user/syscall.h>
 #include <user/iocb.h>
+
+#if 0
 
 void
 __iocb(void *ret)
@@ -132,3 +132,13 @@ entry(struct startup_info_s __info)
 	
 	while (1) ;
 }
+
+#else
+
+void
+entry(void)
+{
+	while (1) ;
+}
+
+#endif

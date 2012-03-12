@@ -150,11 +150,16 @@ trap_dispatch(struct trapframe *tf)
 	}
 	else if (tf->tf_trapno == T_SYSCALL)
 	{
-		/* Kick to kernel, nothing to do */
+		/* Kick to kernel, nothing to do (maybe sleep?) */
 	}
 
 	if (from_user)
+	{
+		__irq_enable();
+		user_process_io(current);
+		__irq_disable();
 		user_before_return(current);
+	}
 }
 
 void

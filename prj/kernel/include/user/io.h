@@ -39,8 +39,7 @@ typedef struct io_call_entry_s *io_call_entry_t;
 
 /* BASE */
 #define IO_SET_CALLBACK     0x000
-#define IO_SET_BUF          0x001
-#define IO_SET_TLS          0x002
+#define IO_SET_TLS          0x001
 #define IO_CREATE_PROC      0x010
 #define IO_EXIT             0x011
 #define IO_BRK              0x020

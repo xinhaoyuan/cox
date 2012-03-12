@@ -69,6 +69,9 @@
 
 #define VPT                 0xFFFFD00000000000
 
+#define KVBASE              0xFFFFE00000000000
+#define KVSIZE              0x0000000080000000
+
 #ifndef __ASSEMBLER__
 
 #define ARCH_STACKTOP(base, size) ((void *)((uintptr_t)(base) + (size)))

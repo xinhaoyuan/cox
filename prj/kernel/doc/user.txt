@@ -59,6 +59,6 @@ initialize the environment. (refer to io.txt)
 
 2. Set the I/O callback handler
 
-3. Initialize the thread local storage
+3. Initialize the user TLS.
 
 4. Start the thread level execution

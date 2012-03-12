@@ -1,1 +1,31 @@
 For the introduction of user model, refer to user.txt.
+
+- (ret)IO_SET_CALLBACK(handler_func)
+
+Set the userspace entry of I/O callback. Returns 0 with success.
+
+- (ret)IO_SET_TLS(io_buf_size, user_size)
+
+Realloc the TLS storage, must be called with no I/O in buffer. The
+user storage would be copy if successed. Returns 0 with success.
+
+- (ret)IO_CREATE_PROC(bin, bin_size, flags)
+
+Create a new process(thread) with specified binary image. Returns 0
+with success.
+
+- IO_EXIT()
+
+Exit current process(thread)
+
+- (ret)IO_BRK(size)
+
+Resize the user address space
+
+- (ret)IO_DEBUG_PUTCHAR(ch)
+
+putchar on debug console
+
+- (ret)IO_DEBUG_GETCHAR()
+
+getchar on debug console

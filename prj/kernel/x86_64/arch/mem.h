@@ -14,4 +14,7 @@ void print_pgdir(void);
 void pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc);
 pte_t *get_pte(pgd_t *pgdir, uintptr_t la, bool create);
 
+void *valloc(size_t num);
+void  vfree(void *addr);
+
 #endif

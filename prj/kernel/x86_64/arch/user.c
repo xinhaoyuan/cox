@@ -5,7 +5,7 @@
 #include <user.h>
 #include <page.h>
 #include <arch/user.h>
-#include <user/info.h>
+#include <user/tls.h>
 
 #include "intr.h"
 #include "mem.h"
@@ -15,7 +15,7 @@ user_thread_arch_push_iocb(void)
 {
 	proc_t proc = current;
 	if (proc->usr_thread == NULL) return -E_INVAL;
-	if (proc->usr_thread->iocb.callback == NULL) return -E_INVAL;
+	if (proc->usr_thread->iocb.callback_u == 0) return -E_INVAL;
 	if (proc->usr_thread->arch.tf == NULL) return -E_INVAL;
 
 #if 0 							/* ensured by whole os */
@@ -26,13 +26,13 @@ user_thread_arch_push_iocb(void)
 		(*pte & (PTE_P | PTE_W | PTE_U)) != (PTE_P | PTE_W | PTE_U)) return -E_INVAL;
 #endif
 
-	char *stacktop = ARCH_STACKTOP(proc->usr_thread->iocb.stack, proc->usr_thread->iocb.stack_size);
+	char *stacktop = ARCH_STACKTOP(proc->usr_thread->iocb.stack, proc->usr_thread->iocb_stack_size);
 	
 	stacktop -= sizeof(struct trapframe);
 	memmove(stacktop, proc->usr_thread->arch.tf, sizeof(struct trapframe));
 
 	proc->usr_thread->arch.tf->tf_regs.reg_rbp = 0;
-	proc->usr_thread->arch.tf->tf_rip = (uintptr_t)proc->usr_thread->iocb.callback;
+	proc->usr_thread->arch.tf->tf_rip = proc->usr_thread->iocb.callback_u;
 	proc->usr_thread->arch.tf->tf_rsp = (uintptr_t)stacktop;
 	/* pass the trapframe addr */
 	proc->usr_thread->arch.tf->tf_regs.reg_rdi = (uintptr_t)stacktop;
@@ -41,36 +41,45 @@ user_thread_arch_push_iocb(void)
 }
 
 int
-user_thread_arch_init(void)
+user_thread_arch_init(proc_t proc, uintptr_t entry)
 {
-	proc_t proc = current;
 	memset(&proc->usr_thread->arch, 0, sizeof(proc->usr_thread->arch));
-	return 0;
-}
+	proc->usr_thread->arch.init_entry = entry;
+	user_thread_t t = proc->usr_thread;
+	if (t->user_size + t->iocb_stack_size + t->iobuf_size != PGSIZE * 3)
+	{
+		cprintf("PANIC: initial tls size != PGSIZE * 3");
+		return -E_INVAL;
+	}
+	/* XXX to cleanup */
+	t->tls = valloc(3);
+	*get_pte(pgdir_scratch, (uintptr_t)t->tls, 1) = *get_pte(proc->usr_mm->arch.pgdir, t->tls_u, 0);
+	*get_pte(pgdir_scratch, (uintptr_t)t->tls + PGSIZE, 1) = *get_pte(proc->usr_mm->arch.pgdir, t->tls_u + PGSIZE, 0);
+	*get_pte(pgdir_scratch, (uintptr_t)t->tls + PGSIZE * 2, 1) = *get_pte(proc->usr_mm->arch.pgdir, t->tls_u + PGSIZE * 2, 0);
 
-void user_thread_arch_fill(uintptr_t entry, uintptr_t stacktop)
-{
-	proc_t proc = current;
-	if (proc->usr_thread->arch.tf != NULL)
-	{
-		proc->usr_thread->arch.tf->tf_rip = entry;
-		proc->usr_thread->arch.tf->tf_rsp = stacktop;
-	}
-	else
-	{
-		proc->usr_thread->arch.init_entry = entry;
-		stacktop -= sizeof(startup_info_s);
-		startup_info_s info;
-		info.ioce.cap   = proc->usr_thread->ioce.cap;
-		info.ioce.head  = proc->usr_thread->ioce.head;
-		info.iocb.cap   = proc->usr_thread->iocb.cap;
-		info.iocb.entry = proc->usr_thread->iocb.entry;
-		info.iocb.busy  = proc->usr_thread->iocb.busy;
-		info.iocb.head  = proc->usr_thread->iocb.head;
-		info.iocb.tail  = proc->usr_thread->iocb.tail;
-		user_mm_arch_copy(proc->usr_mm, stacktop, &info, sizeof(info));
-		proc->usr_thread->arch.init_stacktop = stacktop;
-	}
+	/* refer to user/tls.h */
+	t->iocb.busy = t->tls;
+	t->iocb.head = t->tls + sizeof(uintptr_t);
+	t->iocb.tail = t->tls + sizeof(uintptr_t) * 2;
+	t->ioce.head = t->tls + PGSIZE * 2;
+	t->iocb.entry = t->tls + PGSIZE * 3 - t->iocb.cap * sizeof(iobuf_index_t);
+
+	void *cur = t->tls + t->user_size; 
+	t->iocb.stack = cur; cur += t->iocb_stack_size;
+	t->iocb.entry = (iobuf_index_t *)(cur + t->iobuf_size - sizeof(iobuf_index_t) * t->iocb.cap);
+	t->ioce.head = (io_call_entry_t)cur;
+	
+	__lcr3(__rcr3());
+	
+	tls_s tls;
+	tls.iocb_busy = tls.iocb_head = tls.iocb_tail = 0;
+	tls.startup_info.ioce.cap   = t->ioce.cap;
+	tls.startup_info.ioce.head  = (void *)(t->tls_u + ((char *)t->ioce.head - (char *)t->tls));
+	tls.startup_info.iocb.cap   = t->iocb.cap;
+	tls.startup_info.iocb.entry = (void *)(t->tls_u + ((char *)t->iocb.entry - (char *)t->tls));
+	
+	user_mm_arch_copy(proc->usr_mm, t->tls_u, &tls, sizeof(tls));
+	return 0;
 }
 
 int
@@ -84,8 +93,8 @@ user_thread_arch_in_cb_stack(void)
 	else
 	{
 		uintptr_t stack = proc->usr_thread->arch.tf->tf_rsp;
-		return proc->usr_thread->iocb.stack <= stack &&
-			stack < proc->usr_thread->iocb.stack + proc->usr_thread->iocb.stack_size;
+		return proc->usr_thread->iocb.stack_u <= stack &&
+			stack < proc->usr_thread->iocb.stack_u + proc->usr_thread->iocb_stack_size;
 	}
 }
 
@@ -109,7 +118,7 @@ user_thread_arch_jump(void)
 		tf.tf_es = GD_UDATA | 3;
 		tf.tf_rflags = FL_IF;
 		tf.tf_rip = proc->usr_thread->arch.init_entry;
-		tf.tf_rsp = proc->usr_thread->arch.init_stacktop;
+		tf.tf_regs.reg_rdi = proc->usr_thread->tls_u;
 		__user_jump(&tf);
 	}
 }
@@ -197,6 +206,17 @@ user_mm_arch_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size)
 	}
 	
 	return 0;
+}
+
+void *
+user_mm_arch_memmap_open(user_mm_t mm, uintptr_t addr, size_t size)
+{
+	return NULL;
+}
+
+void
+user_mm_arch_memmap_close(user_mm_t mm, void *addr)
+{
 }
 
 void

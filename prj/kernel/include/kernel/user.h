@@ -8,6 +8,13 @@
 
 struct user_thread_s
 {
+	void     *tls;
+	uintptr_t tls_u;
+	
+	uintptr_t iobuf_size;
+	uintptr_t iocb_stack_size;
+	uintptr_t user_size;
+	
 	struct
 	{
 		iobuf_index_t cap;
@@ -18,11 +25,10 @@ struct user_thread_s
 	{
 		iobuf_index_t  cap;
 		iobuf_index_t *entry;
-		uintptr_t *head, *tail;
-		uintptr_t *busy;
-		uintptr_t  stack;
-		size_t     stack_size;
-		io_callback_handler_f callback;
+		uintptr_t     *head, *tail, *busy;
+		void          *stack;
+		uintptr_t      stack_u;
+		uintptr_t      callback_u;
 	} iocb;
 
 	user_thread_arch_s arch;
@@ -31,13 +37,10 @@ struct user_thread_s
 typedef struct user_thread_s  user_thread_s;
 typedef struct user_thread_s *user_thread_t;
 
-int user_thread_init(void);
-void user_thread_fill(uintptr_t cb, size_t cb_size, uintptr_t iobuf, size_t iobuf_size, uintptr_t entry, uintptr_t stacktop);
 void user_thread_jump(void) __attribute__((noreturn));
 /* filled by arch */
 int user_thread_arch_push_iocb(void);
-int user_thread_arch_init(void);
-void user_thread_arch_fill(uintptr_t entry, uintptr_t stacktop);
+int user_thread_arch_init(proc_t proc, uintptr_t entry);
 int user_thread_arch_in_cb_stack(void);
 void user_thread_arch_jump(void) __attribute__((noreturn));
 
@@ -54,7 +57,6 @@ struct user_mm_s
 typedef struct user_mm_s  user_mm_s;
 typedef struct user_mm_s *user_mm_t;
 
-int user_mm_init(user_mm_t mm, uintptr_t *start, uintptr_t *end);
 int user_mm_copy_page(user_mm_t mm, uintptr_t addr, uintptr_t phys, int flag);
 int user_mm_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size);
 
@@ -62,7 +64,10 @@ int user_mm_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size);
 int user_mm_arch_init(user_mm_t mm, uintptr_t *start, uintptr_t *end);
 int user_mm_arch_copy_page(user_mm_t mm, uintptr_t addr, uintptr_t phys, int flag);
 int user_mm_arch_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size);
+void *user_mm_arch_memmap_open(user_mm_t mm, uintptr_t addr, size_t size);
+void  user_mm_arch_memmap_close(user_mm_t mm, void *addr);
 
+void user_process_io(proc_t proc);
 void user_before_return(proc_t proc);
 void user_save_context(proc_t proc);
 void user_restore_context(proc_t proc);

@@ -266,8 +266,16 @@ mmu_init(void)
 	int num_of_pudtables = (PHYSSIZE + PUSIZE - 1) / PUSIZE;
 	for (i = 0; i < num_of_pudtables; ++ i)
 	{
-		boot_get_pud(boot_pgdir, PHYSSIZE + PUSIZE * i, 1);
+		boot_get_pud(boot_pgdir, PHYSBASE + PUSIZE * i, 1);
 	}
+	
+	/* same for kv mapping */
+	num_of_pudtables = (KVSIZE + PUSIZE - 1) / PUSIZE;
+	for (i = 0; i < num_of_pudtables; ++ i)
+	{
+		boot_get_pud(boot_pgdir, KVBASE + PUSIZE * i, 1);
+	}
+	
 	
     /* map all physical memory at PHYSBASE by 2m pages*/
 	int num_of_2m_pages = (phys_end + 0x1fffff) / 0x200000;
@@ -323,12 +331,18 @@ config_by_memmap(uintptr_t num)
 	return memmap_test(num << PGSHIFT, (num << PGSHIFT) + PGSIZE);
 }
 
+static int
+kv_config(uintptr_t num)
+{ return 1; }
+
+static struct buddy_context_s kv_buddy;
+static spinlock_s kv_lock;
 static spinlock_s mmio_fix_lock;
 
 static void *
 __boot_page_alloc(size_t size)
 {
-	return boot_alloc(size, PGSIZE, 0);
+	return boot_alloc(size, PGSIZE, 1);
 }
 
 int
@@ -343,7 +357,9 @@ memory_init(void)
 	memmap_append(kern_start, kern_end, MEMMAP_FLAG_RESERVED);
 
 	page_alloc_init_struct(nr_pages, __boot_page_alloc);
-
+	kv_buddy.node = boot_alloc(BUDDY_CALC_ARRAY_SIZE(KVSIZE >> PGSHIFT) * sizeof(struct buddy_node_s), PGSIZE, 0);
+	buddy_build(&kv_buddy, KVSIZE >> PGSHIFT, kv_config);
+	
 	uintptr_t start, end;
 	boot_alloc_get_area(&start, &end);
 
@@ -353,6 +369,7 @@ memory_init(void)
 	/* Initialize the page allocator with free areas */
 
 	page_alloc_init_layout(config_by_memmap);
+	spinlock_init(&kv_lock);
 	spinlock_init(&mmio_fix_lock);
 
 	return 0;
@@ -469,3 +486,34 @@ mmio_open(uintptr_t addr, size_t size)
 void
 mmio_close(volatile void *addr)
 { }
+
+
+void *
+valloc(size_t num)
+{
+	int irq = irq_save();
+	spinlock_acquire(&kv_lock);
+
+	buddy_node_id_t result = buddy_alloc(&kv_buddy, num);
+
+	spinlock_release(&kv_lock);
+	irq_restore(irq);
+	
+	if (result == BUDDY_NODE_ID_NULL) return NULL;
+	else return (void *)(KVBASE + (result << PGSHIFT));
+}
+
+void
+vfree(void *addr)
+{
+	if (addr == NULL) return;
+	if (KVBASE > (uintptr_t)addr || (uintptr_t)addr >= KVBASE + KVSIZE) return;
+
+	int irq = irq_save();
+	spinlock_acquire(&kv_lock);
+	
+	buddy_free(&kv_buddy, ((uintptr_t)addr - KVBASE) >> PGSHIFT);
+	
+	spinlock_release(&kv_lock);
+	irq_restore(irq);
+}

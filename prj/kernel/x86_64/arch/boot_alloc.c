@@ -47,13 +47,14 @@ void *
 boot_alloc(uintptr_t size, uintptr_t align, int verbose)
 {
 	 if (verbose)
-		  cprintf("[boot_alloc] boot_free = %p, size = %d, align = 0x%x\n", boot_free, size, align);
+		  cprintf("[boot_alloc] boot_free = %p, size = 0x%016lx, align = 0x%x\n", boot_free, size, align);
 
 	 uintptr_t start, end;
      while (1)
      {
 		 if (memmap_enumerate(bf_memmap, &start, &end) != 0)
 			 return NULL;
+
 		 if (boot_free < start) boot_free = start;
 
 		 /* Find the continuous memory space that would contain the
@@ -67,7 +68,7 @@ boot_alloc(uintptr_t size, uintptr_t align, int verbose)
      void *result = VADDR_DIRECT(boot_free);
 	 
      if (verbose)
-		  cprintf("[init_alloc] result = %p\n", result);
+		  cprintf("[boot_alloc] result = %p\n", result);
 
      boot_free += size;
 	 return result;
