@@ -58,9 +58,9 @@ user_thread_arch_init(proc_t proc, uintptr_t entry)
 	*get_pte(pgdir_scratch, (uintptr_t)t->tls + PGSIZE * 2, 1) = *get_pte(proc->usr_mm->arch.pgdir, t->tls_u + PGSIZE * 2, 0);
 
 	/* refer to user/tls.h */
-	t->iocb.busy = t->tls;
-	t->iocb.head = t->tls + sizeof(uintptr_t);
-	t->iocb.tail = t->tls + sizeof(uintptr_t) * 2;
+	t->iocb.busy = t->tls + OFFSET_OF(tls_s, iocb.busy);
+	t->iocb.head = t->tls + OFFSET_OF(tls_s, iocb.head);
+	t->iocb.tail = t->tls + OFFSET_OF(tls_s, iocb.tail);
 	t->ioce.head = t->tls + PGSIZE * 2;
 	t->iocb.entry = t->tls + PGSIZE * 3 - t->iocb.cap * sizeof(iobuf_index_t);
 
@@ -72,11 +72,11 @@ user_thread_arch_init(proc_t proc, uintptr_t entry)
 	__lcr3(__rcr3());
 	
 	tls_s tls;
-	tls.iocb_busy = tls.iocb_head = tls.iocb_tail = 0;
-	tls.startup_info.ioce.cap   = t->ioce.cap;
-	tls.startup_info.ioce.head  = (void *)(t->tls_u + ((char *)t->ioce.head - (char *)t->tls));
-	tls.startup_info.iocb.cap   = t->iocb.cap;
-	tls.startup_info.iocb.entry = (void *)(t->tls_u + ((char *)t->iocb.entry - (char *)t->tls));
+	tls.iocb.busy = tls.iocb.head = tls.iocb.tail = 0;
+	tls.info.ioce.cap   = t->ioce.cap;
+	tls.info.ioce.head  = (void *)(t->tls_u + ((char *)t->ioce.head - (char *)t->tls));
+	tls.info.iocb.cap   = t->iocb.cap;
+	tls.info.iocb.entry = (void *)(t->tls_u + ((char *)t->iocb.entry - (char *)t->tls));
 	
 	user_mm_arch_copy(proc->usr_mm, t->tls_u, &tls, sizeof(tls));
 	return 0;

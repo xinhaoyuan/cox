@@ -5,9 +5,12 @@
 
 struct tls_s
 {
-	uintptr_t iocb_busy;
-	uintptr_t iocb_head;
-	uintptr_t iocb_tail;
+	struct
+	{
+		uintptr_t busy;
+		uintptr_t head;
+		uintptr_t tail;
+	} iocb;
 
 	struct
 	{
@@ -22,7 +25,7 @@ struct tls_s
 			iobuf_index_t   cap;
 			iobuf_index_t  *entry;
 		} iocb;
-	} startup_info;
+	} info;
 
 	uintptr_t data[0];
 };

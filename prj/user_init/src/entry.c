@@ -6,33 +6,33 @@
 #include <user/syscall.h>
 #include <user/iocb.h>
 
-#if 0
+tls_t tls;
 
 void
 __iocb(void *ret)
 {
-	*info.iocb.head = *info.iocb.tail;
+	tls->iocb.head = tls->iocb.tail;
 	if (ret != NULL)
 	{
-		*info.iocb.busy = 2;
+		tls->iocb.busy = 2;
 		iocb_return(ret);
 	}
-	else *info.iocb.busy = 0;
+	else tls->iocb.busy = 0;
 }
 
 void
 io_init(void)
 {
-	io_call_entry_t entry = info.ioce.head;
+	io_call_entry_t entry = tls->info.ioce.head;
 	iobuf_index_t i;
-	for (i = 1; i < info.ioce.cap; ++ i)
+	for (i = 1; i < tls->info.ioce.cap; ++ i)
 	{
 		entry[i].ce.next = i + 1;
 		entry[i].ce.prev = i - 1;
 	}
 
-	entry[info.ioce.cap - 1].ce.next = 1;
-	entry[1].ce.prev = info.ioce.cap - 1;
+	entry[tls->info.ioce.cap - 1].ce.next = 1;
+	entry[1].ce.prev = tls->info.ioce.cap - 1;
 
 	entry->head.tail = 1;
 	entry->head.head = 1;
@@ -41,7 +41,7 @@ io_init(void)
 iobuf_index_t
 ioce_alloc(void)
 {
-	io_call_entry_t entry = info.ioce.head;
+	io_call_entry_t entry = tls->info.ioce.head;
 	iobuf_index_t idx = entry->head.tail;
 
 	if (idx != 0)
@@ -60,7 +60,7 @@ ioce_alloc(void)
 void
 ioce_free(iobuf_index_t idx)
 {
-	io_call_entry_t entry = info.ioce.head;
+	io_call_entry_t entry = tls->info.ioce.head;
 
 	if (entry->head.tail == 0)
 	{
@@ -82,7 +82,7 @@ ioce_free(iobuf_index_t idx)
 int
 io_a1(uintptr_t arg0)
 {
-	io_call_entry_t entry = info.ioce.head;
+	io_call_entry_t entry = tls->info.ioce.head;
 	io_call_entry_t ce = entry + ioce_alloc();
 
 	if (ce == entry) return -1;
@@ -98,7 +98,7 @@ io_a1(uintptr_t arg0)
 int
 io_a2(uintptr_t arg0, uintptr_t arg1)
 {
-	io_call_entry_t entry = info.ioce.head;
+	io_call_entry_t entry = tls->info.ioce.head;
 	io_call_entry_t ce = entry + ioce_alloc();
 
 	if (ce == entry) return -1;
@@ -120,9 +120,9 @@ __cputchar(int c)
 
 
 void
-entry(struct startup_info_s __info)
+entry(tls_t __tls)
 {
-	memmove(&info, &__info, sizeof(info));
+	tls = __tls;
 
 	io_init();
 	io_a2(IO_SET_CALLBACK, (uintptr_t)__iocb);
@@ -132,13 +132,3 @@ entry(struct startup_info_s __info)
 	
 	while (1) ;
 }
-
-#else
-
-void
-entry(void)
-{
-	while (1) ;
-}
-
-#endif
