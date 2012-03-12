@@ -3,36 +3,41 @@
 
 #include <user/io.h>
 #include <user/tls.h>
+#include <user/local.h>
 #include <user/syscall.h>
 #include <user/iocb.h>
 
-tls_t tls;
+#define TLS_IOCE_HEAD  (TLS_USTART)
+#define TLS_IOCE_CAP   (TLS_USTART + 1)
+#define TLS_IOCB_ENTRY (TLS_USTART + 2)
+#define TLS_IOCB_CAP   (TLS_USTART + 3)
 
 void
 __iocb(void *ret)
 {
-	tls->iocb.head = tls->iocb.tail;
+	TLS_SET(TLS_IOCB_HEAD, TLS(TLS_IOCB_TAIL));
 	if (ret != NULL)
 	{
-		tls->iocb.busy = 2;
+		TLS_SET(TLS_IOCB_BUSY, 2);
 		iocb_return(ret);
 	}
-	else tls->iocb.busy = 0;
+	else TLS_SET(TLS_IOCB_BUSY, 0);
 }
 
 void
 io_init(void)
 {
-	io_call_entry_t entry = tls->info.ioce.head;
+	io_call_entry_t entry = (io_call_entry_t)TLS(TLS_IOCE_HEAD);
+	int cap = TLS(TLS_IOCE_CAP);
 	iobuf_index_t i;
-	for (i = 1; i < tls->info.ioce.cap; ++ i)
+	for (i = 1; i < cap; ++ i)
 	{
 		entry[i].ce.next = i + 1;
 		entry[i].ce.prev = i - 1;
 	}
 
-	entry[tls->info.ioce.cap - 1].ce.next = 1;
-	entry[1].ce.prev = tls->info.ioce.cap - 1;
+	entry[cap - 1].ce.next = 1;
+	entry[1].ce.prev = cap - 1;
 
 	entry->head.tail = 1;
 	entry->head.head = 1;
@@ -41,7 +46,7 @@ io_init(void)
 iobuf_index_t
 ioce_alloc(void)
 {
-	io_call_entry_t entry = tls->info.ioce.head;
+	io_call_entry_t entry = (io_call_entry_t)TLS(TLS_IOCE_HEAD);
 	iobuf_index_t idx = entry->head.tail;
 
 	if (idx != 0)
@@ -60,7 +65,7 @@ ioce_alloc(void)
 void
 ioce_free(iobuf_index_t idx)
 {
-	io_call_entry_t entry = tls->info.ioce.head;
+	io_call_entry_t entry = (io_call_entry_t)TLS(TLS_IOCE_HEAD);
 
 	if (entry->head.tail == 0)
 	{
@@ -82,7 +87,7 @@ ioce_free(iobuf_index_t idx)
 int
 io_a1(uintptr_t arg0)
 {
-	io_call_entry_t entry = tls->info.ioce.head;
+	io_call_entry_t entry = (io_call_entry_t)TLS(TLS_IOCE_HEAD);
 	io_call_entry_t ce = entry + ioce_alloc();
 
 	if (ce == entry) return -1;
@@ -98,7 +103,7 @@ io_a1(uintptr_t arg0)
 int
 io_a2(uintptr_t arg0, uintptr_t arg1)
 {
-	io_call_entry_t entry = tls->info.ioce.head;
+	io_call_entry_t entry = (io_call_entry_t)TLS(TLS_IOCE_HEAD);
 	io_call_entry_t ce = entry + ioce_alloc();
 
 	if (ce == entry) return -1;
@@ -122,7 +127,11 @@ __cputchar(int c)
 void
 entry(tls_t __tls)
 {
-	tls = __tls;
+	tls_s tls = *__tls;
+	TLS_SET(TLS_IOCE_HEAD, (uintptr_t)tls.info.ioce.head);
+	TLS_SET(TLS_IOCE_CAP, tls.info.ioce.cap);
+	TLS_SET(TLS_IOCB_ENTRY, (uintptr_t)tls.info.iocb.entry);
+	TLS_SET(TLS_IOCB_CAP, tls.info.iocb.cap);
 
 	io_init();
 	io_a2(IO_SET_CALLBACK, (uintptr_t)__iocb);

@@ -10,9 +10,10 @@
 #define SEG_UTEXT     3
 #define SEG_UDATA     4
 #define SEG_TSS_BOOT  5
-#define SEG_PLS(LCPU) (6 + NR_LCPU + (LCPU))
-#define SEG_TSS(LCPU) (6 + NR_LCPU * 2 + (LCPU))
-#define SEG_COUNT     (5 + NR_LCPU * 3)
+#define SEG_TSS(LCPU) (6 + NR_LCPU * 1 + (LCPU))
+#define SEG_PLS(LCPU) (6 + NR_LCPU * 2 + (LCPU))
+#define SEG_TLS(LCPU) (6 + NR_LCPU * 3 + (LCPU))
+#define SEG_COUNT     (5 + NR_LCPU * 4)
 
 /* global descrptor numbers */
 #define GD_KTEXT     ((SEG_KTEXT) << 4)      // kernel text
@@ -22,6 +23,7 @@
 #define GD_TSS_BOOT  ((SEG_TSS_BOOT) << 4)   // user data
 #define GD_TSS(LCPU) ((SEG_TSS(LCPU)) << 4)        // task segment selector
 #define GD_PLS(LCPU) ((SEG_PLS(LCPU)) << 4)
+#define GD_TLS(LCPU) ((SEG_TLS(LCPU)) << 4)
 
 #define DPL_KERNEL  (0)
 #define DPL_USER    (3)

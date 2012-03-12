@@ -33,4 +33,9 @@ struct tls_s
 typedef struct tls_s  tls_s;
 typedef struct tls_s *tls_t;
 
+#define TLS_IOCB_BUSY 0
+#define TLS_IOCB_HEAD 1
+#define TLS_IOCB_TAIL 2
+#define TLS_USTART    3
+
 #endif

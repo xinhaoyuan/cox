@@ -226,5 +226,7 @@ user_arch_save_context(proc_t proc)
 void
 user_arch_restore_context(proc_t proc)
 {
+	/* change the gs base for TLS */
+	__write_msr(0xC0000101, proc->usr_thread->tls_u);
 	__lcr3(proc->usr_mm->arch.cr3);
 }
