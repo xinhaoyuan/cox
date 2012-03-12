@@ -146,12 +146,15 @@ user_process_io(proc_t proc)
 void
 user_before_return(proc_t proc)
 {
+	/* assume the irq is disabled, ensuring no switch */
+	
 	if (proc->sched_prev_usr != proc)
 	{
 		if (proc->sched_prev_usr != NULL)
 			user_save_context(proc);
 		user_restore_context(proc);
 	}
+	
 	/* Now the address base should be of current */
 
 	int busy = *proc->usr_thread->iocb.busy;
