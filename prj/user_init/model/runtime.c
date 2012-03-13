@@ -1,5 +1,5 @@
 #include <string.h>
-
+#include <user/memlayout.h>
 #include <user/io.h>
 #include <user/tls.h>
 #include <user/local.h>
@@ -195,7 +195,7 @@ fiber_schedule(void)
 
 	sched_node_t next;
 	if ((next = p->sched_node.next) == &p->sched_node)
-		next = &p->init_fiber.sched_node;
+		next = &p->idle_fiber.sched_node;
 	else
 	{
 		next->next->prev = next->prev;
@@ -204,7 +204,7 @@ fiber_schedule(void)
 
 	fiber_t n = CONTAINER_OF(next, fiber_s, sched_node);
 
-	__current_fiber_set(next);
+	__current_fiber_set(n);
 	context_switch(&f->ctx, &n->ctx);
 
 	/* XXX migrate? */
@@ -227,13 +227,43 @@ thread_init(tls_t tls)
 	}
 
 	upriv_t p = __upriv;
-	fiber_t f = &p->init_fiber;
+	fiber_t f = &p->idle_fiber;
 	p->sched_node.next = p->sched_node.prev = &p->sched_node;
 	f->status = FIBER_STATUS_RUNNABLE_IDLE;
 	__current_fiber_set(f);
 
 	io_init();
 	io_a2(IO_SET_CALLBACK, (uintptr_t)__iocb);
+}
+
+static void
+__fiber_entry(void *arg)
+{
+	fiber_t f = __current_fiber;
+	f->entry(arg);
+
+	__io_save();
+	f->status = FIBER_STATUS_ZOMBIE;
+	while (1)
+		fiber_schedule();
+}
+
+void
+fiber_init(fiber_t fiber, fiber_entry_f entry, void *arg, void *stack, size_t stack_size)
+{
+	fiber->status = FIBER_STATUS_RUNNABLE_WEAK;
+	fiber->entry = entry;
+	context_fill(&fiber->ctx, __fiber_entry, arg, (uintptr_t)ARCH_STACKTOP(stack, stack_size));
+
+	int io = __io_save();
+	upriv_t p = __upriv;
+	
+	fiber->sched_node.next = &p->sched_node;
+	fiber->sched_node.prev = p->sched_node.prev;
+	fiber->sched_node.next->prev = &fiber->sched_node;
+	fiber->sched_node.prev->next = &fiber->sched_node;
+
+	__io_restore(io);
 }
 
 void

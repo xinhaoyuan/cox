@@ -12,14 +12,16 @@ static void print_tls(proc_t proc)
 {		
 	cprintf("tls        = 0x%016lx tls_u        = 0x%016lx\n",
 			proc->usr_thread->tls, proc->usr_thread->tls_u);
-	cprintf("iocb_busy  = 0x%016lx\n"
+	cprintf("iocb_busy  = 0x%016lx iocb_cap     = %d\n"
 			"iocb_head  = 0x%016lx iocb_tail    = 0x%016lx\n",
-			proc->usr_thread->iocb.busy, proc->usr_thread->iocb.head, proc->usr_thread->iocb.tail);
+			proc->usr_thread->iocb.busy, proc->usr_thread->iocb.cap,
+			proc->usr_thread->iocb.head, proc->usr_thread->iocb.tail);
 	cprintf("iocb_entry = 0x%016lx ioce_head    = 0x%016lx\n",
 			proc->usr_thread->iocb.entry, proc->usr_thread->ioce.head);
 	cprintf("iocb_stack = 0x%016lx iocb_stack_u = 0x%016lx\n",
 			proc->usr_thread->iocb.stack, proc->usr_thread->iocb.stack_u);
 }
+
 int
 user_proc_load(void *bin, size_t bin_size)
 {
