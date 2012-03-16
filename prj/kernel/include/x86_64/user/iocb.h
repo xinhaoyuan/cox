@@ -1,5 +1,5 @@
-#ifndef __USER_IOCB_H__
-#define __USER_IOCB_H__
+#ifndef __USER_ARCH_IOCB_H__
+#define __USER_ARCH_IOCB_H__
 
 #ifndef __KERN__
 

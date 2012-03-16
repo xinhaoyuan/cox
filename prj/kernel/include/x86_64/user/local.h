@@ -1,5 +1,5 @@
-#ifndef __ARCH_LOCAL_H__
-#define __ARCH_LOCAL_H__
+#ifndef __USER_ARCH_LOCAL_H__
+#define __USER_ARCH_LOCAL_H__
 
 #include <types.h>
 

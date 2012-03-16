@@ -1,6 +1,8 @@
 #include <string.h>
 #include <lib/low_io.h>
-#include "runtime.h"
+#include "runtime/local.h"
+#include "runtime/fiber.h"
+#include "runtime/io.h"
 
 static char f1stack[4096];
 static fiber_s f1;

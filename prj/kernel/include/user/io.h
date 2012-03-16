@@ -1,5 +1,5 @@
-#ifndef __IO_H__
-#define __IO_H__
+#ifndef __USER_IO_H__
+#define __USER_IO_H__
 
 #include <cpu.h>
 #include <types.h>

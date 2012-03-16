@@ -1,5 +1,5 @@
-#ifndef __ARCH_SYSCALL__
-#define __ARCH_SYSCALL__
+#ifndef __USER_ARCH_SYSCALL__
+#define __USER_ARCH_SYSCALL__
 
 #define T_SYSCALL               0x80
 
