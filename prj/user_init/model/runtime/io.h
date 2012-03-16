@@ -16,8 +16,13 @@ __io_save(void)
 inline static void
 __io_restore(int status)
 {
-	if (status == 0 && __iocb_busy)
-	{ __io_ubusy_set(0); __iocb(NULL); }
+	if (status == 0)
+	{
+		__io_ubusy_set(0);
+		if (__iocb_busy)
+			__iocb(NULL);
+	}
+	else __io_ubusy_set(1);
 }
 
 #define IO(v ...) ((uintptr_t[]){v})

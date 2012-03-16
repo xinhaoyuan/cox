@@ -3,28 +3,52 @@
 #include "io.h"
 #include "fiber.h"
 
+inline static iobuf_index_t ioce_alloc_unsafe(void);
+inline static void ioce_advance_unsafe(void);
+inline static void ioce_free_unsafe(iobuf_index_t idx);
+
 void
 __iocb(void *ret)
 {
 	if (!__io_ubusy)
 	{
 		__io_ubusy_set(1);
+		ips_node_t ips;
+		fiber_t fiber;
+		io_call_entry_t entry = __ioce_head;
+		iobuf_index_t i = __iocb_head;
+		iobuf_index_t ce;
+		upriv_t p = __upriv;
+		while (i != __iocb_tail)
+		{
+			ce    = __iocb_entry[i];
+			ips   = (ips_node_t)entry[ce].ce.data[IO_ARGS_COUNT - 1];
+			fiber = IPS_NODE_PTR(ips);
+			
+			IPS_NODE_WAIT_CLEAR(ips);
+			if (fiber != NULL) fiber_notify(fiber);
+			
+			ioce_free_unsafe(ce);
+			semaphore_release(&p->io_sem);
+			
+			i = (i + 1) % __iocb_cap;
+		}
+
 		__iocb_head_set(__iocb_tail);
+		
 		__io_ubusy_set(0);
+
+		if (ret != NULL) __iocb_busy_set(2);
+		else __iocb_busy_set(0);
 	}
 	
 	if (ret != NULL)
-	{
-		TLS_SET(TLS_IOCB_BUSY, 2);
 		iocb_return(ret);
-	}
-	else TLS_SET(TLS_IOCB_BUSY, 0);
 }
 
 inline static iobuf_index_t
 ioce_alloc_unsafe(void)
 {
-	int io = __io_save();
 	io_call_entry_t entry = __ioce_head;
 	iobuf_index_t idx = entry->head.tail;
 
@@ -37,7 +61,6 @@ ioce_alloc_unsafe(void)
 		if (entry[idx].ce.next == idx)
 			entry[idx].ce.next = 0;
 	}
-	__io_restore(io);
 	
 	return idx;
 }
@@ -71,50 +94,6 @@ ioce_free_unsafe(iobuf_index_t idx)
 	}
 }
 
-inline static int
-io_a1(uintptr_t arg0)
-{
-	int io = __io_save();
-	io_call_entry_t entry = __ioce_head;
-	io_call_entry_t ce = entry + ioce_alloc_unsafe();
-
-	if (ce == entry) {
-		__io_restore(io);
-		return -1;
-	}
-
-	ce->ce.data[0] = arg0;
-	ce->ce.status = IO_CALL_STATUS_WAIT;
-
-	ioce_advance_unsafe();
-
-	__io_restore(io);
-	return 0;
-}
-
-inline static int
-io_a2(uintptr_t arg0, uintptr_t arg1)
-{
-	int io = __io_save();
-	io_call_entry_t entry = __ioce_head;
-	io_call_entry_t ce = entry + ioce_alloc_unsafe();
-
-	if (ce == entry) {
-		__io_restore(io);
-		return -1;
-	}
-
-	ce->ce.data[0] = arg0;
-	ce->ce.data[1] = arg1;
-	ce->ce.status = IO_CALL_STATUS_WAIT;
-
-	ioce_advance_unsafe();
-
-	__io_restore(io);
-	return 0;
-}
-
-
 void
 io_init(void)
 {
@@ -132,6 +111,8 @@ io_init(void)
 
 	entry->head.tail = 1;
 	entry->head.head = 1;
+
+	__io_ubusy_set(0);
 
 	io_b(NULL, 2, IO(IO_SET_CALLBACK, (uintptr_t)__iocb));
 }
@@ -165,6 +146,10 @@ io_b(ips_node_t node, int argc, uintptr_t args[])
 	memmove(ce->ce.data, args, sizeof(uintptr_t) * argc);
 	ce->ce.data[IO_ARGS_COUNT - 1] = (uintptr_t)node;
 	ce->ce.status = IO_CALL_STATUS_WAIT;
+
+	IPS_NODE_WAIT_SET(node);
+	IPS_NODE_AC_WAIT_SET(node);
+	IPS_NODE_PTR_SET(node, __current_fiber);
 
 	ioce_advance_unsafe();
 
