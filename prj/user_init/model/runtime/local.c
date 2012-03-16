@@ -20,11 +20,10 @@ thread_init(tls_t tls)
 	}
 
 	upriv_t p = __upriv;
-	semaphore_init(&p->io_sem, __ioce_cap);
-	
 	fiber_t f = &p->idle_fiber;
 	p->sched_node.next = p->sched_node.prev = &p->sched_node;
 	f->status = FIBER_STATUS_RUNNABLE_IDLE;
+	f->io = 0;
 	__current_fiber_set(f);
 
 	io_init();	

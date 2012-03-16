@@ -16,17 +16,20 @@ __iocb(void *ret)
 		ips_node_t ips;
 		fiber_t fiber;
 		io_call_entry_t entry = __ioce_head;
-		iobuf_index_t i = __iocb_head;
+		iobuf_index_t i = __iocb_head, tail = __iocb_tail;
 		iobuf_index_t ce;
 		upriv_t p = __upriv;
-		while (i != __iocb_tail)
+		while (i != tail)
 		{
 			ce    = __iocb_entry[i];
 			ips   = (ips_node_t)entry[ce].ce.data[IO_ARGS_COUNT - 1];
-			fiber = IPS_NODE_PTR(ips);
 			
-			IPS_NODE_WAIT_CLEAR(ips);
-			if (fiber != NULL) fiber_notify(fiber);
+			if (ips)
+			{
+				fiber = IPS_NODE_PTR(ips);
+				IPS_NODE_WAIT_CLEAR(ips);
+				if (fiber != NULL) fiber_notify(fiber);
+			}
 			
 			ioce_free_unsafe(ce);
 			semaphore_release(&p->io_sem);
@@ -34,7 +37,7 @@ __iocb(void *ret)
 			i = (i + 1) % __iocb_cap;
 		}
 
-		__iocb_head_set(__iocb_tail);
+		__iocb_head_set(tail);
 		
 		__io_ubusy_set(0);
 
@@ -81,7 +84,7 @@ ioce_free_unsafe(iobuf_index_t idx)
 	{
 		entry[idx].ce.next = idx;
 		entry[idx].ce.prev = idx;
-
+		entry->head.head = idx;
 		entry->head.tail = idx;
 	}
 	else
@@ -112,6 +115,7 @@ io_init(void)
 	entry->head.tail = 1;
 	entry->head.head = 1;
 
+	semaphore_init(&__upriv->io_sem, __ioce_cap - 1);
 	__io_ubusy_set(0);
 
 	io_b(NULL, 2, IO(IO_SET_CALLBACK, (uintptr_t)__iocb));
@@ -126,19 +130,16 @@ io_b(ips_node_t node, int argc, uintptr_t args[])
 		return -1;
 	}
 
-	if (node == NULL)
+	int io = __io_save();
+	ips_node_s __node;
+	upriv_t p = __upriv;
+	if (semaphore_acquire(&p->io_sem, &__node))
 	{
-		ips_node_s __node;
-		io_b(&__node, argc, args);
+		__io_ubusy_set(0);
 		ips_wait(&__node);
-		return 0;
+		__io_ubusy_set(1);
 	}
 
-	int io = __io_save();
-
-	upriv_t p = __upriv;
-	if (semaphore_acquire(&p->io_sem, node))
-		ips_wait(node);
 	
 	io_call_entry_t entry = __ioce_head;
 	io_call_entry_t ce = entry + ioce_alloc_unsafe();
@@ -147,9 +148,12 @@ io_b(ips_node_t node, int argc, uintptr_t args[])
 	ce->ce.data[IO_ARGS_COUNT - 1] = (uintptr_t)node;
 	ce->ce.status = IO_CALL_STATUS_WAIT;
 
-	IPS_NODE_WAIT_SET(node);
-	IPS_NODE_AC_WAIT_SET(node);
-	IPS_NODE_PTR_SET(node, __current_fiber);
+	if (node)
+	{
+		IPS_NODE_WAIT_SET(node);
+		IPS_NODE_AC_WAIT_SET(node);
+		IPS_NODE_PTR_SET(node, __current_fiber);
+	}
 
 	ioce_advance_unsafe();
 

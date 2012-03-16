@@ -19,6 +19,7 @@ struct fiber_s
 	context_s    ctx;
 	fiber_entry_f entry;
 	sched_node_s sched_node;
+	int io;
 	int status;
 };
 

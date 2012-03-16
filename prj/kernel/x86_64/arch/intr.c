@@ -151,6 +151,12 @@ trap_dispatch(struct trapframe *tf)
 	else if (tf->tf_trapno == T_SYSCALL)
 	{
 		/* Kick to kernel, nothing to do (maybe sleep?) */
+
+		/* additional debug calls */
+		if (tf->tf_regs.reg_rax == 1)
+		{
+			low_io_putc(tf->tf_regs.reg_rbx);
+		}
 	}
 
 	if (from_user)

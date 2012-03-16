@@ -131,6 +131,7 @@ void
 user_process_io(proc_t proc)
 {
 	io_call_entry_t head = proc->usr_thread->ioce.head;
+	iobuf_index_t next;
 	while (head->head.head != 0 &&
 		   head->head.head != head->head.tail)
 	{
@@ -141,7 +142,9 @@ user_process_io(proc_t proc)
 		
 		io_process(proc, head + head->head.head, head->head.head);
 		
-		head->head.head = head[head->head.head].ce.next;
+		next = head[head->head.head].ce.next;
+		if (next != 0) head->head.head = next;
+		else break;
 	}
 }
 
@@ -184,7 +187,7 @@ iocb_push(proc_t proc, iobuf_index_t idx)
 {
 	*proc->usr_thread->iocb.tail %= proc->usr_thread->iocb.cap;
 	proc->usr_thread->iocb.entry[*proc->usr_thread->iocb.tail] = idx;
-	(*proc->usr_thread->iocb.tail) ++;
+	(*proc->usr_thread->iocb.tail) = ((*proc->usr_thread->iocb.tail) + 1) % proc->usr_thread->iocb.cap;
 }
 
 static void

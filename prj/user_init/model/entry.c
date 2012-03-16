@@ -1,5 +1,6 @@
 #include <string.h>
 #include <lib/low_io.h>
+#include <user/syscall.h>
 #include "runtime/local.h"
 #include "runtime/fiber.h"
 #include "runtime/io.h"
@@ -18,8 +19,7 @@ void
 entry(tls_t __tls)
 {
 	thread_init(__tls);
-	low_io_putc = debug_putchar;
-	
+	low_io_putc = __io_debug_putchar;
 	fiber_init(&f1, fiber1, (void *)0x12345678, f1stack, 4096);
 
 	while (1)

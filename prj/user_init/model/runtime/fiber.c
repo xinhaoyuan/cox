@@ -6,6 +6,12 @@
 #include "fiber.h"
 #include "io.h"
 
+static inline void
+__post_schedule(fiber_t f)
+{
+	__io_restore(f->io);
+}
+
 void
 fiber_schedule(void)
 {
@@ -13,6 +19,8 @@ fiber_schedule(void)
 
 	upriv_t p = __upriv;
 	fiber_t f = __current_fiber;
+
+	f->io = io;
 
 	if (f->status == FIBER_STATUS_RUNNABLE_WEAK ||
 		f->status == FIBER_STATUS_RUNNABLE_STRONG)
@@ -35,19 +43,22 @@ fiber_schedule(void)
 
 	fiber_t n = CONTAINER_OF(next, fiber_s, sched_node);
 
-	__current_fiber_set(n);
 	if (n != f)
+	{
+		__current_fiber_set(n);
 		context_switch(&f->ctx, &n->ctx);
+	}
 
 	/* XXX migrate? */
 	
-	__io_restore(io);
+	__post_schedule(f);
 }
 
 static void
 __fiber_entry(void *arg)
 {
 	fiber_t f = __current_fiber;
+	__post_schedule(f);
 	f->entry(arg);
 
 	__io_save();
@@ -71,6 +82,7 @@ fiber_init(fiber_t fiber, fiber_entry_f entry, void *arg, void *stack, size_t st
 	fiber->sched_node.prev = p->sched_node.prev;
 	fiber->sched_node.next->prev = &fiber->sched_node;
 	fiber->sched_node.prev->next = &fiber->sched_node;
+	fiber->io = 0;
 
 	__io_restore(io);
 }

@@ -4,7 +4,7 @@
 #include <cpu.h>
 #include <types.h>
 
-#define IO_ARGS_COUNT 4
+#define IO_ARGS_COUNT 240
 
 typedef unsigned int iobuf_index_t;
 
