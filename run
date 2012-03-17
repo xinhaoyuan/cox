@@ -1,21 +1,25 @@
 #!/bin/sh
 
+term=urxvt
+qemu=qemu-system-x86_64
 smp=4
 mem=512m
 
 if [ "$1" = "gdb" ]; then
-	
-	qemu-system-x86_64 -smp $smp -m $mem \
+	$qemu -smp $smp -m $mem \
 	-hda obj/bootimage \
 	-serial file:obj/serial.log \
 	-vga std -s -S &
 	ucore-mp64-gdb
-	
 elif [ "$1" = "console" ]; then
-	
-	qemu-system-x86_64 -smp $smp -m $mem \
+	$qemu -smp $smp -m $mem \
 	-hda obj/bootimage \
 	-serial file:obj/serial.log \
 	-vga std -S -monitor stdio
-	
+elif [ "$1" = "3w" ]; then
+	$term -e $qemu -smp $smp -m $mem \
+	-hda obj/bootimage \
+	-serial file:obj/serial.log \
+	-vga std -monitor stdio -s -S &
+	ucore-mp64-gdb
 fi

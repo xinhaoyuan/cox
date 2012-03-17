@@ -43,6 +43,12 @@ stat: all
 	${V}./loc.sh
 
 run: all
+	${V}./run console
+
+run-gdb: all
 	${V}./run gdb
+
+run-3w: all
+	${V}./run 3w
 
 endif
