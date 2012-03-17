@@ -1,7 +1,7 @@
 #include <string.h>
 #include <user/arch/iocb.h>
-#include "io.h"
-#include "fiber.h"
+#include <runtime/io.h>
+#include <runtime/fiber.h>
 
 inline static iobuf_index_t ioce_alloc_unsafe(void);
 inline static void ioce_advance_unsafe(void);

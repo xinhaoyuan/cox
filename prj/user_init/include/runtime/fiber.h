@@ -2,7 +2,7 @@
 #define __FIBER_H__
 
 #include <arch/context.h>
-#include "sync.h"
+#include <runtime/sync.h>
 
 struct sched_node_s
 {

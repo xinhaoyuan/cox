@@ -1,7 +1,7 @@
-#include "local.h"
-#include "io.h"
-#include "fiber.h"
-#include "sync.h"
+#include <runtime/local.h>
+#include <runtime/io.h>
+#include <runtime/fiber.h>
+#include <runtime/sync.h>
 
 struct upriv_s init_upriv;
 

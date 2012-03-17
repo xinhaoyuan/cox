@@ -1,8 +1,8 @@
 #ifndef __IO_H__
 #define __IO_H__
 
-#include "sync.h"
-#include "local.h"
+#include <runtime/sync.h>
+#include <runtime/local.h>
 
 void __iocb(void *ret);
 

@@ -21,6 +21,8 @@ all: ${TARGET}
 ${T_OBJ}:
 	@mkdir -p ${T_OBJ}
 
+# Process the prj dependency {{{
+
 LAYOUT_FILE := ${T_OBJ}/layout.mk
 
 layout: ${T_OBJ}
@@ -38,6 +40,10 @@ ${T_OBJ}/__ts_%: force
 	@PRJ=$* ${MAKE} -q -C prj/$* all || touch ${T_OBJ}/__ts_dep_$*
 	@test "(" -e $@ ")" -a "(" "!" "(" ${T_OBJ}/__ts_dep_$* -nt $@ ")" ")" || \
 		( ${PRINT} "MAKING $*:"; PRJ=$* ${MAKE} -C prj/$* all && touch $@ )
+
+# }}}
+
+# User defined actions
 
 stat: all
 	${V}./loc.sh

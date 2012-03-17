@@ -3,8 +3,8 @@
 #include <user/arch/syscall.h>
 #include <user/arch/memlayout.h>
 
-#include "fiber.h"
-#include "io.h"
+#include <runtime/fiber.h>
+#include <runtime/io.h>
 
 static inline void
 __post_schedule(fiber_t f)

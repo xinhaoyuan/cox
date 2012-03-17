@@ -1,6 +1,6 @@
-#include "sync.h"
-#include "fiber.h"
-#include "local.h"
+#include <runtime/sync.h>
+#include <runtime/fiber.h>
+#include <runtime/local.h>
 
 void
 ips_wait(ips_node_t node)

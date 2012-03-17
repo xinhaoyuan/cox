@@ -4,7 +4,7 @@
 #include <cpu.h>
 #include <types.h>
 
-#define IO_ARGS_COUNT 240
+#define IO_ARGS_COUNT 6
 
 typedef unsigned int iobuf_index_t;
 
@@ -41,12 +41,15 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_SET_CALLBACK     0x000
 #define IO_SET_TLS          0x001
 #define IO_CREATE_PROC      0x010
+#define   IO_PROC_CREATE_FLAG_SHARE  0x1
+#define   IO_PROC_CREATE_FLAG_DRIVER 0x2
 #define IO_EXIT             0x011
 #define IO_BRK              0x020
 /* DEBUG */
 #define IO_DEBUG_PUTCHAR    0x101
 #define IO_DEBUG_GETCHAR    0x102
 /* STD SOCKET API */
+/* All arguments should be same as standard interface */
 #define IO_SOCK_OPEN        0x200
 #define IO_SOCK_BIND        0x201
 #define IO_SOCK_LISTEN      0x202
