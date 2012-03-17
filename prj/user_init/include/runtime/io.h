@@ -1,7 +1,6 @@
 #ifndef __IO_H__
 #define __IO_H__
 
-#include <runtime/sync.h>
 #include <runtime/local.h>
 
 void __iocb(void *ret);
@@ -50,7 +49,7 @@ typedef io_data_s *io_data_t;
 #define IO_MODE_SYNC   1
 #define IO_MODE_ASYNC  2
 
-#define IO_DATA_INITIALIZER(args ...) { .argc = sizeof((char[]){ args }), .io = { args } }
+#define IO_DATA_INITIALIZER(_retc_, args ...) { .retc = (_retc_), .argc = sizeof((char[]){ args }), .io = { args } }
 
 void io_init(void);
 int  io(io_data_t iod, int mode);

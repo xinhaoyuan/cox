@@ -120,7 +120,7 @@ io_init(void)
 	semaphore_init(&__upriv->io_sem, __ioce_cap - 1);
 	__io_ubusy_set(0);
 
-	io_data_s iocb_set = IO_DATA_INITIALIZER(IO_SET_CALLBACK, (uintptr_t)__iocb);
+	io_data_s iocb_set = IO_DATA_INITIALIZER(0, IO_SET_CALLBACK, (uintptr_t)__iocb);
 	io(&iocb_set, IO_MODE_SYNC);
 }
 
