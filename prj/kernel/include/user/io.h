@@ -5,6 +5,7 @@
 #include <types.h>
 
 #define IO_ARGS_COUNT 6
+#define IO_ARG_UD     (IO_ARGS_COUNT - 1)
 
 typedef unsigned int iobuf_index_t;
 

@@ -13,7 +13,7 @@ __iocb(void *ret)
 	if (!__io_ubusy)
 	{
 		__io_ubusy_set(1);
-		ips_node_t ips;
+		io_data_t iod;
 		fiber_t fiber;
 		io_call_entry_t entry = __ioce_head;
 		iobuf_index_t i = __iocb_head, tail = __iocb_tail;
@@ -22,12 +22,14 @@ __iocb(void *ret)
 		while (i != tail)
 		{
 			ce    = __iocb_entry[i];
-			ips   = (ips_node_t)entry[ce].ce.data[IO_ARGS_COUNT - 1];
+			iod   = (io_data_t)entry[ce].ce.data[IO_ARGS_COUNT - 1];
 			
-			if (ips)
+			if (iod)
 			{
-				fiber = IPS_NODE_PTR(ips);
-				IPS_NODE_WAIT_CLEAR(ips);
+				fiber = (fiber_t)IO_DATA_PTR(iod);
+				memmove(iod->io, entry[ce].ce.data, sizeof(uintptr_t) * iod->retc);
+				
+				IO_DATA_WAIT_CLEAR(iod);
 				if (fiber != NULL) fiber_notify(fiber);
 			}
 			
@@ -118,18 +120,13 @@ io_init(void)
 	semaphore_init(&__upriv->io_sem, __ioce_cap - 1);
 	__io_ubusy_set(0);
 
-	io_b(NULL, 2, IO(IO_SET_CALLBACK, (uintptr_t)__iocb));
+	io_data_s iocb_set = IO_DATA_INITIALIZER(IO_SET_CALLBACK, (uintptr_t)__iocb);
+	io(&iocb_set, IO_MODE_SYNC);
 }
 
 int
-io_b(ips_node_t node, int argc, uintptr_t args[])
+io(io_data_t iod, int mode)
 {
-	if (argc >= IO_ARGS_COUNT - 1)
-	{
-		/* too many args */
-		return -1;
-	}
-
 	int io = __io_save();
 	ips_node_s __node;
 	upriv_t p = __upriv;
@@ -143,27 +140,25 @@ io_b(ips_node_t node, int argc, uintptr_t args[])
 	
 	io_call_entry_t entry = __ioce_head;
 	io_call_entry_t ce = entry + ioce_alloc_unsafe();
-	
-	memmove(ce->ce.data, args, sizeof(uintptr_t) * argc);
-	ce->ce.data[IO_ARGS_COUNT - 1] = (uintptr_t)node;
+
+	memmove(ce->ce.data, iod->io, sizeof(uintptr_t) * iod->argc);
 	ce->ce.status = IO_CALL_STATUS_WAIT;
-
-	if (node)
+	if (mode != IO_MODE_NO_RET)
 	{
-		IPS_NODE_WAIT_SET(node);
-		IPS_NODE_AC_WAIT_SET(node);
-		IPS_NODE_PTR_SET(node, __current_fiber);
+		ce->ce.data[IO_ARG_UD] = (uintptr_t)iod;
+		IO_DATA_WAIT_SET(iod);
+		IO_DATA_PTR_SET(iod, __current_fiber);
 	}
-
+	else ce->ce.data[IO_ARG_UD] = 0;
 	ioce_advance_unsafe();
 
 	__io_restore(io);
 
+	if (mode == IO_MODE_SYNC)
+	{
+		while (IO_DATA_WAIT(iod))
+			fiber_wait_try();
+	}
+	
 	return 0;
-}
-
-void
-debug_putchar(int ch)
-{
-	io_b(NULL, 2, IO(IO_DEBUG_PUTCHAR, ch));
 }

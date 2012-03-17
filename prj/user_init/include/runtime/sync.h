@@ -4,7 +4,7 @@
 #include <types.h>
 #include <spinlock.h>
 
-/* Assume that the event pointer is 4-aligned */
+/* Assume that the pointer is 4-aligned */
 /* NEAR-STANDARD SYNC INTERFACE */
 struct ips_node_s;
 typedef volatile struct ips_node_s ips_node_s;

@@ -25,11 +25,34 @@ __io_restore(int status)
 	else __io_ubusy_set(1);
 }
 
-#define IO(v ...) ((uintptr_t[]){v})
+#define IO_DATA_PTR(iod)           ((void *)((iod)->data & ~(uintptr_t)3))
+#define IO_DATA_PTR_SET(iod, ptr)  ((iod)->data = ((iod)->data & 3) | ((uintptr_t)(ptr) & ~(uintptr_t)3))
+#define IO_DATA_WAIT(iod)          ((iod)->data & 1)
+#define IO_DATA_WAIT_SET(iod)      do { (iod)->data |= 1; } while (0)
+#define IO_DATA_WAIT_CLEAR(iod)    do { (iod)->data &= ~(uintptr_t)1; } while (0)
+
+struct io_data_s
+{
+	struct
+	{
+		short int argc;
+		short int retc;
+	} __attribute__((packed));
+
+	uintptr_t data;
+	uintptr_t io[IO_ARGS_COUNT];
+};
+
+typedef struct io_data_s io_data_s;
+typedef io_data_s *io_data_t;
+
+#define IO_MODE_NO_RET 0
+#define IO_MODE_SYNC   1
+#define IO_MODE_ASYNC  2
+
+#define IO_DATA_INITIALIZER(args ...) { .argc = sizeof((char[]){ args }), .io = { args } }
 
 void io_init(void);
-int  io_b(ips_node_t node, int argc, uintptr_t args[]);
-
-void debug_putchar(int ch);
+int  io(io_data_t iod, int mode);
 
 #endif

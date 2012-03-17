@@ -142,9 +142,7 @@ user_process_io(proc_t proc)
 		
 		io_process(proc, head + head->head.head, head->head.head);
 		
-		next = head[head->head.head].ce.next;
-		if (next != 0) head->head.head = next;
-		else break;
+		head->head.head = head[head->head.head].ce.next;
 	}
 }
 
