@@ -3,9 +3,9 @@
 
 #include <types.h>
 #include <cpu.h>
-#include <user/syscall.h>
 #include <arch/mmu.h>
 #include <arch/irq.h>
+#include <user/arch/syscall.h>
 
 /* Trap Numbers */
 #define T_IPI                   0x81

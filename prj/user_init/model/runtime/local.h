@@ -3,7 +3,7 @@
 
 #include <types.h>
 #include <user/tls.h>
-#include <user/local.h>
+#include <user/arch/local.h>
 
 struct fiber_s;
 struct upriv_s;

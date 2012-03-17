@@ -1,6 +1,6 @@
 #include <string.h>
 #include <lib/low_io.h>
-#include <user/syscall.h>
+#include <user/arch/syscall.h>
 #include "runtime/local.h"
 #include "runtime/fiber.h"
 #include "runtime/io.h"

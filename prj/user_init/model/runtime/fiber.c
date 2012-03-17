@@ -1,7 +1,7 @@
 #include <string.h>
-#include <user/memlayout.h>
 #include <user/io.h>
-#include <user/syscall.h>
+#include <user/arch/syscall.h>
+#include <user/arch/memlayout.h>
 
 #include "fiber.h"
 #include "io.h"
