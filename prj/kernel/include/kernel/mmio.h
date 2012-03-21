@@ -1,5 +1,5 @@
-#ifndef __MMIO_H__
-#define __MMIO_H__
+#ifndef __KERN_MMIO_H__
+#define __KERN_MMIO_H__
 
 #include <types.h>
 

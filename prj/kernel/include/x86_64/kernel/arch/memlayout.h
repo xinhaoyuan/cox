@@ -74,6 +74,10 @@
 #define KVBASE              0xFFFFE00000000000
 #define KVSIZE              0x0000000080000000
 
+#define UMMIO_BASE          0x0000000000000000
+#define UMMIO_SIZE          0x0000000040000000
+#define USTART              0x0000000040000000
+
 #ifndef __ASSEMBLER__
 
 #define ARCH_STACKTOP(base, size) ((void *)((uintptr_t)(base) + (size)))

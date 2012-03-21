@@ -19,6 +19,8 @@ struct user_mm_arch_s
 {
 	uintptr_t cr3;
 	pgd_t *pgdir;
+
+	void *mmio_root;
 };
 
 typedef struct user_mm_arch_s  user_mm_arch_s;

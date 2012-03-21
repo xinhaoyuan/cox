@@ -7,7 +7,7 @@ ENTRY(__entry)
 
 SECTIONS {
     /* Load programs at this address: "." means the current address */
-    . = 0x0000000001000000;
+    . = 0x0000000040000000;
 
 	PROVIDE(start = .);
 
