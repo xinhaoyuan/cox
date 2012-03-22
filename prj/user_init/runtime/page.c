@@ -167,7 +167,7 @@ brk(void *end)
 
 static void area_update_inv(area_node_t area);
 
-#include <lib/rbt_algo.h>
+#include <algo/rbt_algo.h>
 
 static void
 area_update_inv(area_node_t node)

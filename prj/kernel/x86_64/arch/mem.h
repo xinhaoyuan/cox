@@ -2,7 +2,7 @@
 #define __KERN_ARCH_MEM_H__
 
 #include <types.h>
-#include <arch/mmu.h>
+#include <mmu.h>
 #include <arch/memlayout.h>
 
 extern struct pseudodesc gdt_pd;

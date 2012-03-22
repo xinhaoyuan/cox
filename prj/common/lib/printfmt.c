@@ -1,7 +1,7 @@
 #include <types.h>
+#include <error.h>
 #include <string.h>
-
-#include <lib/printfmt.h>
+#include "printfmt.h"
 
 #define do_div(n, base) ({								\
             uint64_t __mod, __base = (uint64_t)base;	\
@@ -10,7 +10,6 @@
             __mod;										\
         })
 
-#if 0
 /* *
  * Space or zero padding and a field width are supported for the numeric
  * formats only.
@@ -31,7 +30,6 @@ static const char * const error_string[MAXERROR + 1] = {
     [E_FAULT]               "segmentation fault",
 };
 
-#endif
 /* *
  * printnum - print a number (base <= 16) in reverse order
  * @putch:      specified putch function, print a single character
@@ -124,7 +122,7 @@ printfmt(void (*putch)(int, void*), void *putdat, const char *fmt, ...) {
 void
 vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap) {
     register const char *p;
-    register int ch;// err;
+    register int ch, err;
     unsigned long long num;
     int base, width, precision, lflag, altflag;
 
@@ -192,7 +190,7 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap) 
         case 'c':
             putch(va_arg(ap, int), putdat);
             break;
-#if 0
+
         // error message
         case 'e':
             err = va_arg(ap, int);
@@ -206,7 +204,7 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap) 
                 printfmt(putch, putdat, "%s", p);
             }
             break;
-#endif
+
         // string
         case 's':
             if ((p = va_arg(ap, char *)) == NULL) {
@@ -337,7 +335,7 @@ int
 vsnprintf(char *str, size_t size, const char *fmt, va_list ap) {
     struct sprintbuf b = {str, str + size - 1, 0};
     if (str == NULL || b.buf > b.ebuf) {
-        return -1; //-E_INVAL;
+        return -E_INVAL;
     }
     // print the string to the buffer
     vprintfmt((void*)sprintputch, &b, fmt, ap);

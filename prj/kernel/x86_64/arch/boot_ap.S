@@ -1,4 +1,4 @@
-#include <arch/mmu.h>
+#include <mmu.h>
 #include <arch/memlayout.h>
 
 #include "boot_ap.S.h"

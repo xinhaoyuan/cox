@@ -2,11 +2,9 @@
 #include <error.h>
 #include <types.h>
 #include <cpu.h>
-
 #include <lib/low_io.h>
-
 #include <arch/memlayout.h>
-#include <arch/mmu.h>
+#include <mmu.h>
 
 #include "sysconf_x86.h"
 #include "ioapic.h"

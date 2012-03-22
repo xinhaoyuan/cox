@@ -4,7 +4,7 @@
 #include <malloc.h>
 #include <page.h>
 #include <lib/low_io.h>
-#include <arch/mmu.h>
+#include <mmu.h>
 #include <arch/memlayout.h>
 
 #include "x86emu/include/x86emu.h"

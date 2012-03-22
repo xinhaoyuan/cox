@@ -4,7 +4,7 @@
 #include <user/io.h>
 #include <proc.h>
 #include <arch/memlayout.h>
-#include <arch/mmu.h>
+#include <mmu.h>
 
 struct user_thread_arch_s
 {

@@ -1,4 +1,4 @@
-#include <arch/mmu.h>
+#include <mmu.h>
 #include <arch/memlayout.h>
 
 .text

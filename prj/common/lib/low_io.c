@@ -1,5 +1,5 @@
-#include <lib/low_io.h>
-#include <lib/printfmt.h>
+#include "low_io.h"
+#include "printfmt.h"
 
 void (*low_io_putc)(int ch);
 int  (*low_io_getc)(void);

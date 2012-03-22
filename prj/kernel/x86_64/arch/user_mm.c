@@ -182,7 +182,7 @@ typedef user_area_node_s *user_area_node_t;
 
 static void user_area_update_inv(user_area_node_t area);
 
-#include <lib/rbt_algo.h>
+#include <algo/rbt_algo.h>
 
 static void
 user_area_update_inv(user_area_node_t node)

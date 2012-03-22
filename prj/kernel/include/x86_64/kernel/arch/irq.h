@@ -2,7 +2,7 @@
 #define __KERN_ARCH_IRQ_H__
 
 #include <cpu.h>
-#include <arch/mmu.h>
+#include <mmu.h>
 
 #define IRQ_COUNT               32
 

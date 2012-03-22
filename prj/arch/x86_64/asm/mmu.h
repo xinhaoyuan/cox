@@ -1,5 +1,7 @@
-#ifndef __KERN_ARCH_MMU_H__
-#define __KERN_ARCH_MMU_H__
+#ifndef __ARCH_ASM_MMU_H__
+#define __ARCH_ASM_MMU_H__
+
+#include <mach.h>
 
 /* Eflags register */
 #define FL_CF           0x00000001          // Carry Flag
@@ -231,8 +233,8 @@ struct taskstate {
 /* page directory and page table constants */
 #define NPGENTRY        512                             // #entries per page directory
 
-#define PGSIZE          4096                            // bytes mapped by a page
-#define PGSHIFT         12                              // log2(PGSIZE)
+#define PGSIZE          __PGSIZE                        // bytes mapped by a page
+#define PGSHIFT         __PGSHIFT                       // log2(PGSIZE)
 
 #define PTSIZE         (1LLU * NPGENTRY * PGSIZE)       // bytes mapped by a pmd entry
 #define PMSIZE         (1LLU * NPGENTRY * PTSIZE)       // bytes mapped by a pud entry

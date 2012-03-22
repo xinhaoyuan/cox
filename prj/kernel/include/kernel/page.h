@@ -22,7 +22,7 @@ extern page_t pages;
 #define PAGE_REGION_HEAD(page) ({ page_t p = (page); p->region & 1 ? pages + (p->region & ~1) : p; })
 #define PAGE_REGION_SIZE(page) ({ page_t p = (page); p->region & 1 ? (pages[(p->region & ~1)]->region >> 1) : (p->region >> 1); })
 #ifndef PAGE_ARCH_MAP
-#include <arch/mmu.h>
+#include <mmu.h>
 #define PHYS_TO_PAGE(addr) ({ size_t idx = (addr) >> PGSHIFT; idx < pages_count ? pages + idx : NULL; })
 #define PAGE_TO_PHYS(page) ({ size_t idx = (page) - pages; \
 			if (idx >= pages_count) { panic("PAGE_TO_PHYS out of range"); } \

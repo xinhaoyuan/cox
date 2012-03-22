@@ -2,7 +2,7 @@
 #include <spinlock.h>
 #include <irq.h>
 #include <lib/buddy.h>
-#include <arch/mmu.h>
+#include <mmu.h>
 #include <arch/memlayout.h>
 
 static struct buddy_context_s buddy;

@@ -6,7 +6,7 @@
 #include <string.h>
 #include <arch/cc.h>
 #include <arch/sys_arch.h>
-#include <arch/mmu.h>
+#include <mmu.h>
 #include <arch/memlayout.h>
 #include <lwip/sys.h>
 #include <lwip/err.h>

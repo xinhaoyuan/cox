@@ -10,7 +10,7 @@ extern void __context_deadend(void);
 #if __TEST
 
 #include <arch/mem.h>
-#include <arch/mmu.h>
+#include <mmu.h>
 
 context_s ca, cb;
 

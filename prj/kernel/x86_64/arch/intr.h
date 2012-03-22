@@ -3,7 +3,7 @@
 
 #include <types.h>
 #include <cpu.h>
-#include <arch/mmu.h>
+#include <mmu.h>
 #include <arch/irq.h>
 #include <user/arch/syscall.h>
 

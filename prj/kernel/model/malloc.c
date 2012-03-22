@@ -5,7 +5,7 @@
 #include <malloc.h>
 #include <spinlock.h>
 #include <arch/memlayout.h>
-#include <arch/mmu.h>
+#include <mmu.h>
 
 #define EKL_META_SIZE 8
 #define EKL_MIN_ALLOC 8

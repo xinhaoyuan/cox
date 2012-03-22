@@ -32,9 +32,7 @@ entry(tls_t __tls)
 {
 	thread_init(__tls);
 	low_io_putc = __debug_putc;
-	/* fiber_init(&f1, fiber1, (void *)0x12345678, f1stack, 4096); */
-
-	pci_init();
+	fiber_init(&f1, fiber1, (void *)0x12345678, f1stack, 4096);
 
 	while (1)
 		fiber_schedule();

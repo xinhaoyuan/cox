@@ -1,4 +1,4 @@
-#include <lib/low_io.h>
+#include "low_io.h"
 
 /* *
  * readline - get a line from stdin

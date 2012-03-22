@@ -4,7 +4,7 @@
 
 #include <page.h>
 #include <lib/low_io.h>
-#include <arch/mmu.h>
+#include <mmu.h>
 #include <arch/memlayout.h>
 #include <arch/local.h>
 
