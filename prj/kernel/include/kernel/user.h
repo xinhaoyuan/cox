@@ -64,8 +64,8 @@ int user_mm_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size);
 int user_mm_arch_init(user_mm_t mm, uintptr_t *start, uintptr_t *end);
 int user_mm_arch_copy_page(user_mm_t mm, uintptr_t addr, uintptr_t phys, int flag);
 int user_mm_arch_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size);
-int   user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size, uintptr_t *result);
-void  user_mm_arch_mmio_close(user_mm_t mm, uintptr_t addr);
+int user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size, uintptr_t *result);
+int user_mm_arch_mmio_close(user_mm_t mm, uintptr_t addr);
 
 void user_process_io(proc_t proc);
 void user_before_return(proc_t proc);

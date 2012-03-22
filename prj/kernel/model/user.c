@@ -193,6 +193,21 @@ user_set_tls(uintptr_t tls)
 	/* XXX */
 }
 
+void
+user_save_context(proc_t proc)
+{ user_arch_save_context(proc); }
+
+void
+user_restore_context(proc_t proc)
+{ user_arch_restore_context(proc); }
+
+/* USER IO PROCESS ============================================ */
+
+static inline int do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result) __attribute__((always_inline));
+static inline int do_io_phys_free(proc_t proc, uintptr_t physaddr) __attribute__((always_inline));
+static inline int do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result) __attribute__((always_inline));
+static inline int do_io_mmio_close(proc_t proc, uintptr_t addr) __attribute__((always_inline));
+
 static void
 io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 {
@@ -220,16 +235,23 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 		iocb_push(proc, idx);
 		break;
 
+	case IO_PHYS_ALLOC:
+		entry->ce.data[0] = do_io_phys_alloc(proc, entry->ce.data[1], entry->ce.data[2], &entry->ce.data[1]);
+		iocb_push(proc, idx);
+		break;
+		
+	case IO_PHYS_FREE:
+		entry->ce.data[0] = do_io_phys_free(proc, entry->ce.data[1]);
+		iocb_push(proc, idx);
+		break;
+		
 	case IO_MMIO_OPEN:
-		/* XXX */
-		entry->ce.data[0] = user_mm_arch_mmio_open(proc->usr_mm, entry->ce.data[1], entry->ce.data[2], &entry->ce.data[1]);
+		entry->ce.data[0] = do_io_mmio_open(proc, entry->ce.data[1], entry->ce.data[2], &entry->ce.data[1]);
 		iocb_push(proc, idx);
 		break;
 
 	case IO_MMIO_CLOSE:
-		/* XXX */
-		user_mm_arch_mmio_close(proc->usr_mm, entry->ce.data[1]);
-		entry->ce.data[0] = 0;
+		entry->ce.data[0] = do_io_mmio_close(proc, entry->ce.data[1]);
 		iocb_push(proc, idx);
 		break;
 
@@ -237,10 +259,26 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 	}
 }
 
-void
-user_save_context(proc_t proc)
-{ user_arch_save_context(proc); }
+static inline int
+do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result)
+{
+	return -1;
+}
 
-void
-user_restore_context(proc_t proc)
-{ user_arch_restore_context(proc); }
+static inline int
+do_io_phys_free(proc_t proc, uintptr_t physaddr)
+{
+	return -1;
+}
+
+static inline int
+do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result)
+{
+	return user_mm_arch_mmio_open(proc->usr_mm, physaddr, size, result);
+}
+
+static inline int
+do_io_mmio_close(proc_t proc, uintptr_t addr)
+{
+	return user_mm_arch_mmio_close(proc->usr_mm, addr);
+}

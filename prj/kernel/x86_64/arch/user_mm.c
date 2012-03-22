@@ -295,7 +295,7 @@ user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size, uintptr_t *res
 	return 0;
 }
 
-void
+int
 user_mm_arch_mmio_close(user_mm_t mm, uintptr_t addr)
 {
 	user_area_node_t node = mm->arch.mmio_root;
@@ -311,7 +311,7 @@ user_mm_arch_mmio_close(user_mm_t mm, uintptr_t addr)
 		else node = node->right;
 	}
 
-	if (node == NULL || node->area.start != start) return;
+	if (node == NULL || node->area.start != start) return -1;
 
 	/* Ummap job */
 	size_t i;
@@ -325,4 +325,6 @@ user_mm_arch_mmio_close(user_mm_t mm, uintptr_t addr)
 	
 	mm->arch.mmio_root = __RBT_Remove(node, &node, start);
 	kfree(node);
+
+	return 0;
 }
