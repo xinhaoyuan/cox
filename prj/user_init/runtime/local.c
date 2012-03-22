@@ -16,6 +16,7 @@ thread_init(tls_t tls)
 
 	if (__thread_arg == 0)
 	{
+		/* Init thread of a process */
 		__upriv_set(&init_upriv);
 	}
 

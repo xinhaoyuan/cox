@@ -2,6 +2,7 @@
 #include <error.h>
 #include <proc.h>
 #include <user.h>
+#include <page.h>
 #include <arch/irq.h>
 #include <lib/low_io.h>
 
@@ -262,13 +263,24 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 static inline int
 do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result)
 {
-	return -1;
+	if (size == 0 || (size & (PGSIZE - 1))) return -1;
+	size >>= PGSHIFT;
+
+	page_t p = page_alloc_atomic(size);
+	*result = PAGE_TO_PHYS(p);
+
+	return 0;
 }
 
 static inline int
 do_io_phys_free(proc_t proc, uintptr_t physaddr)
 {
-	return -1;
+	page_t p = PHYS_TO_PAGE(physaddr);
+	if (p == NULL) return -1;
+
+	page_free_atomic(p);
+
+	return 0;
 }
 
 static inline int

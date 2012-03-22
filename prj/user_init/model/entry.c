@@ -4,6 +4,7 @@
 #include <runtime/local.h>
 #include <runtime/fiber.h>
 #include <runtime/io.h>
+#include <driver/pci/pci.h>
 
 static char f1stack[4096];
 static fiber_s f1;
@@ -31,7 +32,9 @@ entry(tls_t __tls)
 {
 	thread_init(__tls);
 	low_io_putc = __debug_putc;
-	fiber_init(&f1, fiber1, (void *)0x12345678, f1stack, 4096);
+	/* fiber_init(&f1, fiber1, (void *)0x12345678, f1stack, 4096); */
+
+	pci_init();
 
 	while (1)
 		fiber_schedule();

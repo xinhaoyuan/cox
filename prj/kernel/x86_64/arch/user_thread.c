@@ -119,7 +119,9 @@ user_thread_arch_jump(void)
 		tf.tf_ss = GD_UDATA | 3;
 		tf.tf_ds = GD_UDATA | 3;
 		tf.tf_es = GD_UDATA | 3;
-		tf.tf_rflags = FL_IF;
+		tf.tf_rflags = FL_IF ;
+		/* XXX: for test driver node */
+		tf.tf_rflags |= FL_IOPL_3;
 		tf.tf_rip = proc->usr_thread->arch.init_entry;
 		tf.tf_regs.reg_rdi = proc->usr_thread->tls_u;
 		__user_jump(&tf);
