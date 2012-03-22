@@ -70,6 +70,10 @@
 #error  __RBT_AcquireParentAndDir(n,p,d) not defined
 #endif
 
+#ifndef __RBT_SetRoot
+#error  __RBT_SetRoot(n) not defined
+#endif
+
 #ifndef __RBT_GetLeftChild
 #error  __RBT_GetLeftChild(n) not defined
 #endif
@@ -154,6 +158,7 @@ __RBT_RedFixUp(__RBT_NodeType *root, __RBT_NodeType node)
 			   if (__RBT_GetRank(node) < 0)
 					__RBT_SetRank(node, -__RBT_GetRank(node) + 1);
 			   *root = node;
+			   __RBT_SetRoot(node);
 			   return 0;
 			   break;
 			   
@@ -346,6 +351,7 @@ __RBT_BlackFixUp(__RBT_NodeType *root, __RBT_NodeType parent, int dir)
 			   if (__RBT_GetRank(node) < 0)
 					__RBT_SetRank(node, -__RBT_GetRank(node) + 1);
 			   *root = node;
+			   __RBT_SetRoot(node);
 			   return 0;
 			   break;
 			   
@@ -642,8 +648,10 @@ __RBT_Remove(__RBT_NodeType root, __RBT_NodeType *node, __RBT_KeyType key)
 		  return root;
 
 	 __RBT_NodeType cur = root;
-	 __RBT_NodeType parent = __RBT_NodeNull;
-	 int dir = DIR_UNDEFINED;
+	 __RBT_NodeType parent;
+	 int dir;
+
+	 __RBT_AcquireParentAndDir(cur, parent, dir);
 	 while (1)
 	 {
 		  int cmp = __RBT_CompareKey(key, cur);

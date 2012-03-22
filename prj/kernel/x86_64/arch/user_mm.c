@@ -166,6 +166,7 @@ typedef user_area_node_s *user_area_node_t;
 		  (d) = (p) == __RBT_NodeNull ? DIR_ROOT :			\
 			   ((p)->left == (n) ? DIR_LEFT : DIR_RIGHT);	\
 	 }
+#define __RBT_SetRoot(n) do { n->parent = NULL; } while (0)
 #define __RBT_GetLeftChild(n)    ((n)->left)
 #define __RBT_GetRightChild(n)   ((n)->right)
 #define __RBT_SetLeftChild(n,c)  do { (n)->left = (c); if ((c) != __RBT_NodeNull) (c)->parent = (n); user_area_update_inv(n); } while (0)
@@ -207,11 +208,11 @@ user_area_update_inv(user_area_node_t node)
 	else node->end = node->area.end;
 }
 
-void *
-user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size)
+int
+user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size, uintptr_t *result)
 {
 	user_area_node_t node = mm->arch.mmio_root;
-	size <<= PGSHIFT;
+	size >>= PGSHIFT;
 
 	user_area_node_t n = NULL;
    
@@ -235,7 +236,7 @@ user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size)
 			n->area.start = node->end;
 			n->area.end   = n->area.start + size;
 		}
-		else return NULL;
+		else return -1;
 	}
 
 	while (n == NULL)
@@ -273,21 +274,22 @@ user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size)
 		}
 
 		/* should not happen */
-		return NULL;
+		return -1;
 	}
 
 	/* Map job */
 	
 	mm->arch.mmio_root = __RBT_Insert(node, n);
 
-	return (void *)(n->area.start << PGSHIFT);
+	*result = (n->area.start << PGSHIFT);
+	return 0;
 }
 
 void
-user_mm_arch_mmio_close(user_mm_t mm, void *addr)
+user_mm_arch_mmio_close(user_mm_t mm, uintptr_t addr)
 {
 	user_area_node_t node = mm->arch.mmio_root;
-	size_t start = (size_t)addr >> PGSHIFT;
+	size_t start = addr >> PGSHIFT;
 	
 	while (1)
 	{
