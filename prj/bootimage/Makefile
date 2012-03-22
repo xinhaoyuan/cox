@@ -14,7 +14,7 @@ T_CC_BASE_FLAGS  := -I${ARCH}
 T_CC_OPT_FLAGS   := -Os
 T_CC_DEBUG_FLAGS := -Wall -ggdb
 
-SRCFILES := $(shell find ${ARCH} '(' '!' -regex '.*/_.*' ')' -and '(' -iname "*.c" -or -iname "*.S" ')' | sed -e 's!\./!!g')
+SRCFILES := $(shell find ${ARCH} '(' '!' -regex '.*/_.*' ')' -and '(' -iname "*.c" -or -iname "*.S" ')' | sed -e 's!^\./!!g')
 
 include ${T_BASE}/utl/template.mk
 
