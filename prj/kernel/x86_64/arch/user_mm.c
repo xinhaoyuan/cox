@@ -211,6 +211,8 @@ user_area_update_inv(user_area_node_t node)
 int
 user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size, uintptr_t *result)
 {
+	if (addr & (PGSIZE - 1)) return -1;
+	if ((size & (PGSIZE - 1)) || size == 0) return -1;
 	user_area_node_t node = mm->arch.mmio_root;
 	size >>= PGSHIFT;
 
@@ -277,7 +279,15 @@ user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size, uintptr_t *res
 		return -1;
 	}
 
-	/* Map job */
+	/* map job */
+	size_t i;
+	for (i = n->area.start; i < n->area.end; ++ i)
+	{
+		uintptr_t la = i << PGSHIFT;
+		pte_t *pte = get_pte(mm->arch.pgdir, la, 1);
+		/* FIXME: process no mem */
+		*pte = (addr + ((i - n->area.start) << PGSHIFT)) | PTE_W | PTE_U | PTE_P;
+	}
 	
 	mm->arch.mmio_root = __RBT_Insert(node, n);
 
@@ -304,6 +314,15 @@ user_mm_arch_mmio_close(user_mm_t mm, uintptr_t addr)
 	if (node == NULL || node->area.start != start) return;
 
 	/* Ummap job */
+	size_t i;
+	for (i = node->area.start; i < node->area.end; ++ i)
+	{
+		uintptr_t la = i << PGSHIFT;
+		pte_t *pte = get_pte(mm->arch.pgdir, la, 0);
+		/* FIXME: process no mem */
+		*pte = 0;
+	}
 	
 	mm->arch.mmio_root = __RBT_Remove(node, &node, start);
+	kfree(node);
 }

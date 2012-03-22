@@ -131,7 +131,6 @@ void
 user_process_io(proc_t proc)
 {
 	io_call_entry_t head = proc->usr_thread->ioce.head;
-	iobuf_index_t next;
 	while (head->head.head != 0 &&
 		   head->head.head != head->head.tail)
 	{
@@ -218,6 +217,19 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 
 	case IO_DEBUG_GETCHAR:
 		entry->ce.data[1] = cgetchar();
+		iocb_push(proc, idx);
+		break;
+
+	case IO_MMIO_OPEN:
+		/* XXX */
+		entry->ce.data[0] = user_mm_arch_mmio_open(proc->usr_mm, entry->ce.data[1], entry->ce.data[2], &entry->ce.data[1]);
+		iocb_push(proc, idx);
+		break;
+
+	case IO_MMIO_CLOSE:
+		/* XXX */
+		user_mm_arch_mmio_close(proc->usr_mm, entry->ce.data[1]);
+		entry->ce.data[0] = 0;
 		iocb_push(proc, idx);
 		break;
 

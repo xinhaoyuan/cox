@@ -11,7 +11,18 @@ static fiber_s f1;
 static void
 fiber1(void *arg)
 {
-	cprintf("Hello world from fiber 1, arg = %016lx\n", arg);
+	io_data_s mmio = IO_DATA_INITIALIZER(2, IO_MMIO_OPEN, 0xB8000, 0x1000);
+	io(&mmio, IO_MODE_SYNC);
+	cprintf("%d %016lx\n", mmio.io[0], mmio.io[1]);
+	short int *buf = (void *)mmio.io[1];
+	memset(buf, 0, 0x1000);
+
+	int i;
+	for (i = 0; i < 18; i ++)
+	{
+		buf[i] = "I have control! :)"[i] | 0x0700;
+	}
+	
 	while (1) ;
 }
 
