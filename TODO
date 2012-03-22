@@ -1,0 +1,15 @@
+- user memory management stack
+   
+  - io call: brk
+   
+  - user space slab 
+
+- io call: irq listen
+
+- user space driver
+
+  - base benchmark
+  
+  - k/u NIC
+
+  - e1000 from minix
