@@ -38,6 +38,7 @@ typedef struct user_thread_s  user_thread_s;
 typedef struct user_thread_s *user_thread_t;
 
 void user_thread_jump(void) __attribute__((noreturn));
+
 /* filled by arch */
 int user_thread_arch_push_iocb(void);
 int user_thread_arch_init(proc_t proc, uintptr_t entry);
@@ -59,6 +60,7 @@ typedef struct user_mm_s *user_mm_t;
 
 int user_mm_copy_page(user_mm_t mm, uintptr_t addr, uintptr_t phys, int flag);
 int user_mm_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size);
+int user_mm_brk(user_mm_t mm, uintptr_t end);
 
 /* filled by arch */
 int user_mm_arch_init(user_mm_t mm, uintptr_t *start, uintptr_t *end);
@@ -66,6 +68,7 @@ int user_mm_arch_copy_page(user_mm_t mm, uintptr_t addr, uintptr_t phys, int fla
 int user_mm_arch_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size);
 int user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size, uintptr_t *result);
 int user_mm_arch_mmio_close(user_mm_t mm, uintptr_t addr);
+int user_mm_arch_brk(user_mm_t mm, uintptr_t end);
 
 void user_process_io(proc_t proc);
 void user_before_return(proc_t proc);

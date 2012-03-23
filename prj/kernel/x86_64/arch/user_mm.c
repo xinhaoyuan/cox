@@ -108,6 +108,13 @@ user_arch_restore_context(proc_t proc)
 	__lcr3(proc->usr_mm->arch.cr3);
 }
 
+int
+user_mm_arch_brk(user_mm_t mm, uintptr_t end)
+{
+	/* XXX */
+	return 0;
+}
+
 /* USER MMIO */
 
 struct user_area_s

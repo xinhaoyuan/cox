@@ -123,7 +123,10 @@ user_thread_arch_jump(void)
 		/* XXX: for test driver node */
 		tf.tf_rflags |= FL_IOPL_3;
 		tf.tf_rip = proc->usr_thread->arch.init_entry;
+		/* pass tls, start, end to user init */
 		tf.tf_regs.reg_rdi = proc->usr_thread->tls_u;
+		tf.tf_regs.reg_rsi = proc->usr_mm->start;
+		tf.tf_regs.reg_rdx = proc->usr_mm->end;
 		__user_jump(&tf);
 	}
 }

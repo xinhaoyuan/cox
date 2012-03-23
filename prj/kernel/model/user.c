@@ -117,6 +117,16 @@ user_mm_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size)
 	return user_mm_arch_copy(mm, addr, src, size);
 }
 
+int
+user_mm_brk(user_mm_t mm, uintptr_t end)
+{
+	if (end < mm->start) return -E_INVAL;
+	int ret = user_mm_arch_brk(mm, end);
+	if (ret == 0)
+		mm->end = end;
+	return ret;
+}
+
 void
 user_thread_jump(void)
 {
@@ -208,6 +218,7 @@ static inline int do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_
 static inline int do_io_phys_free(proc_t proc, uintptr_t physaddr) __attribute__((always_inline));
 static inline int do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result) __attribute__((always_inline));
 static inline int do_io_mmio_close(proc_t proc, uintptr_t addr) __attribute__((always_inline));
+static inline int do_io_brk(proc_t proc, uintptr_t end) __attribute__((always_inline));
 
 static void
 io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
@@ -256,6 +267,9 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 		iocb_push(proc, idx);
 		break;
 
+	case IO_BRK:
+		entry->ce.data[0] = do_io_brk(proc, entry->ce.data[1]);
+
 	default: break;
 	}
 }
@@ -293,4 +307,10 @@ static inline int
 do_io_mmio_close(proc_t proc, uintptr_t addr)
 {
 	return user_mm_arch_mmio_close(proc->usr_mm, addr);
+}
+
+static inline int
+do_io_brk(proc_t proc, uintptr_t end)
+{
+	return user_mm_brk(proc->usr_mm, end);
 }

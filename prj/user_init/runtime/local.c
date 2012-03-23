@@ -2,11 +2,15 @@
 #include <runtime/io.h>
 #include <runtime/fiber.h>
 #include <runtime/sync.h>
+#include <lib/low_io.h>
+#include <user/arch/syscall.h>
 
 struct upriv_s init_upriv;
 
+void entry(void);
+
 void
-thread_init(tls_t tls)
+__init(tls_t tls, uintptr_t start, uintptr_t end)
 {
 	tls_s __tls = *tls;
 	__ioce_head_set(__tls.info.ioce.head);
@@ -27,5 +31,8 @@ thread_init(tls_t tls)
 	f->io = 0;
 	__current_fiber_set(f);
 
-	io_init();	
+	io_init();
+	
+	low_io_putc = __debug_putc;
+	entry();
 }

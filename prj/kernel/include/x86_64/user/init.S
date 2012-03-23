@@ -1,15 +1,15 @@
 .text
 		.quad start
-		.quad __entry
+		.quad __init_entry
 		.quad edata
 		.quad end
 
-.globl __entry
+.globl __init_entry
 
-__entry:
+__init_entry:
 		movq $0, %rbp
 		movq $init_stack, %rsp
-		call entry
+		call __init
 
 .bss
 		.space 4096
