@@ -1,7 +1,5 @@
 - user memory management stack
    
-  - io call: brk
-   
   - user space slab 
 
 - io call: irq listen

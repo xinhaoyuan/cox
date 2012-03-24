@@ -123,6 +123,12 @@ int
 brk(void *end)
 {
 	uintptr_t end_pa = ((uintptr_t)end + __PGSIZE - 1) & ~(uintptr_t)(__PGSIZE - 1);
+	if (end_pa == __end)
+	{
+		__fend = (uintptr_t)end;
+		return 0;
+	}
+	
 	io_data_s io_brk = IO_DATA_INITIALIZER(1, IO_BRK, end_pa);
 	io(&io_brk, IO_MODE_SYNC);
 	if (io_brk.io[0] == 0)
