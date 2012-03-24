@@ -3,7 +3,9 @@
 #include <runtime/local.h>
 #include <runtime/fiber.h>
 #include <runtime/io.h>
+#include <runtime/page.h>
 #include <driver/pci/pci.h>
+#include <mach.h>
 
 static char f1stack[4096];
 static fiber_s f1;
@@ -29,6 +31,9 @@ fiber1(void *arg)
 void
 entry(void)
 {
+	char *buf = palloc(1);
+	memset(buf, 0, __PGSIZE);
+	
 	fiber_init(&f1, fiber1, (void *)0x12345678, f1stack, 4096);
 
 	while (1)

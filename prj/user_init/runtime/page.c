@@ -1,4 +1,5 @@
 #include <runtime/page.h>
+#include <runtime/io.h>
 #include <mach.h>
 
 struct area_s
@@ -63,8 +64,11 @@ palloc(size_t num)
 		area_node_t nodes = __palloc(num);
 		if (nodes == NULL)
 		{
-			/* maybe to brk? */
-			return NULL;
+			if (sbrk(__PGSIZE * num) == NULL) return NULL;
+			nodes = __palloc(num);
+
+			/* should not happen */
+			if (nodes == NULL) return NULL;
 		}
 		int i;
 		for (i = 0; i < (num << __PGSHIFT) / sizeof(area_node_s); ++ i)
@@ -75,7 +79,13 @@ palloc(size_t num)
 		free_head = nodes;
 	}
 
-	return __palloc(num);
+	void *result = __palloc(num);
+	if (result == NULL)
+	{
+		if (sbrk(__PGSIZE * num) != NULL)
+			result = __palloc(num);
+	}
+	return result;
 }
 
 void
@@ -112,17 +122,15 @@ sbrk(size_t amount)
 int
 brk(void *end)
 {
-	if ((uintptr_t)end > __end)
+	uintptr_t end_pa = ((uintptr_t)end + __PGSIZE - 1) & ~(uintptr_t)(__PGSIZE - 1);
+	io_data_s io_brk = IO_DATA_INITIALIZER(1, IO_BRK, end_pa);
+	io(&io_brk, IO_MODE_SYNC);
+	if (io_brk.io[0] == 0)
 	{
-		/* enlarge */
+		__fend = (uintptr_t)end;
+		__end  = end_pa;
 	}
-	else if ((uintptr_t)end <= __end - __PGSIZE)
-	{
-		/* shrink */
-	}
-
-	__fend = (uintptr_t)end;
-	return 0;
+	return io_brk.io[0];
 }
 
 /* ALLOCATOR ================================================== */
@@ -217,7 +225,7 @@ __palloc(size_t num)
 			n->area.start = 0;
 			n->area.end   = num;
 		}
-		else if (((__end - __start) >> __PGSHIFT) - node->end >= num)
+		else if (((__fend - __start) >> __PGSHIFT) - node->end >= num)
 		{
 			n = __area_node_new();
 			n->area.start = node->end;

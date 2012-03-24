@@ -120,6 +120,8 @@ user_mm_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size)
 int
 user_mm_brk(user_mm_t mm, uintptr_t end)
 {
+	cprintf("BRK: %016lx\n", end);
+	
 	if (end <= mm->start) return -E_INVAL;
 	if (end & (PGSIZE - 1)) return -E_INVAL;
 	int ret = user_mm_arch_brk(mm, end);
@@ -238,6 +240,16 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 		iocb_push(proc, idx);
 		break;
 
+	case IO_BRK:
+		entry->ce.data[0] = do_io_brk(proc, entry->ce.data[1]);
+		iocb_push(proc, idx);
+		break;
+
+	case IO_EXIT:
+		/* XXX */
+		iocb_push(proc, idx);
+		break;
+
 	case IO_DEBUG_PUTCHAR:
 		cputchar(entry->ce.data[1]);
 		iocb_push(proc, idx);
@@ -267,9 +279,6 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 		entry->ce.data[0] = do_io_mmio_close(proc, entry->ce.data[1]);
 		iocb_push(proc, idx);
 		break;
-
-	case IO_BRK:
-		entry->ce.data[0] = do_io_brk(proc, entry->ce.data[1]);
 
 	default: break;
 	}
