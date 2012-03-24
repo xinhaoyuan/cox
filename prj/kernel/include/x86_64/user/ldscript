@@ -3,13 +3,13 @@
 
 OUTPUT_FORMAT("elf64-x86-64", "elf64-x86-64", "elf64-x86-64")
 OUTPUT_ARCH(i386:x86-64)
-ENTRY(__entry)
+ENTRY(__init_entry)
 
 SECTIONS {
     /* Load programs at this address: "." means the current address */
     . = 0x0000000040000000;
 
-	PROVIDE(start = .);
+	PROVIDE(__bin_start = .);
 
     .init : {
         *init.S.o*(.text .rodata .data)
@@ -34,14 +34,14 @@ SECTIONS {
 
 	. = ALIGN(0x1000);
 
-    PROVIDE(edata = .);
+    PROVIDE(__bin_edata = .);
 
     .bss : {
         *(.bss)
     }
 
 	. = ALIGN(0x1000);
-    PROVIDE(end = .);
+    PROVIDE(__bin_end = .);
 
     /DISCARD/ : {
         *(.eh_frame .note.GNU-stack .comment)

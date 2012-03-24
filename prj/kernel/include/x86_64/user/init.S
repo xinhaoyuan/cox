@@ -1,8 +1,8 @@
 .text
-		.quad start
+		.quad __bin_start
 		.quad __init_entry
-		.quad edata
-		.quad end
+		.quad __bin_edata
+		.quad __bin_end
 
 .globl __init_entry
 

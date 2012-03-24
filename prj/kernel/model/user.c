@@ -120,7 +120,8 @@ user_mm_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size)
 int
 user_mm_brk(user_mm_t mm, uintptr_t end)
 {
-	if (end < mm->start) return -E_INVAL;
+	if (end <= mm->start) return -E_INVAL;
+	if (end & (PGSIZE - 1)) return -E_INVAL;
 	int ret = user_mm_arch_brk(mm, end);
 	if (ret == 0)
 		mm->end = end;

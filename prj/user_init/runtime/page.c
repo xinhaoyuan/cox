@@ -84,6 +84,8 @@ pfree(void *addr)
 	__pfree(addr);
 }
 
+#include <lib/low_io.h>
+
 void
 page_init(void *start, void *end)
 {

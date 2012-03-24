@@ -2,8 +2,11 @@
 #include <runtime/io.h>
 #include <runtime/fiber.h>
 #include <runtime/sync.h>
+#include <runtime/page.h>
 #include <lib/low_io.h>
 #include <user/arch/syscall.h>
+#include <user/init.h>
+#include <mach.h>
 
 struct upriv_s init_upriv;
 
@@ -12,6 +15,8 @@ void entry(void);
 void
 __init(tls_t tls, uintptr_t start, uintptr_t end)
 {
+	low_io_putc = __debug_putc;
+	
 	tls_s __tls = *tls;
 	__ioce_head_set(__tls.info.ioce.head);
 	__ioce_cap_set(__tls.info.ioce.cap);
@@ -21,6 +26,10 @@ __init(tls_t tls, uintptr_t start, uintptr_t end)
 	if (__thread_arg == 0)
 	{
 		/* Init thread of a process */
+		page_init((void *)(start + (__bin_end - __bin_start)), (void *)end);
+		size_t tls_pages = (end - (start + (__bin_end - __bin_start))) >> __PGSHIFT;
+		/* XXX: use a dummy palloc to occupy the tls space in heap */
+		(void)palloc(tls_pages);
 		__upriv_set(&init_upriv);
 	}
 
@@ -32,7 +41,5 @@ __init(tls_t tls, uintptr_t start, uintptr_t end)
 	__current_fiber_set(f);
 
 	io_init();
-	
-	low_io_putc = __debug_putc;
 	entry();
 }

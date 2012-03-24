@@ -111,7 +111,30 @@ user_arch_restore_context(proc_t proc)
 int
 user_mm_arch_brk(user_mm_t mm, uintptr_t end)
 {
-	/* XXX */
+	if (end > mm->end)
+	{
+		/* enlarge */
+		uintptr_t cur = mm->end;
+		while (cur != end)
+		{
+			user_mm_arch_copy_page(mm, cur, 0, 0);
+			cur += PGSIZE;
+		}
+	}
+	else if (end < mm->end)
+	{
+		/* compact */
+		uintptr_t cur = end;
+		while (cur != mm->end)
+		{
+			pte_t *pte = get_pte(mm->arch.pgdir, cur, 0);
+			/* XXX: to consider swap mach? */
+			if (pte != NULL && (*pte & PTE_P))
+				page_free_atomic(PHYS_TO_PAGE(PTE_ADDR(*pte)));
+			cur += PGSIZE;
+		}
+	}
+	
 	return 0;
 }
 
