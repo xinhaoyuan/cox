@@ -10,7 +10,6 @@
 #include "e1000_reg.h"
 #include "e1000_pci.h"
 
-#include "glue_inc.h"
 #include "glue_before.h"
 
 PRIVATE u16_t pcitab_e1000[] =
@@ -376,8 +375,6 @@ PRIVATE int e1000_probe(e1000_t *e, int skip)
     return TRUE;
 }
 
-#if 0
-
 /*===========================================================================*
  *				e1000_init_hw				     *
  *===========================================================================*/
@@ -388,6 +385,8 @@ e1000_t *e;
 
     e->status  |= E1000_ENABLED;
     e->irq_hook = e->irq;
+
+#if 0
 
     /*
      * Set the interrupt handler and policy. Do not automatically
@@ -401,6 +400,9 @@ e1000_t *e;
     {
 	panic("sys_irqenable failed: %d", r);
     }
+
+#endif
+	
     /* Reset hardware. */
     e1000_reset_hw(e);
 
@@ -454,7 +456,7 @@ e1000_t *e;
     u16_t word;
     int i;
     long v;
-
+#if 0
     /*
      * Do we have a user defined ethernet address?
      */
@@ -467,6 +469,7 @@ e1000_t *e;
 	else
     	    e->address.ea_addr[i]= v;
     }
+#endif
     /*
      * If that fails, read Ethernet Address from EEPROM.
      */
@@ -601,6 +604,8 @@ e1000_t *e;
     /* Wait one microsecond. */
     tickdelay(1);
 }
+
+#if 0
 
 /*===========================================================================*
  *				e1000_writev_s				     *

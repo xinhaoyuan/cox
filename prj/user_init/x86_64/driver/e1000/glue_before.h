@@ -36,3 +36,9 @@ inline static void tickdelay(int ticks) { }
 			io(&mmio, IO_MODE_SYNC);									\
 			mmio.io[0] == 0 ? mmio.io[1] : (void *)-1;					\
 		})
+
+#define AC_ALIGN4K 0
+typedef uintptr_t phys_bytes;
+
+inline static void *alloc_contig(size_t size, size_t align, uintptr_t *phys) __attribute__((always_inline));
+inline static void *alloc_contig(size_t size, size_t align, uintptr_t *phys) { return NULL; }

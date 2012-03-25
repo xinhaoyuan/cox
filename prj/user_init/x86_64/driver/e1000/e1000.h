@@ -18,6 +18,7 @@
 #ifndef __E1000_H
 #define __E1000_H
 
+#include "glue_inc.h"
 #include "e1000_hw.h"
 
 /**
@@ -141,9 +142,7 @@ typedef struct e1000
     u8_t *regs;		  	  /**< Memory mapped hardware registers. */
     u8_t *flash;		  /**< Optional flash memory. */
     u32_t flash_base_addr;	  /**< Flash base address. */
-#if 0
     ether_addr_t address;	  /**< Ethernet MAC address. */
-#endif
     u16_t (*eeprom_read)(void *, int reg); /**< Function to read  
                                                 the EEPROM. */
     int eeprom_done_bit;	  /**< Offset of the EERD.DONE bit. */    
