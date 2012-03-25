@@ -39,8 +39,8 @@ meanings are:
 [1] - entry, indicate the entry code address, where the start
 unchanged (same for [2], [3]).
 
-[2] - edata, indicate the end of data address that should copied from
-the binary.
+[2] - edata, indicate the end of data address that should be copied
+from the binary.
 
 [3] - end, indicate the end address of user process, containing the
 uninitialized data.
