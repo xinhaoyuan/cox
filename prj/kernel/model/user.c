@@ -7,7 +7,7 @@
 #include <lib/low_io.h>
 
 static void io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx);
-static int user_mm_init(user_mm_t mm, uintptr_t *start, uintptr_t *end);
+static int user_proc_init(user_proc_t mm, uintptr_t *start, uintptr_t *end);
 static int user_thread_init(proc_t proc, uintptr_t entry);
 static void print_tls(proc_t proc)
 {		
@@ -36,7 +36,7 @@ user_proc_load(void *bin, size_t bin_size)
 
 	proc_t proc = current;
 
-	if ((proc->usr_mm = kmalloc(sizeof(user_mm_s))) == NULL) return -E_NO_MEM;
+	if ((proc->usr_mm = kmalloc(sizeof(user_proc_s))) == NULL) return -E_NO_MEM;
 	if ((proc->usr_thread = kmalloc(sizeof(user_thread_s))) == NULL) return -E_NO_MEM;
 
 	uintptr_t __start = start;
@@ -44,7 +44,7 @@ user_proc_load(void *bin, size_t bin_size)
 	uintptr_t __end   = end + 3 * PGSIZE;
 
 	int ret;
-	if ((ret = user_mm_init(proc->usr_mm, &__start, &__end)) != 0) return ret;
+	if ((ret = user_proc_init(proc->usr_mm, &__start, &__end)) != 0) return ret;
 	if ((ret = user_thread_init(proc, entry + __start - start)) != 0) return ret;
 
 	uintptr_t now = start;
@@ -52,27 +52,27 @@ user_proc_load(void *bin, size_t bin_size)
 	{
 		if (now < edata)
 		{
-			if ((ret = user_mm_copy_page(proc->usr_mm, now + __start - start, 0, 0))) return ret;
+			if ((ret = user_proc_copy_page(proc->usr_mm, now + __start - start, 0, 0))) return ret;
 		}
 		else
 		{
 			/* XXX: on demand */
-			if ((ret = user_mm_copy_page(proc->usr_mm, now + __start - start, 0, 0))) return ret;
+			if ((ret = user_proc_copy_page(proc->usr_mm, now + __start - start, 0, 0))) return ret;
 		}
 		now += PGSIZE;
 	}
 	
 	/* copy the binary */
-	user_mm_copy(proc->usr_mm, __start, bin, bin_size);
+	user_proc_copy(proc->usr_mm, __start, bin, bin_size);
 	print_tls(proc);
 	return 0;
 }
 
 int
-user_mm_init(user_mm_t mm, uintptr_t *start, uintptr_t *end)
+user_proc_init(user_proc_t mm, uintptr_t *start, uintptr_t *end)
 {
 	int ret;
-	if ((ret = user_mm_arch_init(mm, start, end))) return ret;
+	if ((ret = user_proc_arch_init(mm, start, end))) return ret;
 
 	mm->start = *start;
 	mm->end =   *end;
@@ -90,9 +90,9 @@ user_thread_init(proc_t proc, uintptr_t entry)
 	t->tls_u = proc->usr_mm->end - 3 * PGSIZE;
 
 	/* touch the memory */
-	user_mm_arch_copy_page(proc->usr_mm, t->tls_u, 0, 0);
-   	user_mm_arch_copy_page(proc->usr_mm, t->tls_u + PGSIZE, 0, 0);
-	user_mm_arch_copy_page(proc->usr_mm, t->tls_u + PGSIZE * 2, 0, 0);
+	user_proc_arch_copy_page(proc->usr_mm, t->tls_u, 0, 0);
+   	user_proc_arch_copy_page(proc->usr_mm, t->tls_u + PGSIZE, 0, 0);
+	user_proc_arch_copy_page(proc->usr_mm, t->tls_u + PGSIZE * 2, 0, 0);
 	
 	t->iocb.stack_u = t->tls_u + t->user_size;
 	proc->usr_thread->iocb.callback_u = 0;
@@ -106,25 +106,25 @@ user_thread_init(proc_t proc, uintptr_t entry)
 }
 
 int
-user_mm_copy_page(user_mm_t mm, uintptr_t addr, uintptr_t phys, int flag)
+user_proc_copy_page(user_proc_t mm, uintptr_t addr, uintptr_t phys, int flag)
 {
-	return user_mm_arch_copy_page(mm, addr, phys, flag);
+	return user_proc_arch_copy_page(mm, addr, phys, flag);
 }
 
 int
-user_mm_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size)
+user_proc_copy(user_proc_t mm, uintptr_t addr, void *src, size_t size)
 {
-	return user_mm_arch_copy(mm, addr, src, size);
+	return user_proc_arch_copy(mm, addr, src, size);
 }
 
 int
-user_mm_brk(user_mm_t mm, uintptr_t end)
+user_proc_brk(user_proc_t mm, uintptr_t end)
 {
 	cprintf("BRK: %016lx\n", end);
 	
 	if (end <= mm->start) return -E_INVAL;
 	if (end & (PGSIZE - 1)) return -E_INVAL;
-	int ret = user_mm_arch_brk(mm, end);
+	int ret = user_proc_arch_brk(mm, end);
 	if (ret == 0)
 		mm->end = end;
 	return ret;
@@ -310,18 +310,18 @@ do_io_phys_free(proc_t proc, uintptr_t physaddr)
 static inline int
 do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result)
 {
-	int r = user_mm_arch_mmio_open(proc->usr_mm, physaddr, size, result);
+	int r = user_proc_arch_mmio_open(proc->usr_mm, physaddr, size, result);
 	return r;
 }
 
 static inline int
 do_io_mmio_close(proc_t proc, uintptr_t addr)
 {
-	return user_mm_arch_mmio_close(proc->usr_mm, addr);
+	return user_proc_arch_mmio_close(proc->usr_mm, addr);
 }
 
 static inline int
 do_io_brk(proc_t proc, uintptr_t end)
 {
-	return user_mm_brk(proc->usr_mm, end);
+	return user_proc_brk(proc->usr_mm, end);
 }

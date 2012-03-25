@@ -11,7 +11,7 @@
 #include "mem.h"
 
 int
-user_mm_arch_init(user_mm_t mm, uintptr_t *start, uintptr_t *end)
+user_proc_arch_init(user_proc_t mm, uintptr_t *start, uintptr_t *end)
 {
 	page_t pgdir_page = page_alloc_atomic(1);
 	if (pgdir_page == NULL) return -E_NO_MEM;
@@ -29,7 +29,7 @@ user_mm_arch_init(user_mm_t mm, uintptr_t *start, uintptr_t *end)
 }
 
 int
-user_mm_arch_copy_page(user_mm_t mm, uintptr_t addr, uintptr_t phys, int flag)
+user_proc_arch_copy_page(user_proc_t mm, uintptr_t addr, uintptr_t phys, int flag)
 {
 	pte_t *pte = get_pte(mm->arch.pgdir, addr, 1);
 	if (!(*pte & PTE_P))
@@ -49,7 +49,7 @@ user_mm_arch_copy_page(user_mm_t mm, uintptr_t addr, uintptr_t phys, int flag)
 }
 
 int
-user_mm_arch_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size)
+user_proc_arch_copy(user_proc_t mm, uintptr_t addr, void *src, size_t size)
 {
 	uintptr_t ptr = addr;
 	uintptr_t end = ptr + size;
@@ -109,7 +109,7 @@ user_arch_restore_context(proc_t proc)
 }
 
 int
-user_mm_arch_brk(user_mm_t mm, uintptr_t end)
+user_proc_arch_brk(user_proc_t mm, uintptr_t end)
 {
 	if (end > mm->end)
 	{
@@ -117,7 +117,7 @@ user_mm_arch_brk(user_mm_t mm, uintptr_t end)
 		uintptr_t cur = mm->end;
 		while (cur != end)
 		{
-			user_mm_arch_copy_page(mm, cur, 0, 0);
+			user_proc_arch_copy_page(mm, cur, 0, 0);
 			cur += PGSIZE;
 		}
 	}
@@ -239,7 +239,7 @@ user_area_update_inv(user_area_node_t node)
 }
 
 int
-user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size, uintptr_t *result)
+user_proc_arch_mmio_open(user_proc_t mm, uintptr_t addr, size_t size, uintptr_t *result)
 {
 	if (addr & (PGSIZE - 1)) return -1;
 	if ((size & (PGSIZE - 1)) || size == 0) return -1;
@@ -326,7 +326,7 @@ user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size, uintptr_t *res
 }
 
 int
-user_mm_arch_mmio_close(user_mm_t mm, uintptr_t addr)
+user_proc_arch_mmio_close(user_proc_t mm, uintptr_t addr)
 {
 	user_area_node_t node = mm->arch.mmio_root;
 	size_t start = (addr - UMMIO_BASE) >> PGSHIFT;

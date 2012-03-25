@@ -15,7 +15,7 @@ struct user_thread_arch_s
 typedef struct user_thread_arch_s  user_thread_arch_s;
 typedef struct user_thraad_arch_s *user_thread_arch_t;
 
-struct user_mm_arch_s
+struct user_proc_arch_s
 {
 	uintptr_t cr3;
 	pgd_t *pgdir;
@@ -23,7 +23,7 @@ struct user_mm_arch_s
 	void *mmio_root;
 };
 
-typedef struct user_mm_arch_s  user_mm_arch_s;
-typedef struct user_mm_arch_s *user_mm_arch_t;
+typedef struct user_proc_arch_s  user_proc_arch_s;
+typedef struct user_proc_arch_s *user_proc_arch_t;
 
 #endif

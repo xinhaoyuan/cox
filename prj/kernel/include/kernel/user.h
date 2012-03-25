@@ -45,30 +45,30 @@ int user_thread_arch_init(proc_t proc, uintptr_t entry);
 int user_thread_arch_in_cb_stack(void);
 void user_thread_arch_jump(void) __attribute__((noreturn));
 
-struct user_mm_s
+struct user_proc_s
 {
 	/* address range */
 	uintptr_t start;
 	uintptr_t end;
 
 	/* arch data */
-	user_mm_arch_s arch;
+	user_proc_arch_s arch;
 };
 
-typedef struct user_mm_s  user_mm_s;
-typedef struct user_mm_s *user_mm_t;
+typedef struct user_proc_s  user_proc_s;
+typedef struct user_proc_s *user_proc_t;
 
-int user_mm_copy_page(user_mm_t mm, uintptr_t addr, uintptr_t phys, int flag);
-int user_mm_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size);
-int user_mm_brk(user_mm_t mm, uintptr_t end);
+int user_proc_copy_page(user_proc_t mm, uintptr_t addr, uintptr_t phys, int flag);
+int user_proc_copy(user_proc_t mm, uintptr_t addr, void *src, size_t size);
+int user_proc_brk(user_proc_t mm, uintptr_t end);
 
 /* filled by arch */
-int user_mm_arch_init(user_mm_t mm, uintptr_t *start, uintptr_t *end);
-int user_mm_arch_copy_page(user_mm_t mm, uintptr_t addr, uintptr_t phys, int flag);
-int user_mm_arch_copy(user_mm_t mm, uintptr_t addr, void *src, size_t size);
-int user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size, uintptr_t *result);
-int user_mm_arch_mmio_close(user_mm_t mm, uintptr_t addr);
-int user_mm_arch_brk(user_mm_t mm, uintptr_t end);
+int user_proc_arch_init(user_proc_t mm, uintptr_t *start, uintptr_t *end);
+int user_proc_arch_copy_page(user_proc_t mm, uintptr_t addr, uintptr_t phys, int flag);
+int user_proc_arch_copy(user_proc_t mm, uintptr_t addr, void *src, size_t size);
+int user_proc_arch_mmio_open(user_proc_t mm, uintptr_t addr, size_t size, uintptr_t *result);
+int user_proc_arch_mmio_close(user_proc_t mm, uintptr_t addr);
+int user_proc_arch_brk(user_proc_t mm, uintptr_t end);
 
 void user_process_io(proc_t proc);
 void user_before_return(proc_t proc);

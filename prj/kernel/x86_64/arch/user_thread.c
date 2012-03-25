@@ -81,7 +81,7 @@ user_thread_arch_init(proc_t proc, uintptr_t entry)
 	tls.info.iocb.cap   = t->iocb.cap;
 	tls.info.iocb.entry = (void *)(t->tls_u + ((char *)t->iocb.entry - (char *)t->tls));
 	
-	user_mm_arch_copy(proc->usr_mm, t->tls_u, &tls, sizeof(tls));
+	user_proc_arch_copy(proc->usr_mm, t->tls_u, &tls, sizeof(tls));
 	return 0;
 }
 
