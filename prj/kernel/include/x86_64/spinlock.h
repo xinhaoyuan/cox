@@ -1,9 +1,8 @@
-#ifndef __KERN_ARCH_SPINLOCK_H__
-#define __KERN_ARCH_SPINLOCK_H__
+#ifndef __ARCH_SPINLOCK_H__
+#define __ARCH_SPINLOCK_H__
 
 #include <atom.h>
 #include <types.h>
-#include <lib/low_io.h>
 
 typedef volatile uint32_t spinlock_s;
 typedef spinlock_s *spinlock_t;
