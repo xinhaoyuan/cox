@@ -248,7 +248,7 @@ PRIVATE int e1000_probe(e1000_t *e, int skip)
     /*
      * Attempt to iterate the PCI bus. Start at the beginning.
      */
-    if ((r = pci_first_dev(&devind, &vid, &did)) == 0)
+    if ((r = pci_first_dev(&devind, &vid, &did)) != 0)
     {
 		return FALSE;
     }
@@ -275,7 +275,7 @@ PRIVATE int e1000_probe(e1000_t *e, int skip)
 		}
 
 	  get_next:
-		if (!(r = pci_next_dev(&devind, &vid, &did)))
+		if ((r = pci_next_dev(&devind, &vid, &did)))
 		{
 			return FALSE;
 		}

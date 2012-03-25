@@ -30,9 +30,9 @@ inline static void tickdelay(int ticks) { }
 		while (1) ;								\
 	} while (0)
 
-#define MAP_FAILED NULL
-#define vm_map_phys(__IGNORE, base, size) ({						\
-			io_data_s mmio = IO_DATA_INITIALIZER(2, base, size);	\
-			io(&mmio, IO_MODE_SYNC);								\
-			mmio.io[0] == 0 ? mmio.io[1] : NULL;					\
+#define MAP_FAILED ((void *)-1)
+#define vm_map_phys(__IGNORE, base, size) ({							\
+			io_data_s mmio = IO_DATA_INITIALIZER(2, IO_MMIO_OPEN, base, size); \
+			io(&mmio, IO_MODE_SYNC);									\
+			mmio.io[0] == 0 ? mmio.io[1] : (void *)-1;					\
 		})

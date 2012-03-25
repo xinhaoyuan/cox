@@ -38,7 +38,7 @@
 #define E1000_IOBUF_SIZE 2048
 
 /** Debug verbosity. */
-#define E1000_VERBOSE 1
+#define E1000_VERBOSE 10
 
 /** MAC address override variable. */
 #define E1000_ENVVAR "E1000ETH"

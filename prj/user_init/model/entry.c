@@ -5,6 +5,7 @@
 #include <runtime/io.h>
 #include <runtime/page.h>
 #include <driver/pci/pci.h>
+#include <driver/e1000/glue_inc.h>
 #include <mach.h>
 
 static char f1stack[4096];
@@ -13,6 +14,7 @@ static fiber_s f1;
 static void
 fiber1(void *arg)
 {
+#if 0
 	io_data_s mmio = IO_DATA_INITIALIZER(2, IO_MMIO_OPEN, 0xB8000, 0x1000);
 	io(&mmio, IO_MODE_SYNC);
 	cprintf("%d %016lx\n", mmio.io[0], mmio.io[1]);
@@ -24,6 +26,9 @@ fiber1(void *arg)
 	{
 		buf[i] = "I have control! :)"[i] | 0x0700;
 	}
+#endif
+
+	e1000_test();
 	
 	while (1) ;
 }

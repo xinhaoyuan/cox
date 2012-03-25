@@ -313,7 +313,7 @@ user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size, uintptr_t *res
 	size_t i;
 	for (i = n->area.start; i < n->area.end; ++ i)
 	{
-		uintptr_t la = i << PGSHIFT;
+		uintptr_t la = UMMIO_BASE + (i << PGSHIFT);
 		pte_t *pte = get_pte(mm->arch.pgdir, la, 1);
 		/* FIXME: process no mem */
 		*pte = (addr + ((i - n->area.start) << PGSHIFT)) | PTE_W | PTE_U | PTE_P;
@@ -321,7 +321,7 @@ user_mm_arch_mmio_open(user_mm_t mm, uintptr_t addr, size_t size, uintptr_t *res
 	
 	mm->arch.mmio_root = __RBT_Insert(node, n);
 
-	*result = (n->area.start << PGSHIFT);
+	*result = UMMIO_BASE + (n->area.start << PGSHIFT);
 	return 0;
 }
 
@@ -329,7 +329,7 @@ int
 user_mm_arch_mmio_close(user_mm_t mm, uintptr_t addr)
 {
 	user_area_node_t node = mm->arch.mmio_root;
-	size_t start = addr >> PGSHIFT;
+	size_t start = (addr - UMMIO_BASE) >> PGSHIFT;
 	
 	while (1)
 	{
@@ -347,7 +347,7 @@ user_mm_arch_mmio_close(user_mm_t mm, uintptr_t addr)
 	size_t i;
 	for (i = node->area.start; i < node->area.end; ++ i)
 	{
-		uintptr_t la = i << PGSHIFT;
+		uintptr_t la = UMMIO_BASE + (i << PGSHIFT);
 		pte_t *pte = get_pte(mm->arch.pgdir, la, 0);
 		/* FIXME: process no mem */
 		*pte = 0;

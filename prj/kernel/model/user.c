@@ -310,7 +310,8 @@ do_io_phys_free(proc_t proc, uintptr_t physaddr)
 static inline int
 do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result)
 {
-	return user_mm_arch_mmio_open(proc->usr_mm, physaddr, size, result);
+	int r = user_mm_arch_mmio_open(proc->usr_mm, physaddr, size, result);
+	return r;
 }
 
 static inline int
