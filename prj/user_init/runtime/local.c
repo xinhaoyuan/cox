@@ -3,6 +3,7 @@
 #include <runtime/fiber.h>
 #include <runtime/sync.h>
 #include <runtime/page.h>
+#include <runtime/malloc.h>
 #include <lib/low_io.h>
 #include <user/arch/syscall.h>
 #include <user/init.h>
@@ -30,6 +31,7 @@ __init(tls_t tls, uintptr_t start, uintptr_t end)
 		size_t tls_pages = (end - (start + (__bin_end - __bin_start))) >> __PGSHIFT;
 		/* XXX: use a dummy palloc to occupy the tls space in heap */
 		(void)palloc(tls_pages);
+		(void)malloc_init();
 		__upriv_set(&init_upriv);
 	}
 
