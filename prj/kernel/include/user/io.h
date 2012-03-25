@@ -82,8 +82,8 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_NIC_OPEN         0x410
 #define IO_NIC_CLAIM        0x411
 #define IO_NIC_CLOSE        0x412
-#define IO_NIC_GET_IN_REQ   0x413
-#define IO_NIC_GET_OUT_REQ  0x414
+#define IO_NIC_NEXT_REQ_W   0x413
+#define IO_NIC_NEXT_REQ_R   0x414
 
 typedef void (*io_callback_handler_f)(void *ret);
 

@@ -1,6 +1,7 @@
 #include "../pci/pci.h"
 #include <runtime/io.h>
 #include <lib/low_io.h>
+#include <error.h>
 
 #define PRIVATE static
 #define _PROTOTYPE(name, argslist) name argslist
