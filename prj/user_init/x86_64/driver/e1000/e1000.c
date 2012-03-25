@@ -10,11 +10,8 @@
 #include "e1000_reg.h"
 #include "e1000_pci.h"
 
-#define PRIVATE static
-#define _PROTOTYPE(name, argslist) name argslist
-#define FORWARD
-typedef int message;
-typedef void sef_init_info_t;
+#include "glue_inc.h"
+#include "glue_before.h"
 
 PRIVATE u16_t pcitab_e1000[] =
 {
@@ -216,6 +213,8 @@ PRIVATE void e1000_init(message *mp)
     mess_reply(mp, &reply_mess);
 }
 
+#endif
+
 /*===========================================================================*
  *				e1000_int_pci				     *
  *===========================================================================*/
@@ -232,10 +231,6 @@ PRIVATE void e1000_init_pci()
     e->name[6] += e1000_instance;	
     e1000_probe(e, e1000_instance);
 }
-
-#endif
-
-#if 0
 
 /*===========================================================================*
  *				e1000_probe				     *
@@ -330,7 +325,7 @@ PRIVATE int e1000_probe(e1000_t *e, int skip)
     e->irq   = pci_attr_r8(devind, PCI_ILR);
     e->regs  = vm_map_phys(SELF, (void *) pci_attr_r32(devind, PCI_BAR), 
 						   0x20000);
-			   
+	
     /* Verify mapped registers. */
     if (e->regs == (u8_t *) -1) {
 		panic("failed to map hardware registers from PCI");
@@ -377,10 +372,9 @@ PRIVATE int e1000_probe(e1000_t *e, int skip)
     E1000_DEBUG(3, ("%s: link %s, %s duplex\n",
 					e->name, status[0] & 3 ? "up"   : "down",
 					status[0] & 1 ? "full" : "half"));
+   
     return TRUE;
 }
-
-#endif
 
 #if 0
 
@@ -885,6 +879,8 @@ e1000_t *e;
     exit(EXIT_SUCCESS);
 }
 
+#endif
+
 /*===========================================================================*
  *				e1000_reg_read				     *
  *===========================================================================*/
@@ -1169,6 +1165,8 @@ out:
     return data;
 }
 
+#if 0
+
 /*===========================================================================*
  *				reply					     *
  *===========================================================================*/
@@ -1231,3 +1229,5 @@ message *reply_mess;
 }
 
 #endif
+
+#include "glue_after.h"

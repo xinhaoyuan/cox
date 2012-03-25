@@ -31,8 +31,19 @@ int pci_init(void);
 
 int pci_first_dev(int *enum_id, uint16_t *vendor, uint16_t *product);
 int pci_next_dev(int *enum_id, uint16_t *vendor, uint16_t *product);
+int pci_reserve_dev(int enum_id);
+int pci_release_dev(int enum_id);
 
-uint32_t pci_conf_read32(int enum_id, uint32_t off,  uint32_t *slot);
-void     pci_conf_write32(int enum_id, uint32_t off, uint32_t data);
+uint8_t  pci_conf_read8(int enum_id, uint32_t off);
+uint16_t pci_conf_read16(int enum_id, uint32_t off);
+uint32_t pci_conf_read32(int enum_id, uint32_t off);
+
+void pci_conf_write8(int enum_id, uint32_t off, uint8_t data);
+void pci_conf_write16(int enum_id, uint32_t off, uint16_t data);
+void pci_conf_write32(int enum_id, uint32_t off, uint32_t data);
+
+/* dummy name finding func */
+#define pci_dev_name(v, d) NULL
+#define pci_slot_name(id) NULL
 
 #endif

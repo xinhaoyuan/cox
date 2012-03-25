@@ -1,4 +1,4 @@
-/* Time-stamp: <2012-03-22 16:06:49 xinhaoyuan> */
+/* Time-stamp: <2012-03-25 17:42:27 xinhaoyuan> */
 /* This file is based on pci.c in JOS project */
 
 #include <cpu.h>
@@ -42,7 +42,8 @@ struct pci_driver pci_attach_vendor[] = {
 #define PCI_NODES_MAX 256
 static struct pci_node_t
 {
-	 struct pci_func func;
+	struct pci_func func;
+	int reserved;
 } pci_nodes[PCI_NODES_MAX];
 int pci_nodes_count;
 
@@ -154,8 +155,9 @@ pci_scan_bus(struct pci_bus *bus)
 						 cprintf("nodes are full\n");
 					else
 					{
-						 memmove(&pci_nodes[pci_nodes_count], &af,
+						 memmove(&pci_nodes[pci_nodes_count].func, &af,
 								 sizeof(struct pci_func));
+						 pci_nodes[pci_nodes_count].reserved = 0;
 						 pci_nodes_count ++;
 						 cprintf("saved\n");
 					}
@@ -273,4 +275,83 @@ pci_init(void)
 	 pci_buses_count = 0;
 
 	 return pci_scan_bus(&root_bus);
+}
+
+int
+pci_first_dev(int *enum_id, uint16_t *vendor, uint16_t *product)
+{
+	*enum_id = -1;
+	return pci_next_dev(enum_id, vendor, product);
+}
+
+int
+pci_next_dev(int *enum_id, uint16_t *vendor, uint16_t *product)
+{
+  again:
+	if (++ *enum_id >= pci_nodes_count) return -1;
+	
+	if (pci_nodes[*enum_id].reserved) goto again;
+	
+	*vendor  = PCI_VENDOR(pci_nodes[*enum_id].func.dev_id);
+	*product = PCI_PRODUCT(pci_nodes[*enum_id].func.dev_id);
+
+	return 0;
+}
+
+int
+pci_reserve_dev(int enum_id)
+{
+	if (pci_nodes[enum_id].reserved) return -1;
+	else pci_nodes[enum_id].reserved = 1;
+	return 0;
+}
+
+int
+pci_release_dev(int enum_id)
+{
+	if (pci_nodes[enum_id].reserved == 0) return -1;
+	else pci_nodes[enum_id].reserved = 0;
+	return 0;
+}
+
+uint8_t
+pci_conf_read8(int enum_id, uint32_t off)
+{	
+	 pci_conf1_set_addr(pci_nodes[enum_id].func.bus->busno, pci_nodes[enum_id].func.dev, pci_nodes[enum_id].func.func, off);
+	 return __inb(pci_conf1_data_ioport);
+}
+
+uint16_t
+pci_conf_read16(int enum_id, uint32_t off)
+{	
+	 pci_conf1_set_addr(pci_nodes[enum_id].func.bus->busno, pci_nodes[enum_id].func.dev, pci_nodes[enum_id].func.func, off);
+	 return __inw(pci_conf1_data_ioport);
+}
+
+uint32_t
+pci_conf_read32(int enum_id, uint32_t off)
+{	
+	 pci_conf1_set_addr(pci_nodes[enum_id].func.bus->busno, pci_nodes[enum_id].func.dev, pci_nodes[enum_id].func.func, off);
+	 return __inl(pci_conf1_data_ioport);
+}
+
+void
+pci_conf_write8(int enum_id, uint32_t off, uint8_t data)
+{
+	pci_conf1_set_addr(pci_nodes[enum_id].func.bus->busno, pci_nodes[enum_id].func.dev, pci_nodes[enum_id].func.func, off);
+	__outb(pci_conf1_data_ioport, data);
+}
+
+void
+pci_conf_write16(int enum_id, uint32_t off, uint16_t data)
+{
+	pci_conf1_set_addr(pci_nodes[enum_id].func.bus->busno, pci_nodes[enum_id].func.dev, pci_nodes[enum_id].func.func, off);
+	__outw(pci_conf1_data_ioport, data);
+}
+
+void
+pci_conf_write32(int enum_id, uint32_t off, uint32_t data)
+{
+	pci_conf1_set_addr(pci_nodes[enum_id].func.bus->busno, pci_nodes[enum_id].func.dev, pci_nodes[enum_id].func.func, off);
+	__outl(pci_conf1_data_ioport, data);
 }
