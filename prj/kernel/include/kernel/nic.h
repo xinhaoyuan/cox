@@ -43,7 +43,15 @@ struct nic_req_io_s
 	int           status;
 	nic_t         nic;
 	iobuf_index_t io_index;
+
+	void     *buf;
+	size_t    buf_size;
+	
+	void     *ubuf;
+	uintptr_t ubuf_u;
 };
+
+#define NIC_REQ_IO_UBUF_PSIZE 1
 
 #define NIC_STATUS_FREE   0
 #define NIC_STATUS_CLOSED 1
@@ -63,12 +71,11 @@ typedef nic_req_io_s *nic_req_io_t;
 extern nic_s nics[NICS_MAX_COUNT];
 extern nic_req_io_s nic_reqs[NIC_REQS_MAX_COUNT];
 
+int  nic_init(void);
 int  nic_alloc(user_proc_t proc);
 void nic_free(int nic_id);
 int  nic_write_packet(int nic_id, const void *packet, size_t packet_size);
 int  nic_read_packet(int nic_id, void *buf, size_t buf_size);
-int  nic_read_io_wait(int nic_id, proc_t io_proc, iobuf_index_t io_index);
-int  nic_write_io_wait(int nic_id, proc_t io_proc, iobuf_index_t io_index);
-void nic_reply_request(int req);
+int  nic_req_io(int nic_id, int ack, proc_t io_proc, iobuf_index_t io_index, int op_w);
 
 #endif
