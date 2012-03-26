@@ -210,7 +210,6 @@ nic_req_io(int nic_id, int ack, size_t ack_size, proc_t io_proc, iobuf_index_t i
 			if (ack_size > nic_reqs[ack].buf_size) ack_size = nic_reqs[ack].buf_size;
 			memmove(nic_reqs[ack].buf, nic_reqs[ack].ubuf, ack_size);
 		}
-		/* through the req_io is not free (would be free in request func), the buf could be reused */
 		
 		nic_reqs[ack].status = NIC_REQ_IO_STATUS_FINISHED;
 		IPS_NODE_WAIT_CLEAR(nic_reqs[ack].ips);
@@ -232,7 +231,7 @@ nic_req_io(int nic_id, int ack, size_t ack_size, proc_t io_proc, iobuf_index_t i
 	int irq = irq_save();
 	spinlock_acquire(&nic_req_io_alloc_lock);
 
-	/* release the io request */
+	/* free the ack req */
 	if (ubuf != NULL)
 	{
 		list_add(&nic_req_io_free_list, &nic_reqs[ack].free_list);

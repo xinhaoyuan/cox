@@ -9,8 +9,9 @@ would be accelerated by hardware mechanism.
 
 [MEMORY MODEL]
 
-No memory map (only MMIO maps for driver node). No memory sharing
-between processes. No fork.
+No mmap (only MMIO maps for driver node). No memory sharing between
+processes. No fork. While user space mmap could be implemented using
+page trapping(if supported by hardware).
 
 [SYSCALL and IO]
 

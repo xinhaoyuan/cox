@@ -29,3 +29,19 @@ putchar on debug console
 - (succ)IO_DEBUG_GETCHAR()
 
 getchar on debug console
+
+- (nic)IO_NIC_OPEN()
+
+alloc a new NIC
+
+- (succ)IO_NIC CLOSE(nic)
+
+free a NIC
+
+- (succ, buf, req_id, buf_size)IO_NIC_NEXT_REQ_R(nic, ack_req_id, ack_size)
+
+acknowledge previous req and wait for a read request on specific NIC
+
+- (succ, buf, req_id, buf_size)IO_NIC_NEXT_REQ_W(nic, ack_req_id, ack_size)
+
+acknowledge previous req and wait for a write request on specific NIC 

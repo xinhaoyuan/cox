@@ -43,15 +43,13 @@ fiber_schedule(void)
 
 	fiber_t n = CONTAINER_OF(next, fiber_s, sched_node);
 
+	__post_schedule(n);
+
 	if (n != f)
 	{
 		__current_fiber_set(n);
 		context_switch(&f->ctx, &n->ctx);
 	}
-
-	/* XXX migrate? */
-	
-	__post_schedule(f);
 }
 
 static void
