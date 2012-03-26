@@ -6,8 +6,6 @@
 #include <algo/list.h>
 #include <user/io.h>
 
-typedef size_t nic_id_t;
-
 struct nic_s
 {
 	union
@@ -20,34 +18,57 @@ struct nic_s
 	user_proc_t proc;
 	
 	semaphore_s  req_w_sem;
-	mutex_s      req_w_lock;
+	spinlock_s   req_w_lock;
 	list_entry_s req_w_list;
 	
 	
 	semaphore_s  req_r_sem;
-	mutex_s      req_r_lock;
+	spinlock_s   req_r_lock;
 	list_entry_s req_r_list;
 };
 
 typedef struct nic_s nic_s;
 typedef nic_s *nic_t;
 
-struct req_wait_io_s
+struct nic_req_io_s
 {
-	list_entry_s  req_list;
-	proc_t        proc;
-	iobuf_index_t index;
+	union
+	{
+		list_entry_s  req_list;
+		list_entry_s  free_list;
+	};
+
+	proc_t        req_proc;
+	proc_t        io_proc;
+	int           status;
+	nic_t         nic;
+	iobuf_index_t io_index;
 };
 
-typedef struct req_wait_io_s req_wait_io_s;
-typedef req_wait_io_s *req_wait_io_t;
+#define NIC_STATUS_FREE   0
+#define NIC_STATUS_CLOSED 1
+#define NIC_STATUS_OPEN   2
 
-#define NICS_MAX_COUNT 256
+#define NIC_REQ_IO_STATUS_FREE       0
+#define NIC_REQ_IO_STATUS_QUEUEING   1
+#define NIC_REQ_IO_STATUS_PROCESSING 2
+#define NIC_REQ_IO_STATUS_FINISHED   3
+
+typedef struct nic_req_io_s nic_req_io_s;
+typedef nic_req_io_s *nic_req_io_t;
+
+#define NICS_MAX_COUNT     256
+#define NIC_REQS_MAX_COUNT 4096
+
 extern nic_s nics[NICS_MAX_COUNT];
+extern nic_req_io_s nic_reqs[NIC_REQS_MAX_COUNT];
 
-int  nic_alloc(void);
-void nic_free(int nic);
-int  nic_write_packet(int nic, const void *packet, size_t packet_size);
-int  nic_read_packet(int nic, void *buf, size_t buf_size);
+int  nic_alloc(user_proc_t proc);
+void nic_free(int nic_id);
+int  nic_write_packet(int nic_id, const void *packet, size_t packet_size);
+int  nic_read_packet(int nic_id, void *buf, size_t buf_size);
+int  nic_read_io_wait(int nic_id, proc_t io_proc, iobuf_index_t io_index);
+int  nic_write_io_wait(int nic_id, proc_t io_proc, iobuf_index_t io_index);
+void nic_reply_request(int req);
 
 #endif
