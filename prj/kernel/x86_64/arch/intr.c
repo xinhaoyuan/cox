@@ -120,6 +120,8 @@ print_regs(struct pushregs *regs)
     cprintf("  r15  0x%016llx\n", regs->reg_r15);
 }
 
+PLS_ATOM_DECLARE(int, __local_irq_save);
+
 static void
 trap_dispatch(struct trapframe *tf)
 {
@@ -164,6 +166,7 @@ trap_dispatch(struct trapframe *tf)
 		__irq_enable();
 		user_process_io(current);
 		__irq_disable();
+		if (PLS(__local_irq_save) != 0) cprintf("PANIC: return to user with irq saved\n");
 		user_before_return(current);
 	}
 }

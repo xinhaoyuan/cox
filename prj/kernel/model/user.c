@@ -3,6 +3,8 @@
 #include <proc.h>
 #include <user.h>
 #include <page.h>
+#include <nic.h>
+#include <irq.h>
 #include <arch/irq.h>
 #include <lib/low_io.h>
 
@@ -84,6 +86,8 @@ int
 user_thread_init(proc_t proc, uintptr_t entry)
 {
 	user_thread_t t = proc->usr_thread;
+	spinlock_init(&proc->usr_thread->iocb.push_lock);
+	
 	t->user_size = PGSIZE;
 	t->iobuf_size = PGSIZE;
 	t->iocb_stack_size = PGSIZE;
@@ -180,25 +184,35 @@ user_before_return(proc_t proc)
 	
 	if (busy == 0)
 	{
+		spinlock_acquire(&proc->usr_thread->iocb.push_lock);
 		iobuf_index_t head = *proc->usr_thread->iocb.head;
 		iobuf_index_t tail = *proc->usr_thread->iocb.tail;
+		spinlock_release(&proc->usr_thread->iocb.push_lock);
 
 		if (head != tail)
 		{
 			busy = 1;
-			user_thread_arch_push_iocb();
+			user_thread_arch_iocb_call();
 		}
 	}
 	
 	*proc->usr_thread->iocb.busy = busy;
 }
 
-static void
-iocb_push(proc_t proc, iobuf_index_t idx)
+int 
+user_thread_iocb_push(proc_t proc, iobuf_index_t index)
 {
+	int irq = irq_save();
+	spinlock_acquire(&proc->usr_thread->iocb.push_lock);
+	
 	*proc->usr_thread->iocb.tail %= proc->usr_thread->iocb.cap;
-	proc->usr_thread->iocb.entry[*proc->usr_thread->iocb.tail] = idx;
+	proc->usr_thread->iocb.entry[*proc->usr_thread->iocb.tail] = index;
 	(*proc->usr_thread->iocb.tail) = ((*proc->usr_thread->iocb.tail) + 1) % proc->usr_thread->iocb.cap;
+	
+	spinlock_release(&proc->usr_thread->iocb.push_lock);
+	irq_restore(irq);
+
+	return 0;
 }
 
 static void
@@ -217,11 +231,12 @@ user_restore_context(proc_t proc)
 
 /* USER IO PROCESS ============================================ */
 
-static inline int do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result) __attribute__((always_inline));
-static inline int do_io_phys_free(proc_t proc, uintptr_t physaddr) __attribute__((always_inline));
-static inline int do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result) __attribute__((always_inline));
-static inline int do_io_mmio_close(proc_t proc, uintptr_t addr) __attribute__((always_inline));
-static inline int do_io_brk(proc_t proc, uintptr_t end) __attribute__((always_inline));
+static inline int  do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result) __attribute__((always_inline));
+static inline int  do_io_phys_free(proc_t proc, uintptr_t physaddr) __attribute__((always_inline));
+static inline int  do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result) __attribute__((always_inline));
+static inline int  do_io_mmio_close(proc_t proc, uintptr_t addr) __attribute__((always_inline));
+static inline int  do_io_brk(proc_t proc, uintptr_t end) __attribute__((always_inline));
+static inline int  do_nic_open(proc_t proc) __attribute__((always_inline));
 
 static void
 io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
@@ -231,54 +246,78 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 	case IO_SET_CALLBACK:
 		entry->ce.data[0] = 0;
 		proc->usr_thread->iocb.callback_u = entry->ce.data[1];
-		iocb_push(proc, idx);
+		user_thread_iocb_push(proc, idx);
 		break;
 
 	case IO_SET_TLS:
 		entry->ce.data[0] = 0;
 		user_set_tls(entry->ce.data[1]);
-		iocb_push(proc, idx);
+		user_thread_iocb_push(proc, idx);
 		break;
 
 	case IO_BRK:
 		entry->ce.data[0] = do_io_brk(proc, entry->ce.data[1]);
-		iocb_push(proc, idx);
+		user_thread_iocb_push(proc, idx);
 		break;
 
 	case IO_EXIT:
 		/* XXX */
-		iocb_push(proc, idx);
+		user_thread_iocb_push(proc, idx);
 		break;
 
 	case IO_DEBUG_PUTCHAR:
 		cputchar(entry->ce.data[1]);
-		iocb_push(proc, idx);
+		user_thread_iocb_push(proc, idx);
 		break;
 
 	case IO_DEBUG_GETCHAR:
 		entry->ce.data[1] = cgetchar();
-		iocb_push(proc, idx);
+		user_thread_iocb_push(proc, idx);
 		break;
 
 	case IO_PHYS_ALLOC:
 		entry->ce.data[0] = do_io_phys_alloc(proc, entry->ce.data[1], entry->ce.data[2], &entry->ce.data[1]);
-		iocb_push(proc, idx);
+		user_thread_iocb_push(proc, idx);
 		break;
 		
 	case IO_PHYS_FREE:
 		entry->ce.data[0] = do_io_phys_free(proc, entry->ce.data[1]);
-		iocb_push(proc, idx);
+		user_thread_iocb_push(proc, idx);
 		break;
 		
 	case IO_MMIO_OPEN:
 		entry->ce.data[0] = do_io_mmio_open(proc, entry->ce.data[1], entry->ce.data[2], &entry->ce.data[1]);
-		iocb_push(proc, idx);
+		user_thread_iocb_push(proc, idx);
 		break;
 
 	case IO_MMIO_CLOSE:
 		entry->ce.data[0] = do_io_mmio_close(proc, entry->ce.data[1]);
-		iocb_push(proc, idx);
+		user_thread_iocb_push(proc, idx);
 		break;
+
+	case IO_NIC_OPEN:
+		entry->ce.data[0] = do_nic_open(proc);
+		user_thread_iocb_push(proc, idx);
+		break;
+
+	case IO_NIC_CLOSE:
+		/* XXX */
+		user_thread_iocb_push(proc, idx);
+		break;
+
+		/* call data: 0 -- FUNC;    1 -- NIC; 2 -- ACK REQ; 3 -- ACK SIZE */
+		/* ret  data: 0 -- RESULT;  1 -- BUF; 2 -- REQ;     3 -- BUF_SIZE */
+		
+	case IO_NIC_NEXT_REQ_R:
+		nic_req_io(entry->ce.data[1], entry->ce.data[2], entry->ce.data[3], proc, idx, 0);
+		/* iocb would be pushed when request comes */
+		break;
+
+	case IO_NIC_NEXT_REQ_W:
+		nic_req_io(entry->ce.data[1], entry->ce.data[2], entry->ce.data[3], proc, idx, 1);
+		/* iocb would be pushed when request comes */
+		break;
+
 
 	default: break;
 	}
@@ -324,4 +363,10 @@ static inline int
 do_io_brk(proc_t proc, uintptr_t end)
 {
 	return user_proc_brk(proc->usr_mm, end);
+}
+
+static inline int
+do_nic_open(proc_t proc)
+{
+	return nic_alloc(proc->usr_mm);
 }

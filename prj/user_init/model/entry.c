@@ -26,10 +26,34 @@ fiber1(void *arg)
 	{
 		buf[i] = "I have control! :)"[i] | 0x0700;
 	}
-#endif
 
 	e1000_test();
+		
+#endif
+
+	io_data_s nic_open = IO_DATA_INITIALIZER(1, IO_NIC_OPEN);
+	io(&nic_open, IO_MODE_SYNC);
+	int nic = nic_open.io[0];
+	cprintf("Get NIC ID %d\n", nic);
 	
+	io_data_s nic_req = IO_DATA_INITIALIZER(4, IO_NIC_NEXT_REQ_W, nic, -1);
+	io(&nic_req, IO_MODE_SYNC);
+	
+	cprintf("Get NIC REQ W R = %d ID %d BUF %016lx SIZE %d\n", nic_req.io[0], nic_req.io[2], nic_req.io[1], nic_req.io[3]);
+	cprintf("BUF: %s\n", (char *)nic_req.io[1]);
+
+	while (1)
+	{
+		cprintf("Get more packet\n");
+	
+		nic_req.io[0] = IO_NIC_NEXT_REQ_W;
+		nic_req.io[1] = nic;
+		io(&nic_req, IO_MODE_SYNC);
+		
+		cprintf("Get NIC REQ W R = %d ID %d BUF %016lx SIZE %d\n", nic_req.io[0], nic_req.io[2], nic_req.io[1], nic_req.io[3]);
+		cprintf("BUF: %s\n", (char *)nic_req.io[1]);
+	}
+
 	while (1) ;
 }
 

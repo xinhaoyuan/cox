@@ -5,6 +5,7 @@
 #include <proc.h>
 #include <user/io.h>
 #include <arch/user.h>
+#include <spinlock.h>
 
 struct user_thread_s
 {
@@ -23,6 +24,7 @@ struct user_thread_s
 	
 	struct
 	{
+		spinlock_s     push_lock;
 		iobuf_index_t  cap;
 		iobuf_index_t *entry;
 		uintptr_t     *head, *tail, *busy;
@@ -38,9 +40,10 @@ typedef struct user_thread_s  user_thread_s;
 typedef struct user_thread_s *user_thread_t;
 
 void user_thread_jump(void) __attribute__((noreturn));
+int  user_thread_iocb_push(proc_t proc, iobuf_index_t index);
 
 /* filled by arch */
-int user_thread_arch_push_iocb(void);
+int user_thread_arch_iocb_call(void);
 int user_thread_arch_init(proc_t proc, uintptr_t entry);
 int user_thread_arch_in_cb_stack(void);
 void user_thread_arch_jump(void) __attribute__((noreturn));

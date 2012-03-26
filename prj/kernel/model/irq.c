@@ -92,6 +92,8 @@ irq_restore(int state)
 	__irq_restore(intr);
 }
 
+PLS_ATOM_DECLARE(int, __timer_master_cpu);
+
 void
 irq_entry(int irq)
 {
@@ -100,7 +102,7 @@ irq_entry(int irq)
 
 	info->irq_mask |= (1 << irq);
 	++ info->irq_accumulate[irq];
-	
+
 	if (PLS(__local_irq_save) == 0)
 	{
 		PLS_SET(__local_irq_save, 1);

@@ -32,6 +32,9 @@ cpu_init(void)
 			break;
 	}
 
+	if (old == sysconf_x86.cpu.count - 1)
+		cprintf("ALL CPU STARTED\n");
+
 	/* A barrier waiting for all cpu ready */
 	while (cpu_init_count != sysconf_x86.cpu.count) ;
 

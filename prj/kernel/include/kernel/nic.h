@@ -38,7 +38,7 @@ struct nic_req_io_s
 		list_entry_s  free_list;
 	};
 
-	proc_t        req_proc;
+	ips_node_t    ips;
 	proc_t        io_proc;
 	int           status;
 	nic_t         nic;
@@ -76,6 +76,6 @@ int  nic_alloc(user_proc_t proc);
 void nic_free(int nic_id);
 int  nic_write_packet(int nic_id, const void *packet, size_t packet_size);
 int  nic_read_packet(int nic_id, void *buf, size_t buf_size);
-int  nic_req_io(int nic_id, int ack, proc_t io_proc, iobuf_index_t io_index, int op_w);
+int  nic_req_io(int nic_id, int ack, size_t ack_size, proc_t io_proc, iobuf_index_t io_index, int op_w);
 
 #endif

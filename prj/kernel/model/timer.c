@@ -22,11 +22,14 @@ timer_master_cpu_set(void)
 int
 timer_init(void)
 {
-	irq_handler[IRQ_TIMER] = __tick_handler;
+	spinlock_init(&timer_lock);
 	timer_tick = 0;
 	crh_init(&crh);
 	crh_set_base(&crh, 0);
 	timer_tick = 0;
+
+	irq_handler[IRQ_TIMER] = __tick_handler;
+
 	return 0;
 }
 
@@ -104,6 +107,6 @@ proc_timer_set(proc_timer_t timer, tick_t tick)
 	
 	spinlock_release(&timer_lock);
 	irq_restore(irq);
-
+	
 	return result;
 }

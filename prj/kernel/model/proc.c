@@ -154,7 +154,9 @@ proc_switch(proc_t proc)
 	current_set(proc);
 
 	if (prev != proc)
+	{
 		context_switch(&prev->ctx, &proc->ctx);
+	}
 }
 
 /* Initialize context support and sched classes */

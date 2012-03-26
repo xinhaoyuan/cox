@@ -64,8 +64,8 @@ page_free_atomic(page_t page)
 	{
 		int irq = irq_save();
 		spinlock_acquire(&page_atomic_lock);
-		
-		buddy_free(&buddy, (page - pages) >> PGSHIFT);
+
+		buddy_free(&buddy, page - pages);
 		
 		spinlock_release(&page_atomic_lock);
 		irq_restore(irq);

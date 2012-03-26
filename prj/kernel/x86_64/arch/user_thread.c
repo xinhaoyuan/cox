@@ -11,7 +11,7 @@
 #include "mem.h"
 
 int
-user_thread_arch_push_iocb(void)
+user_thread_arch_iocb_call(void)
 {
 	proc_t proc = current;
 	if (proc->usr_thread == NULL) return -E_INVAL;
