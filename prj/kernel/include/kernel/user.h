@@ -15,6 +15,8 @@ struct user_thread_s
 	uintptr_t iobuf_size;
 	uintptr_t iocb_stack_size;
 	uintptr_t user_size;
+
+	iobuf_index_t ph_guard;
 	
 	struct
 	{

@@ -121,7 +121,7 @@ nic_write_packet(int nic_id, const void *packet, size_t packet_size)
 	IPS_NODE_WAIT_SET(&ips);
 	io->ips = &ips;
 	io->status = NIC_REQ_IO_STATUS_PROCESSING;
-	io_call_entry_t ce = &io->io_proc->usr_thread->ioce.head[io->io_index];
+	io_call_entry_t ce = &io->io_proc->user_thread->ioce.head[io->io_index];
 	/* WRITE MESSAGE */
 	if (packet_size > (NIC_REQ_IO_UBUF_PSIZE << __PGSHIFT))
 		packet_size = (NIC_REQ_IO_UBUF_PSIZE << __PGSHIFT);
@@ -174,7 +174,7 @@ nic_read_packet(int nic_id, void *buf, size_t buf_size)
 	IPS_NODE_WAIT_SET(&ips);
 	io->ips = &ips;
 	io->status = NIC_REQ_IO_STATUS_PROCESSING;
-	io_call_entry_t ce = &io->io_proc->usr_thread->ioce.head[io->io_index];
+	io_call_entry_t ce = &io->io_proc->user_thread->ioce.head[io->io_index];
 	if (buf_size > (NIC_REQ_IO_UBUF_PSIZE << __PGSHIFT))
 		buf_size = (NIC_REQ_IO_UBUF_PSIZE << __PGSHIFT);
 	/* WRITE MESSAGE */
@@ -263,7 +263,7 @@ nic_req_io(int nic_id, int ack, size_t ack_size, proc_t io_proc, iobuf_index_t i
 		
 		ubuf = VADDR_DIRECT(PAGE_TO_PHYS(p));
 		
-		if (user_proc_arch_mmio_open(io_proc->usr_mm, PADDR_DIRECT(ubuf), NIC_REQ_IO_UBUF_PSIZE << __PGSHIFT, &ubuf_u))
+		if (user_proc_arch_mmio_open(io_proc->user_proc, PADDR_DIRECT(ubuf), NIC_REQ_IO_UBUF_PSIZE << __PGSHIFT, &ubuf_u))
 		{
 			result = -E_INVAL;
 			goto nomore_io;

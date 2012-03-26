@@ -82,8 +82,8 @@ typedef struct proc_s
 
 	/* USER DATA */
 
-	struct user_thread_s  *usr_thread;
-	struct user_proc_s      *usr_mm;
+	struct user_thread_s  *user_thread;
+	struct user_proc_s      *user_proc;
 } proc_s;
 
 #define PROC_TYPE_KERN 0

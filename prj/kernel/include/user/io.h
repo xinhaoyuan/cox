@@ -8,6 +8,7 @@
 #define IO_ARG_UD     (IO_ARGS_COUNT - 1)
 
 typedef unsigned int iobuf_index_t;
+#define IOBUF_INDEX_NULL ((iobuf_index_t)-1)
 
 struct io_call_entry_s
 {
