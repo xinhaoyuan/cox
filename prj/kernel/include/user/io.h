@@ -46,6 +46,8 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define   IO_PROC_CREATE_FLAG_DRIVER 0x2
 #define IO_EXIT             0x011
 #define IO_BRK              0x020
+#define IO_PAGE_HOLE_SET    0x021
+#define IO_PAGE_HOLE_GUARD  0x022
 /* DEBUG */
 #define IO_DEBUG_PUTCHAR    0x101
 #define IO_DEBUG_GETCHAR    0x102

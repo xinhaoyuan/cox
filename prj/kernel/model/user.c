@@ -171,7 +171,7 @@ user_before_return(proc_t proc)
 	if (proc->sched_prev_usr != proc)
 	{
 		if (proc->sched_prev_usr != NULL)
-			user_save_context(proc);
+			user_save_context(proc->sched_prev_usr);
 		user_restore_context(proc);
 	}
 	
