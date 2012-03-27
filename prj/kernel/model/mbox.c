@@ -86,13 +86,11 @@ mbox_free(int mbox_id)
 	/* XXX */
 }
 
-int
-mbox_send(int mbox_id, void *buf, size_t copy_size, size_t buf_size, uintptr_t hint)
+mbox_io_t
+mbox_io_acquire(int mbox_id)
 {
-	if (buf == NULL) return -E_INVAL;
-	
 	mbox_t mbox = mbox_get(mbox_id);
-	if (mbox == NULL) return -E_INVAL;
+	if (mbox == NULL) return NULL;
 
 	/* XXX timeout func */
 	semaphore_acquire(&mbox->io_sem, NULL);
@@ -111,20 +109,30 @@ mbox_send(int mbox_id, void *buf, size_t copy_size, size_t buf_size, uintptr_t h
 	{
 		/* Should not happen */
 		mbox_put(mbox_id);
-		return -E_NO_MEM;
+		return NULL;
 	}
 
-	ips_node_s ips;
-	
 	mbox_io_t io = CONTAINER_OF(l, mbox_io_s, io_list);
-	IPS_NODE_PTR_SET(&ips, current);
-	IPS_NODE_WAIT_SET(&ips);
-	io->ips = &ips;
+	mbox_put(mbox_id);
+	
+	return io;
+}
+
+int
+mbox_io_send(mbox_io_t io, ips_node_t ips, void *buf, size_t buf_size, uintptr_t hint)
+{
+	ips_node_s __ips;
+	if (ips == NULL)
+	{
+		ips = &__ips;
+		IPS_NODE_PTR_SET(ips, current);
+		IPS_NODE_WAIT_SET(ips);
+	}
+	
+	io->ips = ips;
 	io->status = MBOX_IO_STATUS_PROCESSING;
 	io_call_entry_t ce = &io->io_proc->user_thread->ioce.head[io->io_index];
 	/* WRITE MESSAGE */
-	if (copy_size > (MBOX_IO_UBUF_PSIZE << __PGSHIFT))
-		copy_size = (MBOX_IO_UBUF_PSIZE << __PGSHIFT);
 	if (buf_size > (MBOX_IO_UBUF_PSIZE << __PGSHIFT))
 		buf_size = (MBOX_IO_UBUF_PSIZE << __PGSHIFT);
 	ce->ce.data[0] = 0;
@@ -134,14 +142,13 @@ mbox_send(int mbox_id, void *buf, size_t copy_size, size_t buf_size, uintptr_t h
 	ce->ce.data[4] = hint;
 	io->buf = buf;
 	io->buf_size = buf_size;
-	memmove(io->ubuf, buf, copy_size);
 	user_thread_iocb_push(io->io_proc, io->io_index);
 
-	/* XXX timeout func */
-	while (IPS_NODE_WAIT(&ips))
-		proc_wait_try();
-
-	mbox_put(mbox_id);
+	if (ips == &__ips)
+	{
+		while (IPS_NODE_WAIT(ips))
+			proc_wait_try();
+	}
 
 	return 0;
 }

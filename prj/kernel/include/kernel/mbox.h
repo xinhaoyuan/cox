@@ -70,7 +70,9 @@ int  mbox_init(void);
 int  mbox_alloc(user_proc_t proc);
 void mbox_free(int mbox_id);
 
-int  mbox_send(int mbox_id, void *buf, size_t data_size, size_t buf_size, uintptr_t hint);
+mbox_io_t mbox_io_acquire(int mbox_id);
+int       mbox_io_send(mbox_io_t io, ips_node_t ips, void *buf, size_t buf_size, uintptr_t hint);
+
 int  mbox_io(int mbox_id, int ack, size_t ack_size, proc_t io_proc, iobuf_index_t io_index);
 
 #endif

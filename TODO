@@ -1,7 +1,3 @@
-- user memory management stack
-   
-  - user space slab 
-
 - io call: irq listen
 
 - user space driver
@@ -11,3 +7,5 @@
   - k/u NIC
 
   - e1000 from minix
+
+- BUG: hang on startup

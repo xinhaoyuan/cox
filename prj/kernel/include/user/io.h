@@ -86,6 +86,13 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_MBOX_CLOSE       0x411
 #define IO_MBOX_CTL         0x412
 #define IO_MBOX_IO          0x413
+#define IO_NIC_OPEN         0x420
+#define IO_NIC_CLOSE        0x421
+#define IO_NIC_CTL          0x422
+#define   IO_NIC_CTL_SET_MAC  0x1
+#define   IO_NIC_CTL_UP       0x2
+#define   IO_NIC_CTL_DOWN     0x3
+#define IO_NIC_RECV         0x423
 
 typedef void (*io_callback_handler_f)(void *ret);
 

@@ -9,6 +9,7 @@
 #include <lib/low_io.h>
 #include <lwip.h>
 #include <mbox.h>
+#include <nic.h>
 
 static proc_s p;
 static char   p_stack[10240];
@@ -28,11 +29,15 @@ test(void *__ignore)
 	static char buf2[] = STR2;
 	static int  len2 = sizeof(STR2);
 
-	mbox_send(0, buf1, len1, 0, len1);
+	mbox_io_t io = mbox_io_acquire(0);
+	memmove(io->ubuf, buf1, len1);
+	mbox_io_send(io, NULL, NULL, 0, len1);
 	while (1)
 	{
 		cprintf("Send more packet!\n");
-		mbox_send(0, buf2, len2, 0, len2);
+		io = mbox_io_acquire(0);
+		memmove(io->ubuf, buf2, len2);
+		mbox_io_send(io, NULL, NULL, 0, len2);
 	}
 	
 	while (1) __cpu_relax();
@@ -42,6 +47,7 @@ void
 kernel_start(void)
 {
 	mbox_init();
+	nic_init();
 
 	proc_init(&p, ".test", SCHED_CLASS_RR, (void(*)(void *))test, NULL, (uintptr_t)ARCH_STACKTOP(p_stack, 10240));
 	proc_notify(&p);
