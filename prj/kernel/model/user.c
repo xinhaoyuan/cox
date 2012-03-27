@@ -210,7 +210,7 @@ user_thread_iocb_push(proc_t proc, iobuf_index_t index)
 	*proc->user_thread->iocb.tail %= proc->user_thread->iocb.cap;
 	proc->user_thread->iocb.entry[*proc->user_thread->iocb.tail] = index;
 	(*proc->user_thread->iocb.tail) = ((*proc->user_thread->iocb.tail) + 1) % proc->user_thread->iocb.cap;
-	
+
 	spinlock_release(&proc->user_thread->iocb.push_lock);
 	irq_restore(irq);
 
@@ -233,6 +233,8 @@ user_restore_context(proc_t proc)
 
 /* USER IO PROCESS ============================================ */
 
+static inline int  do_io_page_hole_set(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
+static inline int  do_io_page_hole_guard(proc_t proc, iobuf_index_t idx) __attribute__((always_inline));
 static inline int  do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result) __attribute__((always_inline));
 static inline int  do_io_phys_free(proc_t proc, uintptr_t physaddr) __attribute__((always_inline));
 static inline int  do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result) __attribute__((always_inline));
@@ -265,6 +267,16 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 	case IO_EXIT:
 		/* XXX */
 		user_thread_iocb_push(proc, idx);
+		break;
+
+	case IO_PAGE_HOLE_SET:
+		entry->ce.data[0] = do_io_page_hole_set(proc, entry->ce.data[1], entry->ce.data[2]);
+		user_thread_iocb_push(proc, idx);
+		break;
+
+	case IO_PAGE_HOLE_GUARD:
+		entry->ce.data[0] = do_io_page_hole_guard(proc, idx);
+		/* iocb would be push when page hole occurs */
 		break;
 
 	case IO_DEBUG_PUTCHAR:
@@ -306,9 +318,6 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 		/* XXX */
 		user_thread_iocb_push(proc, idx);
 		break;
-
-		/* call data: 0 -- FUNC;    1 -- NIC; 2 -- ACK REQ; 3 -- ACK SIZE */
-		/* ret  data: 0 -- RESULT;  1 -- BUF; 2 -- REQ;     3 -- BUF_SIZE */
 		
 	case IO_NIC_NEXT_REQ_R:
 		nic_req_io(entry->ce.data[1], entry->ce.data[2], entry->ce.data[3], proc, idx, 0);
@@ -323,6 +332,27 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 
 	default: break;
 	}
+}
+
+static inline int
+do_io_page_hole_set(proc_t proc, uintptr_t base, uintptr_t size)
+{
+	if (proc->user_thread->ph_guard == IOBUF_INDEX_NULL)
+		return -E_INVAL;
+
+	/* XXX: Call the arch to set the hole */
+
+	return 0;
+}
+
+static inline int
+do_io_page_hole_guard(proc_t proc, iobuf_index_t idx)
+{
+	if (proc->user_thread->ph_guard != IOBUF_INDEX_NULL)
+		return -E_INVAL;
+	
+	proc->user_thread->ph_guard = idx;
+	return 0;
 }
 
 static inline int
