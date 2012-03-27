@@ -31,27 +31,27 @@ fiber1(void *arg)
 		
 #endif
 
-	io_data_s nic_open = IO_DATA_INITIALIZER(1, IO_NIC_OPEN);
-	io(&nic_open, IO_MODE_SYNC);
-	int nic = nic_open.io[0];
-	cprintf("Get NIC ID %d\n", nic);
+	io_data_s mbox_open = IO_DATA_INITIALIZER(1, IO_MBOX_OPEN);
+	io(&mbox_open, IO_MODE_SYNC);
+	int mbox = mbox_open.io[0];
+	cprintf("Get MBOX ID %d\n", mbox);
 	
-	io_data_s nic_req = IO_DATA_INITIALIZER(4, IO_NIC_NEXT_REQ_W, nic, -1);
-	io(&nic_req, IO_MODE_SYNC);
+	io_data_s mbox_io = IO_DATA_INITIALIZER(5, IO_MBOX_IO, mbox, -1);
+	io(&mbox_io, IO_MODE_SYNC);
 	
-	cprintf("Get NIC REQ W R = %d ID %d BUF %016lx SIZE %d\n", nic_req.io[0], nic_req.io[2], nic_req.io[1], nic_req.io[3]);
-	cprintf("BUF: %s\n", (char *)nic_req.io[1]);
+	cprintf("Get MBOX IO W R = %d ID %d BUF %016lx SIZE %d\n", mbox_io.io[0], mbox_io.io[2], mbox_io.io[1], mbox_io.io[3]);
+	cprintf("BUF: %s\n", (char *)mbox_io.io[1]);
 
 	while (1)
 	{
 		cprintf("Get more packet\n");
 	
-		nic_req.io[0] = IO_NIC_NEXT_REQ_W;
-		nic_req.io[1] = nic;
-		io(&nic_req, IO_MODE_SYNC);
+		mbox_io.io[0] = IO_MBOX_IO;
+		mbox_io.io[1] = mbox;
+		io(&mbox_io, IO_MODE_SYNC);
 		
-		cprintf("Get NIC REQ W R = %d ID %d BUF %016lx SIZE %d\n", nic_req.io[0], nic_req.io[2], nic_req.io[1], nic_req.io[3]);
-		cprintf("BUF: %s\n", (char *)nic_req.io[1]);
+		cprintf("Get MBOX IO W R = %d ID %d BUF %016lx SIZE %d\n", mbox_io.io[0], mbox_io.io[2], mbox_io.io[1], mbox_io.io[3]);
+		cprintf("BUF: %s\n", (char *)mbox_io.io[1]);
 	}
 
 	while (1) ;

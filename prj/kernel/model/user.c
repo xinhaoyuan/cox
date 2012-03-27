@@ -3,7 +3,7 @@
 #include <proc.h>
 #include <user.h>
 #include <page.h>
-#include <nic.h>
+#include <mbox.h>
 #include <irq.h>
 #include <arch/irq.h>
 #include <lib/low_io.h>
@@ -241,7 +241,7 @@ static inline int  do_io_phys_free(proc_t proc, uintptr_t physaddr) __attribute_
 static inline int  do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result) __attribute__((always_inline));
 static inline int  do_io_mmio_close(proc_t proc, uintptr_t addr) __attribute__((always_inline));
 static inline int  do_io_brk(proc_t proc, uintptr_t end) __attribute__((always_inline));
-static inline int  do_nic_open(proc_t proc) __attribute__((always_inline));
+static inline int  do_mbox_open(proc_t proc) __attribute__((always_inline));
 
 static void
 io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
@@ -315,26 +315,20 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 		user_thread_iocb_push(proc, idx);
 		break;
 
-	case IO_NIC_OPEN:
-		entry->ce.data[0] = do_nic_open(proc);
+	case IO_MBOX_OPEN:
+		entry->ce.data[0] = do_mbox_open(proc);
 		user_thread_iocb_push(proc, idx);
 		break;
 
-	case IO_NIC_CLOSE:
+	case IO_MBOX_CLOSE:
 		/* XXX */
 		user_thread_iocb_push(proc, idx);
 		break;
 		
-	case IO_NIC_NEXT_REQ_R:
-		nic_req_io(entry->ce.data[1], entry->ce.data[2], entry->ce.data[3], proc, idx, 0);
+	case IO_MBOX_IO:
+		mbox_io(entry->ce.data[1], entry->ce.data[2], entry->ce.data[3], proc, idx);
 		/* iocb would be pushed when request comes */
 		break;
-
-	case IO_NIC_NEXT_REQ_W:
-		nic_req_io(entry->ce.data[1], entry->ce.data[2], entry->ce.data[3], proc, idx, 1);
-		/* iocb would be pushed when request comes */
-		break;
-
 
 	default: break;
 	}
@@ -411,7 +405,7 @@ do_io_brk(proc_t proc, uintptr_t end)
 }
 
 static inline int
-do_nic_open(proc_t proc)
+do_mbox_open(proc_t proc)
 {
-	return nic_alloc(proc->user_proc);
+	return mbox_alloc(proc->user_proc);
 }

@@ -36,18 +36,14 @@ putchar on debug console
 
 getchar on debug console
 
-- (nic)IO_NIC_OPEN()
+- (mbox)IO_MBOX_OPEN()
 
-alloc a new NIC
+alloc a new MBOX
 
-- (succ)IO_NIC CLOSE(nic)
+- (succ)IO_MBOX CLOSE(mbox)
 
-free a NIC
+free a MBOX
 
-- (succ, buf, req_id, buf_size) | IO_NIC_NEXT_REQ_R(nic, ack_req_id, ack_size)
+- (succ, buf, io_id, buf_size, hint) | IO_MBOX_IO(mbox, ack_io_id, ack_size)
 
-acknowledge previous req and wait for a read request on specific NIC
-
-- (succ, buf, req_id, buf_size) | IO_NIC_NEXT_REQ_W(nic, ack_req_id, ack_size)
-
-acknowledge previous req and wait for a write request on specific NIC 
+acknowledge previous io and wait for a io on specific MBOX
