@@ -94,6 +94,7 @@ mbox_send(int mbox_id, void *buf, size_t copy_size, size_t buf_size, uintptr_t h
 	mbox_t mbox = mbox_get(mbox_id);
 	if (mbox == NULL) return -E_INVAL;
 
+	/* XXX timeout func */
 	semaphore_acquire(&mbox->io_sem, NULL);
 	spinlock_acquire(&mbox->io_lock);
 	
@@ -136,6 +137,7 @@ mbox_send(int mbox_id, void *buf, size_t copy_size, size_t buf_size, uintptr_t h
 	memmove(io->ubuf, buf, copy_size);
 	user_thread_iocb_push(io->io_proc, io->io_index);
 
+	/* XXX timeout func */
 	while (IPS_NODE_WAIT(&ips))
 		proc_wait_try();
 

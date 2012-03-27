@@ -23,16 +23,16 @@ test(void *__ignore)
 #define STR1 "Hello world"
 #define STR2 "Hello world again"
 		
-	static const char buf1[] = STR1;
-	static const int  len1 = sizeof(STR1);
-	static const char buf2[] = STR2;
-	static const int  len2 = sizeof(STR2);
+	static char buf1[] = STR1;
+	static int  len1 = sizeof(STR1);
+	static char buf2[] = STR2;
+	static int  len2 = sizeof(STR2);
 
-	mbox_send(0, buf1, len1, 0, 0);
+	mbox_send(0, buf1, len1, 0, len1);
 	while (1)
 	{
 		cprintf("Send more packet!\n");
-		mbox_send(0, buf2, len2, 0, 0);
+		mbox_send(0, buf2, len2, 0, len2);
 	}
 	
 	while (1) __cpu_relax();

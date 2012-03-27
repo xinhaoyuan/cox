@@ -49,7 +49,6 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_BRK              0x020
 #define IO_PAGE_HOLE_SET    0x021
 #define IO_PAGE_HOLE_CLEAR  0x022
-#define IO_PAGE_HOLE_GUARD  0x023
 /* DEBUG */
 #define IO_DEBUG_PUTCHAR    0x101
 #define IO_DEBUG_GETCHAR    0x102
@@ -77,7 +76,7 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_GET_HOST_BY_NAME 0x220
 #define IO_GET_ADDR_INFO    0x221
 #define IO_FREE_ADDR_INFO   0x222
-/* DRIVER NODE */
+/* MANAGE NODE */
 #define IO_IRQ_LISTEN       0x400
 #define IO_MMIO_OPEN        0x401
 #define IO_MMIO_CLOSE       0x402

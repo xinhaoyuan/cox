@@ -39,7 +39,7 @@ fiber1(void *arg)
 	io_data_s mbox_io = IO_DATA_INITIALIZER(5, IO_MBOX_IO, mbox, -1);
 	io(&mbox_io, IO_MODE_SYNC);
 	
-	cprintf("Get MBOX IO W R = %d ID %d BUF %016lx SIZE %d\n", mbox_io.io[0], mbox_io.io[2], mbox_io.io[1], mbox_io.io[3]);
+	cprintf("Get MBOX IO W R = %d ID %d BUF %016lx SIZE %d HINT %016lx\n", mbox_io.io[0], mbox_io.io[2], mbox_io.io[1], mbox_io.io[3], mbox_io.io[4]);
 	cprintf("BUF: %s\n", (char *)mbox_io.io[1]);
 
 	while (1)
@@ -50,7 +50,7 @@ fiber1(void *arg)
 		mbox_io.io[1] = mbox;
 		io(&mbox_io, IO_MODE_SYNC);
 		
-		cprintf("Get MBOX IO W R = %d ID %d BUF %016lx SIZE %d\n", mbox_io.io[0], mbox_io.io[2], mbox_io.io[1], mbox_io.io[3]);
+		cprintf("Get MBOX IO W R = %d ID %d BUF %016lx SIZE %d HINT %016lx\n", mbox_io.io[0], mbox_io.io[2], mbox_io.io[1], mbox_io.io[3], mbox_io.io[4]);
 		cprintf("BUF: %s\n", (char *)mbox_io.io[1]);
 	}
 

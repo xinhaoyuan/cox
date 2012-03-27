@@ -88,7 +88,7 @@ user_thread_init(proc_t proc, uintptr_t entry)
 	user_thread_t t = proc->user_thread;
 	spinlock_init(&proc->user_thread->iocb.push_lock);
 
-	proc->user_thread->ph_guard = IOBUF_INDEX_NULL;
+	proc->user_thread->mbox_ex = -1;
 	
 	t->user_size = PGSIZE;
 	t->iobuf_size = PGSIZE;
@@ -235,7 +235,6 @@ user_restore_context(proc_t proc)
 
 static inline int  do_io_page_hole_set(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
 static inline int  do_io_page_hole_clear(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
-static inline int  do_io_page_hole_guard(proc_t proc, iobuf_index_t idx) __attribute__((always_inline));
 static inline int  do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result) __attribute__((always_inline));
 static inline int  do_io_phys_free(proc_t proc, uintptr_t physaddr) __attribute__((always_inline));
 static inline int  do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result) __attribute__((always_inline));
@@ -278,11 +277,6 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 	case IO_PAGE_HOLE_CLEAR:
 		entry->ce.data[0] = do_io_page_hole_clear(proc, entry->ce.data[1], entry->ce.data[2]);
 		user_thread_iocb_push(proc, idx);
-		break;
-
-	case IO_PAGE_HOLE_GUARD:
-		entry->ce.data[0] = do_io_page_hole_guard(proc, idx);
-		/* iocb would be push when page hole occurs */
 		break;
 
 	case IO_DEBUG_PUTCHAR:
@@ -337,9 +331,6 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 static inline int
 do_io_page_hole_set(proc_t proc, uintptr_t base, uintptr_t size)
 {
-	if (proc->user_thread->ph_guard == IOBUF_INDEX_NULL)
-		return -E_INVAL;
-
 	/* XXX: Call the arch to set the hole */
 
 	return 0;
@@ -350,16 +341,6 @@ do_io_page_hole_clear(proc_t proc, uintptr_t base, uintptr_t size)
 {
 	/* XXX */
 	return -E_INVAL;
-}
-
-static inline int
-do_io_page_hole_guard(proc_t proc, iobuf_index_t idx)
-{
-	if (proc->user_thread->ph_guard != IOBUF_INDEX_NULL)
-		return -E_INVAL;
-	
-	proc->user_thread->ph_guard = idx;
-	return 0;
 }
 
 static inline int

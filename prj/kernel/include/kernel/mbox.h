@@ -36,7 +36,7 @@ struct mbox_io_s
 	ips_node_t    ips;
 	proc_t        io_proc;
 	int           status;
-	mbox_t         mbox;
+	mbox_t        mbox;
 	iobuf_index_t io_index;
 
 	void     *buf;
