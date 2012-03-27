@@ -234,6 +234,7 @@ user_restore_context(proc_t proc)
 /* USER IO PROCESS ============================================ */
 
 static inline int  do_io_page_hole_set(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
+static inline int  do_io_page_hole_clear(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
 static inline int  do_io_page_hole_guard(proc_t proc, iobuf_index_t idx) __attribute__((always_inline));
 static inline int  do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result) __attribute__((always_inline));
 static inline int  do_io_phys_free(proc_t proc, uintptr_t physaddr) __attribute__((always_inline));
@@ -271,6 +272,11 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 
 	case IO_PAGE_HOLE_SET:
 		entry->ce.data[0] = do_io_page_hole_set(proc, entry->ce.data[1], entry->ce.data[2]);
+		user_thread_iocb_push(proc, idx);
+		break;
+
+	case IO_PAGE_HOLE_CLEAR:
+		entry->ce.data[0] = do_io_page_hole_clear(proc, entry->ce.data[1], entry->ce.data[2]);
 		user_thread_iocb_push(proc, idx);
 		break;
 
@@ -343,6 +349,13 @@ do_io_page_hole_set(proc_t proc, uintptr_t base, uintptr_t size)
 	/* XXX: Call the arch to set the hole */
 
 	return 0;
+}
+
+static inline int
+do_io_page_hole_clear(proc_t proc, uintptr_t base, uintptr_t size)
+{
+	/* XXX */
+	return -E_INVAL;
 }
 
 static inline int
