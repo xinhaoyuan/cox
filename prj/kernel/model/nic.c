@@ -3,17 +3,64 @@
 #include <irq.h>
 #include <string.h>
 #include <mbox.h>
+#include <lib/marshal.h>
+
+#include <lwip/opt.h>
+#include <lwip/def.h>
+#include <lwip/mem.h>
+#include <lwip/pbuf.h>
+#include <lwip/sys.h>
+#include <lwip/stats.h>
+#include <lwip/snmp.h>
+#include <netif/etharp.h>
+#include <netif/ppp_oe.h>
+#include <lwip/tcpip.h>
+#include <lwip/netifapi.h>
+#include <lwip/ip.h>
 
 static list_entry_s nic_free_list;
 nic_s nics[NICS_MAX_COUNT];
 spinlock_s nic_alloc_lock;
 
+static char nic_ctl_proc_stack[10240];
+static proc_s nic_ctl_p;
+static spinlock_s nic_ctl_list_lock;
+static list_entry_s nic_ctl_list;
+static semaphore_s nic_ctl_sem;
+
+static void
+nic_ctl_ack(mbox_io_t io, void *__data, uintptr_t hint_a, uintptr_t hint_b)
+{
+	struct nic_ctl_s *ctl = (struct nic_ctl_s *)__data;
+	
+	if (io)
+	{
+		if (hint_a > NIC_CTL_BUF_SIZE)
+			hint_a = NIC_CTL_BUF_SIZE;
+
+		memmove(ctl->buf, io->iobuf, hint_a);
+	}
+	ctl->func = hint_b;
+	
+	int irq = irq_save();
+	spinlock_acquire(&nic_ctl_list_lock);
+	list_add(&nic_ctl_list, &ctl->ctl_list);
+	spinlock_release(&nic_ctl_list_lock);
+	irq_restore(irq);
+
+	semaphore_release(&nic_ctl_sem);
+}
+
+static void nic_ctl_proc(void *__ignore);
+
 int
 nic_init(void)
 {
 	list_init(&nic_free_list);
-
+	list_init(&nic_ctl_list);
+	spinlock_init(&nic_ctl_list_lock);
 	spinlock_init(&nic_alloc_lock);
+	semaphore_init(&nic_ctl_sem, 0);
 
 	int i;
 	for (i = 0; i != NICS_MAX_COUNT; ++ i)
@@ -22,12 +69,15 @@ nic_init(void)
 		list_add_before(&nic_free_list, &nics[i].free_list);
 	}
 
+	proc_init(&nic_ctl_p, ".nic", SCHED_CLASS_RR, (void(*)(void *))nic_ctl_proc, NULL, (uintptr_t)ARCH_STACKTOP(nic_ctl_proc_stack, 10240));
+	proc_notify(&nic_ctl_p);	
+
 	return 0;
 }
 
 
 int
-nic_alloc(user_proc_t proc, int mbox_w)
+nic_alloc(user_proc_t proc, int *mbox_tx, int *mbox_ctl)
 {
 	list_entry_t l = NULL;
 	
@@ -47,11 +97,16 @@ nic_alloc(user_proc_t proc, int mbox_w)
 	{
 		nic_t nic = CONTAINER_OF(l, nic_s, free_list);
 
-		nic->status = NIC_STATUS_UNINIT;
-		nic->proc   = proc;
-		nic->mbox_w = mbox_w;
-		nic->netif  = NULL;
+		nic->status   = NIC_STATUS_UNINIT;
+		nic->proc     = proc;
+		nic->mbox_tx  = mbox_alloc(proc);
+		nic->mbox_ctl = mbox_alloc(proc);
 
+		*mbox_tx = nic->mbox_tx;
+		*mbox_ctl = nic->mbox_ctl;
+
+		/* internal ack for start the CRL loop */
+		nic_ctl_ack(NULL, &nic->ctl, 0, NIC_CTL_INIT);
 		return nic - nics;
 	}
 	else return -1;
@@ -63,38 +118,48 @@ nic_close(int nic_id)
 	/* XXX */
 }
 
-#include <lwip/opt.h>
-#include <lwip/def.h>
-#include <lwip/mem.h>
-#include <lwip/pbuf.h>
-#include <lwip/sys.h>
-#include <lwip/stats.h>
-#include <lwip/snmp.h>
-#include <netif/etharp.h>
-#include <netif/ppp_oe.h>
-#include <lwip/tcpip.h>
-
 #define IFNAME0 'i'
 #define IFNAME1 'f'
 
 static void
 low_level_init(struct netif *netif)
 {
-  /* struct ld_net_if *ld_net_if = netif->state; */
-  /* fill MAC address */
-  /* unsigned int mac_len; */
-  /* __LD_if_get_mac(ld_net_if->index, &netif->hwaddr[0], NETIF_MAX_HWADDR_LEN, &mac_len); */
-  /* netif->hwaddr_len = mac_len; */
-  /* netif->mtu = __LD_if_get_mtu(ld_net_if->index); */
+	nic_t nic = netif->state;
+	char *ptr = nic->cfg_buf;
 
-  cprintf("mac = %02x:%02x:%02x:%02x:%02x:%02x\n",
-		 netif->hwaddr[0], netif->hwaddr[1],
-		 netif->hwaddr[2], netif->hwaddr[3],
-		 netif->hwaddr[4], netif->hwaddr[5]);
-  cprintf("mtu = %d\n", netif->mtu);
+	MARSHAL_DECLARE(buf, nic->cfg_buf, nic->cfg_buf + NIC_CFG_BUF_SIZE);
+	
+	uintptr_t flag;
+	UNMARSHAL(buf, sizeof(uintptr_t), &flag);
+	UNMARSHAL(buf, sizeof(uintptr_t), &netif->mtu);
+	UNMARSHAL(buf, sizeof(uintptr_t), &netif->hwaddr_len);
+	UNMARSHAL(buf, netif->hwaddr_len, &netif->hwaddr[0]);
 
-  /* don't set NETIF_FLAG_ETHARP if this device is not an ethernet one */
-  netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
+	int addr_len;
+	struct ip_addr ip, nm, gw;
+
+	UNMARSHAL(buf, sizeof(uintptr_t), &addr_len);
+	if (addr_len > sizeof(struct ip_addr)) addr_len = sizeof(struct ip_addr);
+	UNMARSHAL(buf, addr_len, &ip);
+
+	UNMARSHAL(buf, sizeof(uintptr_t), &addr_len);
+	if (addr_len > sizeof(struct ip_addr)) addr_len = sizeof(struct ip_addr);
+	UNMARSHAL(buf, addr_len, &nm);
+
+	UNMARSHAL(buf, sizeof(uintptr_t), &addr_len);
+	if (addr_len > sizeof(struct ip_addr)) addr_len = sizeof(struct ip_addr);
+	UNMARSHAL(buf, addr_len, &gw);
+
+	netif_set_addr(netif, &ip, &nm, &gw);
+
+	cprintf("mac = %02x:%02x:%02x:%02x:%02x:%02x\n",
+			netif->hwaddr[0], netif->hwaddr[1],
+			netif->hwaddr[2], netif->hwaddr[3],
+			netif->hwaddr[4], netif->hwaddr[5]);
+	cprintf("mtu = %d\n", netif->mtu);
+
+	/* don't set NETIF_FLAG_ETHARP if this device is not an ethernet one */
+	netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
 }
 
 static err_t
@@ -105,8 +170,8 @@ low_level_output(struct netif *netif, struct pbuf *p)
 	 struct pbuf *q;
 	 int len;
 
-	 mbox_io_t io = mbox_io_acquire(nic->mbox_w);
-	 char *buf = io->ubuf;
+	 mbox_io_t io = mbox_io_acquire(nic->mbox_tx);
+	 char *buf = io->iobuf;
 	 
 #if ETH_PAD_SIZE
 	 pbuf_header(p, -ETH_PAD_SIZE); /* drop the padding word */
@@ -133,7 +198,7 @@ void
 nic_input(int nic_id, void *packet, size_t packet_size)
 {
 	 struct eth_hdr *ethhdr;
-	 struct netif *netif = nics[nic_id].netif;
+	 struct netif *netif = &nics[nic_id].netif;
 	 unsigned cur = 0;
 	 struct pbuf *p, *q;
 
@@ -206,7 +271,6 @@ static err_t
 nic_if_init(struct netif *netif)
 {
 	 LWIP_ASSERT("netif != NULL", (netif != NULL));
-	 nic_t nic = netif->state;
 
 #if LWIP_NETIF_HOSTNAME
 	 /* Initialize interface hostname */
@@ -235,28 +299,49 @@ nic_if_init(struct netif *netif)
 	 return ERR_OK;
 }
 
-/* struct netif * */
-/* ld_net_ifs_init(void) */
-/* { */
-/* 	 struct ip_addr ipaddr, netmask, gw; */
-/* 	 IP4_ADDR(&gw, 192,168,56,1); */
-/* 	 IP4_ADDR(&ipaddr, 192,168,56,2); */
-/* 	 IP4_ADDR(&netmask, 255,255,255,0); */
-	 
-/* 	 struct netif *first = NULL; */
-	 
-/* 	 ekf_kprintf("if count in linux_drivers: %d\n", __LD_ifcnt); */
-/* 	 int i; */
-/* 	 for (i = 0; i != LD_NET_IF_MAXCOUNT; ++ i) */
-/* 	 { */
-/* 		  if (!__LD_if_actived[i]) continue; */
-/* 		  ekf_kprintf("manage linux if %d\n", i); */
-/* 		  ld_net_if_array[i].index = i; */
-/* 		  ld_net_if_array[i].netif = &ld_if_array[i]; */
-/* 		  if (first == NULL) */
-/* 			   first = &ld_if_array[i]; */
-/* 		  netif_add(&ld_if_array[i], &ipaddr, &netmask, &gw, &ld_net_if_array[i], ld_net_if_init, tcpip_input); */
-/* 	 } */
-/* 	 __LD_if_register_rx_handler(ld_net_if_input_handler); */
-/* 	 return first; */
-/* } */
+static void
+nic_ctl_proc(void *__ignore)
+{
+	while (1)
+	{
+		semaphore_acquire(&nic_ctl_sem, NULL);
+
+		list_entry_t l;
+		int irq = irq_save();
+		spinlock_acquire(&nic_ctl_list_lock);
+		l = list_next(&nic_ctl_list);
+		list_del(l);
+		spinlock_release(&nic_ctl_list_lock);
+		irq_restore(irq);
+
+		struct nic_ctl_s *ctl = CONTAINER_OF(l, struct nic_ctl_s, ctl_list);
+		nic_t nic = CONTAINER_OF(ctl, nic_s, ctl);
+
+		cprintf("NIC CTL %d!\n", ctl->func);
+		switch(ctl->func)
+		{
+		case NIC_CTL_CFG_SET:
+		{
+			memmove(nic->cfg_buf, ctl->buf, NIC_CFG_BUF_SIZE);
+			if (nic->status == NIC_STATUS_UNINIT)
+				nic->status = NIC_STATUS_DETACHED;
+		}
+		break;
+		
+		case NIC_CTL_ADD:
+		{
+			static struct ip_addr ip_zero = { 0 };
+			if (nic->status == NIC_STATUS_DETACHED)
+			{
+				netif_add(&nic->netif, &ip_zero, &ip_zero, &ip_zero, nic, nic_if_init, tcpip_input);
+				nic->status = NIC_STATUS_ATTACHED;
+			}
+		}
+		break;
+		
+		}
+		
+		/* Get next ctl */
+		mbox_io_send(mbox_io_acquire(nic->mbox_ctl), nic_ctl_ack, ctl, 0, 0);
+	}
+}

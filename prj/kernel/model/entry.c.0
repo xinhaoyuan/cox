@@ -15,6 +15,35 @@
 #define TEST_TIMER 2
 #define TEST_LWIP  3
 
+static void
+test_mbox(void *__ignore)
+{
+	proc_delayed_self_notify_set(200);
+	proc_wait_try();
+	cprintf("TEST MBOX WRITE\n");
+
+#define STR1 "Hello world"
+#define STR2 "Hello world again"
+		
+	static char buf1[] = STR1;
+	static int  len1 = sizeof(STR1);
+	static char buf2[] = STR2;
+	static int  len2 = sizeof(STR2);
+
+	mbox_io_t io = mbox_io_acquire(0);
+	memmove(io->ubuf, buf1, len1);
+	mbox_io_send(io, NULL, NULL, 0, len1);
+	while (1)
+	{
+		cprintf("Send more packet!\n");
+		io = mbox_io_acquire(0);
+		memmove(io->ubuf, buf2, len2);
+		mbox_io_send(io, NULL, NULL, 0, len2);
+	}
+	
+	while (1) __cpu_relax();
+}
+
 #define TEST TEST_LWIP
 
 proc_s p1, p2;

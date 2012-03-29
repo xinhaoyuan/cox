@@ -4,6 +4,7 @@
 #include <user.h>
 #include <page.h>
 #include <mbox.h>
+#include <nic.h>
 #include <irq.h>
 #include <arch/irq.h>
 #include <lib/low_io.h>
@@ -240,7 +241,10 @@ static inline int  do_io_phys_free(proc_t proc, uintptr_t physaddr) __attribute_
 static inline int  do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result) __attribute__((always_inline));
 static inline int  do_io_mmio_close(proc_t proc, uintptr_t addr) __attribute__((always_inline));
 static inline int  do_io_brk(proc_t proc, uintptr_t end) __attribute__((always_inline));
-static inline int  do_mbox_open(proc_t proc) __attribute__((always_inline));
+static inline int  do_io_mbox_open(proc_t proc) __attribute__((always_inline));
+static inline int  do_io_nic_open(proc_t proc, uintptr_t *mbox_tx, uintptr_t *mbox_ctl) __attribute__((always_inline));
+static inline int  do_io_nic_close(proc_t proc, int nic) __attribute__((always_inline));
+static inline int  do_io_nic_recv(proc_t proc, int nic, uintptr_t buf, size_t size) __attribute__((always_inline));
 
 static void
 io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
@@ -310,7 +314,7 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 		break;
 
 	case IO_MBOX_OPEN:
-		entry->ce.data[0] = do_mbox_open(proc);
+		entry->ce.data[0] = do_io_mbox_open(proc);
 		user_thread_iocb_push(proc, idx);
 		break;
 
@@ -320,10 +324,25 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 		break;
 		
 	case IO_MBOX_IO:
-		mbox_io(entry->ce.data[1], entry->ce.data[2], entry->ce.data[3], proc, idx);
+		mbox_io(entry->ce.data[1], entry->ce.data[2], entry->ce.data[3], entry->ce.data[4], proc, idx);
 		/* iocb would be pushed when request comes */
 		break;
 
+	case IO_NIC_OPEN:
+		entry->ce.data[0] = do_io_nic_open(proc, &entry->ce.data[1], &entry->ce.data[2]);
+		user_thread_iocb_push(proc, idx);
+		break;
+
+	case IO_NIC_CLOSE:
+		/* XXX */
+		user_thread_iocb_push(proc, idx);
+		break;
+
+	case IO_NIC_RECV:
+		entry->ce.data[0] = do_io_nic_recv(proc, entry->ce.data[1], entry->ce.data[2], entry->ce.data[3]);
+		user_thread_iocb_push(proc, idx);
+		break;
+		
 	default: break;
 	}
 }
@@ -386,7 +405,25 @@ do_io_brk(proc_t proc, uintptr_t end)
 }
 
 static inline int
-do_mbox_open(proc_t proc)
+do_io_mbox_open(proc_t proc)
 {
 	return mbox_alloc(proc->user_proc);
 }
+
+static inline int
+do_io_nic_open(proc_t proc, uintptr_t *mbox_tx, uintptr_t *mbox_ctl)
+{
+	int tx, ctl;
+	int r = nic_alloc(proc->user_proc, &tx, &ctl);
+
+	*mbox_tx = tx; *mbox_ctl = ctl;
+	return r;
+}
+
+static inline int
+do_io_nic_close(proc_t proc, int nic)
+{ }
+
+static inline int
+do_io_nic_recv(proc_t proc, int nic, uintptr_t buf, size_t size)
+{ }

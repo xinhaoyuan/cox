@@ -11,46 +11,15 @@
 #include <mbox.h>
 #include <nic.h>
 
-static proc_s p;
-static char   p_stack[10240];
-
-void
-test(void *__ignore)
-{
-	proc_delayed_self_notify_set(200);
-	proc_wait_try();
-	cprintf("TEST NIC WRITE\n");
-
-#define STR1 "Hello world"
-#define STR2 "Hello world again"
-		
-	static char buf1[] = STR1;
-	static int  len1 = sizeof(STR1);
-	static char buf2[] = STR2;
-	static int  len2 = sizeof(STR2);
-
-	mbox_io_t io = mbox_io_acquire(0);
-	memmove(io->ubuf, buf1, len1);
-	mbox_io_send(io, NULL, NULL, 0, len1);
-	while (1)
-	{
-		cprintf("Send more packet!\n");
-		io = mbox_io_acquire(0);
-		memmove(io->ubuf, buf2, len2);
-		mbox_io_send(io, NULL, NULL, 0, len2);
-	}
-	
-	while (1) __cpu_relax();
-}
-
 void
 kernel_start(void)
 {
 	mbox_init();
+	kern_lwip_init();
 	nic_init();
 
-	proc_init(&p, ".test", SCHED_CLASS_RR, (void(*)(void *))test, NULL, (uintptr_t)ARCH_STACKTOP(p_stack, 10240));
-	proc_notify(&p);
+	/* proc_init(&p, ".nic", SCHED_CLASS_RR, (void(*)(void *))test, NULL, (uintptr_t)ARCH_STACKTOP(p_stack, 10240)); */
+	/* proc_notify(&p); */
 	
 	/* Load the user init image */
 	

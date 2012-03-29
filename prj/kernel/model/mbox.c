@@ -5,6 +5,7 @@
 #include <string.h>
 #include <page.h>
 #include <user.h>
+#include <proc.h>
 
 static list_entry_s mbox_free_list;
 static spinlock_s   mbox_alloc_lock;
@@ -119,63 +120,41 @@ mbox_io_acquire(int mbox_id)
 }
 
 int
-mbox_io_send(mbox_io_t io, ips_node_t ips, void *buf, size_t buf_size, uintptr_t hint)
+mbox_io_send(mbox_io_t io, ack_callback_f ack_cb, void *ack_data, uintptr_t hint_a, uintptr_t hint_b)
 {
-	ips_node_s __ips;
-	if (ips == NULL)
-	{
-		ips = &__ips;
-		IPS_NODE_PTR_SET(ips, current);
-		IPS_NODE_WAIT_SET(ips);
-	}
 	
-	io->ips = ips;
+	io->ack_cb = ack_cb;
+	io->ack_data = ack_data;
+	
 	io->status = MBOX_IO_STATUS_PROCESSING;
 	io_call_entry_t ce = &io->io_proc->user_thread->ioce.head[io->io_index];
 	/* WRITE MESSAGE */
-	if (buf_size > (MBOX_IO_UBUF_PSIZE << __PGSHIFT))
-		buf_size = (MBOX_IO_UBUF_PSIZE << __PGSHIFT);
 	ce->ce.data[0] = 0;
-	ce->ce.data[1] = io->ubuf_u;
+	ce->ce.data[1] = io->iobuf_u;
 	ce->ce.data[2] = io - mbox_ios;
-	ce->ce.data[3] = buf_size;
-	ce->ce.data[4] = hint;
-	io->buf = buf;
-	io->buf_size = buf_size;
+	ce->ce.data[3] = hint_a;
+	ce->ce.data[4] = hint_b;
 	user_thread_iocb_push(io->io_proc, io->io_index);
-
-	if (ips == &__ips)
-	{
-		while (IPS_NODE_WAIT(ips))
-			proc_wait_try();
-	}
 
 	return 0;
 }
 
 int
-mbox_io(int mbox_id, int ack, size_t ack_size, proc_t io_proc, iobuf_index_t io_index)
+mbox_io(int mbox_id, int ack_id, uintptr_t hint_a, uintptr_t hint_b, proc_t io_proc, iobuf_index_t io_index)
 {
-	cprintf("MBOX IO\n");
+	cprintf("MBOX IO %d %d %016lx %016lx\n", mbox_id, ack_id, hint_a, hint_b);
 	int result;
-	void *ubuf = NULL;
-	uintptr_t ubuf_u;
+	void *iobuf = NULL;
+	uintptr_t iobuf_u;
 	
-	if (ack != -1 && mbox_ios[ack].status == MBOX_IO_STATUS_PROCESSING)
+	if (ack_id != -1 && mbox_ios[ack_id].status == MBOX_IO_STATUS_PROCESSING)
 	{
-		if (mbox_ios[ack].buf_size > 0)
-		{
-			/* if the ack io has a read buf, copy read data into up level buffer */
-			if (ack_size > mbox_ios[ack].buf_size) ack_size = mbox_ios[ack].buf_size;
-			memmove(mbox_ios[ack].buf, mbox_ios[ack].ubuf, ack_size);
-		}
+		mbox_io_t io = &mbox_ios[ack_id];
+		io->status = MBOX_IO_STATUS_FINISHED;
+		io->ack_cb(io, io->ack_data, hint_a, hint_b);
 		
-		mbox_ios[ack].status = MBOX_IO_STATUS_FINISHED;
-		IPS_NODE_WAIT_CLEAR(mbox_ios[ack].ips);
-		proc_notify(IPS_NODE_PTR(mbox_ios[ack].ips));
-		
-		ubuf = mbox_ios[ack].ubuf;
-		ubuf_u = mbox_ios[ack].ubuf_u;
+		iobuf   = io->iobuf;
+		iobuf_u = io->iobuf_u;
 	}
 
 	list_entry_t l = NULL;
@@ -191,9 +170,9 @@ mbox_io(int mbox_id, int ack, size_t ack_size, proc_t io_proc, iobuf_index_t io_
 	spinlock_acquire(&mbox_io_alloc_lock);
 
 	/* free the ack io */
-	if (ubuf != NULL)
+	if (iobuf != NULL)
 	{
-		list_add(&mbox_io_free_list, &mbox_ios[ack].free_list);
+		list_add(&mbox_io_free_list, &mbox_ios[ack_id].free_list);
 	}
 
 	if (!list_empty(&mbox_io_free_list))
@@ -211,18 +190,18 @@ mbox_io(int mbox_id, int ack, size_t ack_size, proc_t io_proc, iobuf_index_t io_
 		goto nomore_io;
 	}
 
-	if (ubuf == NULL)
+	if (iobuf == NULL)
 	{
-		page_t p = page_alloc_atomic(MBOX_IO_UBUF_PSIZE);
+		page_t p = page_alloc_atomic(MBOX_IO_IOBUF_PSIZE);
 		if (p == NULL)
 		{
 			result = -E_INVAL;
 			goto nomore_io;
 		}
 		
-		ubuf = VADDR_DIRECT(PAGE_TO_PHYS(p));
+		iobuf = VADDR_DIRECT(PAGE_TO_PHYS(p));
 		
-		if (user_proc_arch_mmio_open(io_proc->user_proc, PADDR_DIRECT(ubuf), MBOX_IO_UBUF_PSIZE << __PGSHIFT, &ubuf_u))
+		if (user_proc_arch_mmio_open(io_proc->user_proc, PADDR_DIRECT(iobuf), MBOX_IO_IOBUF_PSIZE << __PGSHIFT, &iobuf_u))
 		{
 			result = -E_INVAL;
 			goto nomore_io;
@@ -232,12 +211,11 @@ mbox_io(int mbox_id, int ack, size_t ack_size, proc_t io_proc, iobuf_index_t io_
 
 	mbox_io_t io = CONTAINER_OF(l, mbox_io_s, free_list);
 	io->status   = MBOX_IO_STATUS_QUEUEING;
-	io->ips      = NULL;
 	io->io_proc  = io_proc;
 	io->io_index = io_index;
 	io->mbox     = mbox;
-	io->ubuf     = ubuf;
-	io->ubuf_u   = ubuf_u;
+	io->iobuf    = iobuf;
+	io->iobuf_u  = iobuf_u;
 
 	spinlock_acquire(&mbox->io_lock);
 	list_add(&mbox->io_list, &io->io_list);
@@ -247,11 +225,29 @@ mbox_io(int mbox_id, int ack, size_t ack_size, proc_t io_proc, iobuf_index_t io_
 	return 0;
 
   nomore_io:
-	if (ubuf != NULL)
+	if (iobuf != NULL)
 	{
-		page_free_atomic(PHYS_TO_PAGE(PADDR_DIRECT(ubuf)));
+		page_free_atomic(PHYS_TO_PAGE(PADDR_DIRECT(iobuf)));
 		if (mbox) mbox_put(mbox_id);
 	}
 	if (result) cprintf("MBOX IO FAILED\n");
 	return result;
+}
+
+void
+mbox_ack_func(mbox_io_t io, void *__data, uintptr_t hint_a, uintptr_t hint_b)
+{
+	mbox_ack_data_t data = __data;
+	if (data->buf != NULL);
+	{
+		if (hint_a > data->buf_size)
+			hint_a = data->buf_size;
+		if (hint_a > (MBOX_IO_IOBUF_PSIZE << __PGSHIFT))
+			hint_a = (MBOX_IO_IOBUF_PSIZE << __PGSHIFT);
+
+		memmove(data->buf, io->iobuf, hint_a);
+	}
+
+	IPS_NODE_WAIT_CLEAR(data->ips);
+	proc_notify(IPS_NODE_PTR(data->ips));
 }

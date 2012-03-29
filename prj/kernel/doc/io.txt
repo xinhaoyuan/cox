@@ -44,6 +44,6 @@ alloc a new MBOX
 
 free a MBOX
 
-- (succ, buf, io_id, buf_size, hint) | IO_MBOX_IO(mbox, ack_io_id, ack_size)
+- (succ, buf, io_id, hint_a, hint_b) | IO_MBOX_IO(mbox, ack_io_id, hint_a, hint_b)
 
 acknowledge previous io and wait for a io on specific MBOX

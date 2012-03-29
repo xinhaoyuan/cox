@@ -88,11 +88,17 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_MBOX_IO          0x413
 #define IO_NIC_OPEN         0x420
 #define IO_NIC_CLOSE        0x421
-#define IO_NIC_CTL          0x422
-#define   IO_NIC_CTL_SET_MAC  0x1
-#define   IO_NIC_CTL_UP       0x2
-#define   IO_NIC_CTL_DOWN     0x3
 #define IO_NIC_RECV         0x423
+
+#define NIC_CTL_BUF_SIZE 0x100
+#define NIC_CTL_INIT     0x0
+#define NIC_CTL_CFG_SET  0x1 
+#define NIC_CTL_ADD      0x2
+#define NIC_CTL_UP       0x3
+#define NIC_CTL_DOWN     0x4
+
+
+#define NIC_HINT_GET_CONFIGURE 0x0
 
 typedef void (*io_callback_handler_f)(void *ret);
 
