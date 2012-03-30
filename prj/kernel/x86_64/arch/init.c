@@ -91,6 +91,8 @@ __kern_cpu_init(void)
 	irq_init_mp();
 	/* put self into idle proc */
 	sched_init_mp();
+	
+	timer_init_mp();
 
 	if (lapic_id() == sysconf_x86.cpu.boot)
 	{
@@ -103,8 +105,7 @@ __kern_cpu_init(void)
 	}
 
 	/* XXX: TEMP CODE FOR SETUP U->K TRAP STACK */
-	uintptr_t stacktop = PAGE_TO_PHYS(page_alloc_atomic(4));
-	stacktop += 4 * PGSIZE;
+	uintptr_t stacktop = (uintptr_t)ARCH_STACKTOP(PAGE_TO_PHYS(page_alloc_atomic(4)), 4 * PGSIZE);
 	cpu_set_trap_stacktop((uintptr_t)VADDR_DIRECT(stacktop));
 
 	lapic_timer_set(100);

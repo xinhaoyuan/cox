@@ -19,6 +19,7 @@ typedef proc_timer_s *proc_timer_t;
 
 void timer_master_cpu_set(void);
 int  timer_init(void);
+int  timer_init_mp(void);
 
 void proc_timer_init(proc_timer_t timer);
 int  proc_timer_set(proc_timer_t timer, tick_t tick);

@@ -27,9 +27,13 @@ timer_init(void)
 	crh_init(&crh);
 	crh_set_base(&crh, 0);
 	timer_tick = 0;
+	return 0;
+}
 
-	irq_handler[IRQ_TIMER] = __tick_handler;
-
+int
+timer_init_mp(void)
+{
+	irq_handler_set(IRQ_TIMER, 0, __tick_handler);
 	return 0;
 }
 
