@@ -52,16 +52,17 @@ irq_process(void)
 	{
 		irq_no = BIT_SEARCH_LAST(info->mask);
 		h      = info->handler[irq_no];
-		if (h)
+		acc    = info->accumulate[irq_no];
+		if (h && acc)
 		{
-			acc = info->accumulate[irq_no];
-			
 			info->accumulate[irq_no] = 0;
 			info->mask ^= 1 << irq_no;
 
 			__irq_enable();
-			h(irq_no, acc);
+			int r = h(irq_no, acc);
 			__irq_disable();
+
+			if (r) info->accumulate[irq_no] += acc;
 		}
 		else
 		{
@@ -85,11 +86,12 @@ irq_restore(int state)
 {
 	int intr = __irq_save();	
 	struct irq_info_s *info = PLS(__irq_info);
-	PLS_SET(__local_irq_save, state);
 	if (info && state == 0 && info->mask)
 	{
 		irq_process();
+		PLS_SET(__local_irq_save, 0);
 	}
+	else PLS_SET(__local_irq_save, state);
 	__irq_restore(intr);
 }
 
@@ -109,8 +111,11 @@ irq_entry(int irq)
 		PLS_SET(__local_irq_save, 1);
 		irq_process();
 		PLS_SET(__local_irq_save, 0);
+		
+		__irq_enable();
+		schedule();
 	}
-
+	
 	__irq_restore(intr);
 }
 

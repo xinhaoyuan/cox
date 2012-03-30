@@ -6,6 +6,7 @@
 #include <mbox.h>
 #include <nic.h>
 #include <irq.h>
+#include <mbox_irq.h>
 #include <arch/irq.h>
 #include <lib/low_io.h>
 
@@ -290,6 +291,29 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 
 	case IO_DEBUG_GETCHAR:
 		entry->ce.data[1] = cgetchar();
+		user_thread_iocb_push(proc, idx);
+		break;
+
+	case IO_SYS_CTL:
+
+		switch (entry->ce.data[1])
+		{
+		case IO_SYS_CTL_IRQ_MBOX:
+			if (entry->ce.data[2] < IRQ_COUNT)
+			{
+				entry->ce.data[0] = 0;
+				entry->ce.data[1] = mbox_irq[entry->ce.data[2]];
+			}
+			else
+			{
+				entry->ce.data[0] = -1;
+			}
+			break;
+			
+		default:
+			entry->ce.data[0] = -1;
+			break;
+		}
 		user_thread_iocb_push(proc, idx);
 		break;
 

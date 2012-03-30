@@ -5,7 +5,7 @@
 #include <lib/low_io.h>
 #include <arch/irq.h>
 
-static void __tick_handler(int irq_no, uint64_t acc);
+static int __tick_handler(int irq_no, uint64_t acc);
 tick_t timer_tick;
 static spinlock_s timer_lock;
 static crh_s crh;
@@ -72,13 +72,13 @@ timer_process(tick_t c)
 }
 
 
-static void
+static int
 __tick_handler(int irq_no, uint64_t acc)
 {
 	if (PLS(__timer_master_cpu))
 		timer_process(acc);
-	
-	schedule();
+
+	return 0;
 }
 
 void

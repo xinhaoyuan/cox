@@ -77,15 +77,15 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_GET_ADDR_INFO    0x221
 #define IO_FREE_ADDR_INFO   0x222
 /* MANAGE NODE */
-#define IO_IRQ_LISTEN       0x400
+#define IO_SYS_CTL          0x400
+#define   IO_SYS_CTL_IRQ_MBOX 0x0
 #define IO_MMIO_OPEN        0x401
 #define IO_MMIO_CLOSE       0x402
 #define IO_PHYS_ALLOC       0x403
 #define IO_PHYS_FREE        0x404
 #define IO_MBOX_OPEN        0x410
 #define IO_MBOX_CLOSE       0x411
-#define IO_MBOX_CTL         0x412
-#define IO_MBOX_IO          0x413
+#define IO_MBOX_IO          0x412
 #define IO_NIC_OPEN         0x420
 #define IO_NIC_CLOSE        0x421
 #define IO_NIC_RECV         0x423
