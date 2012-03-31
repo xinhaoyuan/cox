@@ -31,6 +31,8 @@ fiber1(void *arg)
 	e1000_test();
 		
 #endif
+
+#if 0
 	int mbox_tx, mbox_ctl, nic;
 	
 	{
@@ -79,6 +81,34 @@ fiber1(void *arg)
 		mbox_io.io[4] = NIC_CTL_ADD;
 
 		io(&mbox_io, IO_MODE_SYNC);
+	}
+
+#endif
+
+	int mbox;
+	
+	{
+		io_data_s mbox_open = IO_DATA_INITIALIZER(1, IO_MBOX_OPEN);
+		io(&mbox_open, IO_MODE_SYNC);
+		mbox = mbox_open.io[0];
+	}
+
+	{
+		io_data_s irq_listen = IO_DATA_INITIALIZER(1, IO_IRQ_LISTEN, 1, mbox);
+		io(&irq_listen, IO_MODE_SYNC);
+		if (irq_listen.io[0]) cprintf("irq listen failed\n");
+	}
+
+	{
+		io_data_s mbox_io = IO_DATA_INITIALIZER(5, IO_MBOX_IO, mbox, -1, 0, 0);
+		while (1)
+		{
+			io(&mbox_io, IO_MODE_SYNC);
+			cprintf("!\n");
+
+			mbox_io.io[0] = IO_MBOX_IO;
+			mbox_io.io[1] = mbox;
+		}
 	}
 	
 	while (1) ;

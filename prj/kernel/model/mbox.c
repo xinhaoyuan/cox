@@ -6,12 +6,14 @@
 #include <page.h>
 #include <user.h>
 #include <proc.h>
+#include <ips.h>
 
 static list_entry_s mbox_free_list;
 static spinlock_s   mbox_alloc_lock;
 
 static list_entry_s mbox_io_free_list;
 static spinlock_s   mbox_io_alloc_lock;
+static semaphore_s  mbox_io_alloc_sem;
 
 mbox_s mboxs[MBOXS_MAX_COUNT];
 mbox_io_s mbox_ios[MBOX_IOS_MAX_COUNT];
@@ -30,6 +32,7 @@ mbox_init(void)
 
 	spinlock_init(&mbox_alloc_lock);
 	spinlock_init(&mbox_io_alloc_lock);
+	semaphore_init(&mbox_io_alloc_sem, MBOX_IOS_MAX_COUNT);
 
 	int i;
 	for (i = 0; i != MBOXS_MAX_COUNT; ++ i)
@@ -69,7 +72,7 @@ mbox_alloc(user_proc_t proc)
 	{
 		mbox_t mbox = CONTAINER_OF(l, mbox_s, free_list);
 
-		mbox->status = MBOX_STATUS_CLOSED;
+		mbox->status = MBOX_STATUS_NORMAL;
 		mbox->proc   = proc;
 
 		list_init(&mbox->io_recv_list);
@@ -88,35 +91,33 @@ mbox_free(int mbox_id)
 }
 
 int
-mbox_send(int mbox_id, mbox_send_callback_f send_cb, void *send_data, mbox_ack_callback_f ack_cb, void *ack_data)
+mbox_send(int mbox_id, int try, mbox_send_callback_f send_cb, void *send_data, mbox_ack_callback_f ack_cb, void *ack_data)
 {
 	mbox_t mbox = mbox_get(mbox_id);
 
 	if (mbox == NULL) return -E_INVAL;
 
+	if (try)
+	{
+		if (semaphore_try_acquire(&mbox_io_alloc_sem) == 0) return -E_NO_MEM;
+	}
+	else semaphore_acquire(&mbox_io_alloc_sem, NULL);
+	
 	int irq = irq_save();
 	spinlock_acquire(&mbox->io_lock);
 	spinlock_acquire(&mbox_io_alloc_lock);
-	if (list_empty(&mbox_io_free_list))
-	{
-		spinlock_release(&mbox_io_alloc_lock);
-		spinlock_release(&mbox->io_lock);
-		irq_restore(irq);
-			
-		return -E_NO_MEM;
-	}
 	list_entry_t l = list_next(&mbox_io_free_list);
 	list_del(l);
 	spinlock_release(&mbox_io_alloc_lock);
+	mbox_io_t io  = CONTAINER_OF(l, mbox_io_s, free_list);
+	io->mbox      = mbox;
+	io->ack_cb    = ack_cb;
+	io->ack_data  = ack_data;
 
 	if (list_empty(&mbox->io_recv_list))
 	{
-		mbox_io_t io  = CONTAINER_OF(l, mbox_io_s, free_list);
 		io->send_cb   = send_cb;
 		io->send_data = send_data;
-		io->ack_cb    = ack_cb;
-		io->ack_data  = ack_data;
-		io->mbox      = mbox;
 		io->status    = MBOX_IO_STATUS_SEND_QUEUEING;
 
 		list_add_before(&mbox->io_send_list, &io->io_list);
@@ -132,12 +133,9 @@ mbox_send(int mbox_id, mbox_send_callback_f send_cb, void *send_data, mbox_ack_c
 		irq_restore(irq);
 
 		io_ce_shadow_t shd = CONTAINER_OF(rl, io_ce_shadow_s, wait_list);
-		mbox_io_t io = CONTAINER_OF(l, mbox_io_s, free_list);
 		
 		io->iobuf     = shd->iobuf;
 		io->iobuf_u   = shd->iobuf_u;
-		io->ack_cb    = ack_cb;
-		io->ack_data  = ack_data;
 		io->status    = MBOX_IO_STATUS_PROCESSING;
 		
 		io_call_entry_t ce = &shd->proc->user_thread->ioce.head[shd->index];
@@ -160,6 +158,7 @@ mbox_io(int mbox_id, int ack_id, uintptr_t hint_a, uintptr_t hint_b, proc_t io_p
 	int result;
 	void *iobuf = NULL;
 	uintptr_t iobuf_u;
+	int irq;
 
 	if (ack_id >= MBOX_IOS_MAX_COUNT)
 	{
@@ -175,6 +174,14 @@ mbox_io(int mbox_id, int ack_id, uintptr_t hint_a, uintptr_t hint_b, proc_t io_p
 		
 		iobuf   = io->iobuf;
 		iobuf_u = io->iobuf_u;
+
+		irq = irq_save();
+		spinlock_acquire(&mbox_io_alloc_lock);
+		list_add(&mbox_io_free_list, &mbox_ios[ack_id].free_list);
+		spinlock_release(&mbox_io_alloc_lock);
+		irq_restore(irq);
+
+		semaphore_release(&mbox_io_alloc_sem);
 	}
 
 	mbox_t mbox = mbox_get(mbox_id);
@@ -203,16 +210,9 @@ mbox_io(int mbox_id, int ack_id, uintptr_t hint_a, uintptr_t hint_b, proc_t io_p
 		}
 	}
 
-	int irq = irq_save();
+	irq = irq_save();
 	spinlock_acquire(&mbox->io_lock);
 	
-	if (ack_id >= 0)
-	{
-		spinlock_acquire(&mbox_io_alloc_lock);
-		list_add(&mbox_io_free_list, &mbox_ios[ack_id].free_list);
-		spinlock_release(&mbox_io_alloc_lock);
-	}
-
 	if (list_empty(&mbox->io_send_list))
 	{
 		io_ce_shadow_t shd = &io_proc->user_thread->ioce.shadows[io_index];

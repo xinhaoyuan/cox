@@ -4,7 +4,7 @@
 #include <arch/irq.h>
 
 int mbox_irq_init(void);
-int mbox_irq_get(int irq_id);
-int mbox_irq_handler(int irq_id, uint64_t acc);
+int mbox_irq_listen(int irq_no, int mbox_id);
+int mbox_irq_handler(int irq_no, uint64_t acc);
 
 #endif

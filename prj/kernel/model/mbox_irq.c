@@ -2,12 +2,13 @@
 #include <mbox.h>
 #include <irq.h>
 #include <lib/low_io.h>
+#include <error.h>
 
-static int mbox_irq[IRQ_COUNT];
 static struct mbox_irq_data_s
 {
-	int irq_id;
-	size_t busy_chain;
+	int irq_no;
+	spinlock_s listen_lock;
+	list_entry_s listen_list;
 } mbox_irq_data[IRQ_COUNT];
 
 static volatile int mbox_irq_initialized = 0;
@@ -18,9 +19,9 @@ mbox_irq_init(void)
 	int i;
 	for (i = 0; i < IRQ_COUNT; ++ i)
 	{
-		mbox_irq[i] = mbox_alloc(NULL);
-		mbox_irq_data[i].irq_id = i;
-		mbox_irq_data[i].busy_chain = 0;
+		mbox_irq_data[i].irq_no = i;
+		spinlock_init(&mbox_irq_data[i].listen_lock);
+		list_init(&mbox_irq_data[i].listen_list);
 	}
 
 	mbox_irq_initialized = 1;	
@@ -28,51 +29,54 @@ mbox_irq_init(void)
 }
 
 int
-mbox_irq_get(int irq_id)
+mbox_irq_listen(int irq_no, int mbox_id)
 {
-	if (mbox_irq_initialized) return mbox_irq[irq_id];
-	else return -1;
+	if (!mbox_irq_initialized) return -E_INVAL;
+	mbox_t mbox = &mboxs[mbox_id];
+	if (mbox == NULL) return -E_INVAL;
+	if (mbox->status != MBOX_STATUS_NORMAL) return -E_INVAL;
+	mbox->status = MBOX_STATUS_IRQ_LISTEN;
+
+	int irq = irq_save();
+	spinlock_acquire(&mbox_irq_data[irq_no].listen_lock);
+	list_add_before(&mbox_irq_data[irq_no].listen_list, &mbox->irq_listen.listen_list);
+	spinlock_release(&mbox_irq_data[irq_no].listen_lock);
+	irq_restore(irq);
+	return 0;
 }
 
-/* static void */
-/* mbox_irq_ack(mbox_io_t io, void *__data, uintptr_t hint_a, uintptr_t hint_b) */
-/* { */
-/* 	struct mbox_irq_data_s *data = __data; */
+static void
+mbox_irq_send(mbox_io_t io, void *__data, uintptr_t *hint_a, uintptr_t *hint_b)
+{ }
 
-/* 	if (hint_a == 0) */
-/* 	{ */
-/* 		data->busy_chain = 0; */
-/* 		// irq_arch_ack(data->irq_id); */
-/* 	} */
-/* 	else if (-- data->busy_chain > 0) */
-/* 	{ */
-/* 		size_t foo; */
-/* 		mbox_io_t next_io = mbox_io_try_acquire(mbox_irq[data->irq_id], &foo); */
-/* 		if (next_io != NULL) */
-/* 			mbox_io_send(io, mbox_irq_ack, __data, 0, 0); */
-/* 		else */
-/* 		{ */
-/* 			/\* should not happen *\/ */
-/* 			data->busy_chain = 0; */
-/* 			// irq_arch_ack(data->irq_id); */
-/* 		} */
-/* 	} */
-/* 	// else irq_arch_ack(data->irq_id); */
-/* } */
+static void
+mbox_irq_ack(mbox_io_t io, void *__data, uintptr_t hint_a, uintptr_t hint_b)
+{ }
 
 int
-mbox_irq_handler(int irq_id, uint64_t acc)
+mbox_irq_handler(int irq_no, uint64_t acc)
 {
-	/* if (!mbox_irq_initialized) return -1; */
-	
-	/* int mbox = mbox_irq[irq_id]; */
-	/* if (mbox_irq_data[irq_id].busy_chain != 0) */
-	/* 	return -1; */
-
-	/* mbox_io_t io; */
-	/* if ((io = mbox_io_try_acquire(mbox, &mbox_irq_data[irq_id].busy_chain)) == NULL) */
-	/* 	return -1; */
-
-	/* mbox_io_send(io, mbox_irq_ack, NULL, 0, 0); */
+	if (!mbox_irq_initialized) return -1;
+	spinlock_acquire(&mbox_irq_data[irq_no].listen_lock);
+	cprintf("IRQ %d -> MBOX\n", irq_no);
+	list_entry_t l = list_next(&mbox_irq_data[irq_no].listen_list);
+	while (l != &mbox_irq_data[irq_no].listen_list)
+	{
+		mbox_t mbox = CONTAINER_OF(l, mbox_s, irq_listen.listen_list);
+		/* Hack code to detect whether the mbox is send-pending */
+		spinlock_acquire(&mbox->io_lock);
+		int to_send = list_empty(&mbox->io_send_list);
+		spinlock_release(&mbox->io_lock);
+		/* Not pending, send a mail without blocking*/
+		if (to_send)
+		{
+			cprintf("IRQ MSG TO %d\n", mbox - mboxs); 
+			mbox_send(mbox - mboxs, 1,
+					  mbox_irq_send, &mbox_irq_data[irq_no],
+					  mbox_irq_ack, &mbox_irq_data[irq_no]);
+		}
+		l = list_next(l);
+	}
+	spinlock_release(&mbox_irq_data[irq_no].listen_lock);
 	return 0;
 }

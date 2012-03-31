@@ -247,6 +247,7 @@ static inline int  do_io_mbox_open(proc_t proc) __attribute__((always_inline));
 static inline int  do_io_nic_open(proc_t proc, uintptr_t *mbox_tx, uintptr_t *mbox_ctl) __attribute__((always_inline));
 static inline int  do_io_nic_close(proc_t proc, int nic) __attribute__((always_inline));
 static inline int  do_io_nic_recv(proc_t proc, int nic, uintptr_t buf, size_t size) __attribute__((always_inline));
+static inline int  do_irq_listen(int irq_no, int mbox_id) __attribute__((always_inline));
 
 static void
 io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
@@ -295,26 +296,8 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 		user_thread_iocb_push(proc, idx);
 		break;
 
-	case IO_SYS_CTL:
-
-		switch (entry->ce.data[1])
-		{
-		case IO_SYS_CTL_IRQ_MBOX:
-			if (entry->ce.data[2] < IRQ_COUNT)
-			{
-				entry->ce.data[0] = 0;
-				entry->ce.data[1] = mbox_irq_get(entry->ce.data[2]);
-			}
-			else
-			{
-				entry->ce.data[0] = -1;
-			}
-			break;
-			
-		default:
-			entry->ce.data[0] = -1;
-			break;
-		}
+	case IO_IRQ_LISTEN:
+		entry->ce.data[0] = do_irq_listen(entry->ce.data[1], entry->ce.data[2]);
 		user_thread_iocb_push(proc, idx);
 		break;
 
@@ -447,8 +430,18 @@ do_io_nic_open(proc_t proc, uintptr_t *mbox_tx, uintptr_t *mbox_ctl)
 
 static inline int
 do_io_nic_close(proc_t proc, int nic)
-{ }
+{
+	return -E_INVAL;
+}
 
 static inline int
 do_io_nic_recv(proc_t proc, int nic, uintptr_t buf, size_t size)
-{ }
+{
+	return -E_INVAL;
+}
+
+static inline int
+do_irq_listen(int irq_no, int mbox_id)
+{
+	return mbox_irq_listen(irq_no, mbox_id);
+}

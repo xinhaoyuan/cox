@@ -222,7 +222,7 @@ low_level_output(struct netif *netif, struct pbuf *p)
 	 IPS_NODE_WAIT_SET(&ips);
 	 IPS_NODE_AC_WAIT_SET(&ips);
 
-	 mbox_send(nic->mbox_tx, nic_send_cb, &s, nic_send_ack_cb, &s);
+	 mbox_send(nic->mbox_tx, 0, nic_send_cb, &s, nic_send_ack_cb, &s);
 	 ips_wait(&ips);
 
 	 return ERR_OK;
@@ -376,6 +376,6 @@ nic_ctl_proc(void *__ignore)
 		}
 		
 		/* Get next ctl */
-		mbox_send(nic->mbox_ctl, nic_ctl_send, ctl, nic_ctl_ack, ctl);
+		mbox_send(nic->mbox_ctl, 0, nic_ctl_send, ctl, nic_ctl_ack, ctl);
 	}
 }

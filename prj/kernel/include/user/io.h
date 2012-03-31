@@ -78,8 +78,7 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_GET_ADDR_INFO    0x221
 #define IO_FREE_ADDR_INFO   0x222
 /* MANAGE NODE */
-#define IO_SYS_CTL          0x400
-#define   IO_SYS_CTL_IRQ_MBOX 0x0
+#define IO_IRQ_LISTEN       0x400
 #define IO_MMIO_OPEN        0x401
 #define IO_MMIO_CLOSE       0x402
 #define IO_PHYS_ALLOC       0x403

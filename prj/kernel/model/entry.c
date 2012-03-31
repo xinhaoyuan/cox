@@ -15,6 +15,7 @@ void
 kernel_start(void)
 {
 	mbox_init();
+	mbox_irq_init();
 	kern_lwip_init();
 	nic_init();
 
