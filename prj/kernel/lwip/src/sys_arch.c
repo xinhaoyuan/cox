@@ -118,7 +118,7 @@ sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
 	{
 		tick_t sleep = TICK_FREQ * 0.001 * timeout;
 		int dsn_succ = !proc_delayed_self_notify_set(sleep);
-		if (semaphore_acquire(&sem->sem, &node))
+		if (!semaphore_acquire(&sem->sem, &node))
 		{
 			 
 			while (1)
@@ -128,7 +128,7 @@ sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
 					semaphore_ac_break(&sem->sem, &node);
 				}
 
-				if (ips_wait_try(&node) == 0) break;
+				if (ips_wait_try(&node)) break;
 				proc_wait_try();
 			}
 		}
@@ -199,7 +199,7 @@ sys_mbox_post(sys_mbox_t *mbox, void *msg)
 #endif
 	ips_node_s node;
 //	 ekf_memset(&node, 0, sizeof(node));
-	if (semaphore_acquire(&mbox->send_sem, &node))
+	if (!semaphore_acquire(&mbox->send_sem, &node))
 		ips_wait(&node);
 
 	mutex_acquire(&mbox->lock, NULL);
@@ -217,7 +217,7 @@ sys_mbox_trypost(sys_mbox_t *mbox, void *msg)
 #if LWIP_DEBUG
 	// ekf_kprintf("%d %u sys_mbox_trypost %x\n", proc_self(), *hpet_tick, mbox);
 #endif
-	if (semaphore_try_acquire(&mbox->send_sem) == 0)
+	if (semaphore_try_acquire(&mbox->send_sem))
 	{
 		mutex_acquire(&mbox->lock, NULL);
 		int slot = mbox->head;
@@ -253,7 +253,7 @@ sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
 		int dsn_succ = !proc_delayed_self_notify_set(TICK_FREQ * 0.001 * timeout);
 		 
 		// ekf_kprintf("[%d]mbox open timer %d for timeout %d\n", proc_self(), t, timeout);
-		if (semaphore_acquire(&mbox->recv_sem, &node))
+		if (!semaphore_acquire(&mbox->recv_sem, &node))
 		{
 			while (1)
 			{
@@ -261,7 +261,7 @@ sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
 				{
 					semaphore_ac_break(&mbox->recv_sem, &node);
 				}
-				if (ips_wait_try(&node) == 0) break;
+				if (ips_wait_try(&node)) break;
 				proc_wait_try();
 			}
 		}
@@ -296,7 +296,7 @@ sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
 u32_t
 sys_arch_mbox_tryfetch(sys_mbox_t *mbox, void **msg)
 {
-	if (semaphore_try_acquire(&mbox->recv_sem) == 0)
+	if (semaphore_try_acquire(&mbox->recv_sem))
 	{
 		mutex_acquire(&mbox->lock, NULL);
 		int slot = mbox->tail;
@@ -357,7 +357,7 @@ sys_arch_protect(void)
 #if LWIP_DEBUG
 	// ekf_kprintf("%d %u sys_arch_protect %d\n", proc_self(), *hpet_tick, prot_lev);
 #endif
-	if (mutex_try_acquire(&prot_mutex) != 0)
+	if (mutex_try_acquire(&prot_mutex) == 0)
 	{
 		if (prot_proc != current)
 		{

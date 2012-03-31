@@ -3,6 +3,8 @@
 
 #include <arch/irq.h>
 
-extern int mbox_irq[IRQ_COUNT];
+int mbox_irq_init(void);
+int mbox_irq_get(int irq_id);
+int mbox_irq_handler(int irq_id, uint64_t acc);
 
 #endif

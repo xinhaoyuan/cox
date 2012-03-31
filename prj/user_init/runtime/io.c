@@ -55,7 +55,7 @@ inline static iobuf_index_t
 ioce_alloc_unsafe(void)
 {
 	io_call_entry_t entry = __ioce_head;
-	iobuf_index_t idx = entry->head.tail;
+	iobuf_index_t idx = entry->ctl.tail;
 
 	if (idx != 0)
 	{			
@@ -74,7 +74,7 @@ inline static void
 ioce_advance_unsafe(void)
 {
 	io_call_entry_t entry = __ioce_head;
-	entry->head.tail = entry[entry->head.tail].ce.next;
+	entry->ctl.tail = entry[entry->ctl.tail].ce.next;
 }
 
 inline static void
@@ -82,18 +82,18 @@ ioce_free_unsafe(iobuf_index_t idx)
 {
 	io_call_entry_t entry = __ioce_head;
 
-	if (entry->head.tail == 0)
+	if (entry->ctl.tail == 0)
 	{
 		entry[idx].ce.next = idx;
 		entry[idx].ce.prev = idx;
-		entry->head.head = idx;
-		entry->head.tail = idx;
+		entry->ctl.head = idx;
+		entry->ctl.tail = idx;
 	}
 	else
 	{
 		/* cycle dlist insert */
-		entry[idx].ce.next = entry->head.tail;
-		entry[idx].ce.prev = entry[entry->head.tail].ce.prev;
+		entry[idx].ce.next = entry->ctl.tail;
+		entry[idx].ce.prev = entry[entry->ctl.tail].ce.prev;
 		entry[entry[idx].ce.next].ce.prev = idx;
 		entry[entry[idx].ce.prev].ce.next = idx;
 	}
@@ -114,8 +114,8 @@ io_init(void)
 	entry[cap - 1].ce.next = 1;
 	entry[1].ce.prev = cap - 1;
 
-	entry->head.tail = 1;
-	entry->head.head = 1;
+	entry->ctl.tail = 1;
+	entry->ctl.head = 1;
 
 	semaphore_init(&__upriv->io_sem, __ioce_cap - 1);
 	__io_ubusy_set(0);

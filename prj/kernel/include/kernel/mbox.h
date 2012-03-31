@@ -17,9 +17,9 @@ struct mbox_s
 	int status;
 	user_proc_t proc;
 	
-	semaphore_s  io_sem;
 	spinlock_s   io_lock;
-	list_entry_s io_list;
+	list_entry_s io_recv_list;
+	list_entry_s io_send_list;
 };
 
 typedef struct mbox_s mbox_s;
@@ -27,7 +27,8 @@ typedef mbox_s *mbox_t;
 
 struct mbox_io_s;
 
-typedef void(*ack_callback_f)(struct mbox_io_s *io, void *data, uintptr_t hint_a, uintptr_t hint_b);
+typedef void(*mbox_ack_callback_f)(struct mbox_io_s *io, void *data, uintptr_t hint_a, uintptr_t hint_b);
+typedef void(*mbox_send_callback_f)(struct mbox_io_s *io, void *data, uintptr_t *hint_a, uintptr_t *hint_b);
 
 struct mbox_io_s
 {
@@ -39,14 +40,24 @@ struct mbox_io_s
 
 	int           status;
 	mbox_t        mbox;
-	proc_t        io_proc;
-	iobuf_index_t io_index;
 
-	ack_callback_f ack_cb;
-	void          *ack_data;
-	
-	void     *iobuf;
-	uintptr_t iobuf_u;
+	union
+	{
+		struct
+		{
+			mbox_send_callback_f send_cb;
+			void                *send_data;
+		};
+
+		struct
+		{
+			void     *iobuf;
+			uintptr_t iobuf_u;
+		};
+	};
+			
+	mbox_ack_callback_f  ack_cb;
+	void                *ack_data;
 };
 
 #define MBOX_IO_IOBUF_PSIZE 1
@@ -55,10 +66,11 @@ struct mbox_io_s
 #define MBOX_STATUS_CLOSED 1
 #define MBOX_STATUS_OPEN   2
 
-#define MBOX_IO_STATUS_FREE       0
-#define MBOX_IO_STATUS_QUEUEING   1
-#define MBOX_IO_STATUS_PROCESSING 2
-#define MBOX_IO_STATUS_FINISHED   3
+#define MBOX_IO_STATUS_FREE            0
+#define MBOX_IO_STATUS_SEND_QUEUEING   1
+#define MBOX_IO_STATUS_RECV_QUEUEING   2
+#define MBOX_IO_STATUS_PROCESSING      4
+#define MBOX_IO_STATUS_FINISHED        5
 
 typedef struct mbox_io_s mbox_io_s;
 typedef mbox_io_s *mbox_io_t;
@@ -73,23 +85,26 @@ int  mbox_init(void);
 int  mbox_alloc(user_proc_t proc);
 void mbox_free(int mbox_id);
 
-mbox_io_t mbox_io_acquire(int mbox_id);
-int       mbox_io_send(mbox_io_t io, ack_callback_f ack_cb, void *ack_data, uintptr_t hint_a, uintptr_t hint_b);
-
+int  mbox_send(int mbox_id, mbox_send_callback_f send_cb, void *send_data, mbox_ack_callback_f ack_cb, void *ack_data);
 int  mbox_io(int mbox_id, int ack_id, uintptr_t hint_a, uintptr_t hint_b, proc_t io_proc, iobuf_index_t io_index);
 
 /* simple ack function/data */
 
-struct mbox_ack_data_s
+struct mbox_io_data_s
 {
 	ips_node_t ips;
-	void  *buf;
-	size_t buf_size;
+	void  *send_buf;
+	size_t send_buf_size;
+	uintptr_t hint_send;
+	void  *recv_buf;
+	size_t recv_buf_size;
+	uintptr_t hint_ack;
 };
 
-typedef struct mbox_ack_data_s mbox_ack_data_s;
-typedef mbox_ack_data_s *mbox_ack_data_t;
+typedef struct mbox_io_data_s mbox_io_data_s;
+typedef mbox_io_data_s *mbox_io_data_t;
 
+void mbox_send_func(mbox_io_t io, void *data, uintptr_t *hint_a, uintptr_t *hint_b);
 void mbox_ack_func(mbox_io_t io, void *data, uintptr_t hint_a, uintptr_t hint_b);
 
 #endif

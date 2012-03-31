@@ -3,6 +3,8 @@
 #include <irq.h>
 #include <error.h>
 #include <malloc.h>
+#include <mbox_irq.h>
+#include <proc.h>
 #include <lib/low_io.h>
 #include <arch/local.h>
 #include <arch/irq.h>
@@ -53,7 +55,9 @@ irq_process(void)
 		irq_no = BIT_SEARCH_LAST(info->mask);
 		h      = info->handler[irq_no];
 		acc    = info->accumulate[irq_no];
-		if (h && acc)
+
+		if (h == NULL) h = mbox_irq_handler;
+		if (acc)
 		{
 			info->accumulate[irq_no] = 0;
 			info->mask ^= 1 << irq_no;

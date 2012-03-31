@@ -16,7 +16,7 @@ ips_wait(ips_node_t node)
 int
 ips_wait_try(ips_node_t node)
 {
-	return IPS_NODE_WAIT(node) && IPS_NODE_AC_WAIT(node);
+	return !IPS_NODE_WAIT(node) || !IPS_NODE_AC_WAIT(node);
 }
 
 int
@@ -38,14 +38,12 @@ mutex_try_acquire(mutex_t mutex)
 	int result;
 	int irq = irq_save();
 	spinlock_acquire(&mutex->lock);
-	if (!MUTEX_HOLD(mutex))
+	result = !MUTEX_HOLD(mutex);
+	if (result)
 	{
 		MUTEX_HOLD_SET(mutex);
 		MUTEX_WAIT_CLEAR(mutex);
-		  
-		result = 0;
 	}
-	else result = 1;
 	spinlock_release(&mutex->lock);
 	irq_restore(irq);
 	 
@@ -58,10 +56,12 @@ mutex_acquire(mutex_t mutex, ips_node_t node)
 	if (node == NULL)
 	{
 		ips_node_s node;
-		if (mutex_acquire(mutex, &node))
+		if (!mutex_acquire(mutex, &node))
+		{
 			ips_wait(&node);
-
-		return 0;
+			return 0;
+		}
+		else return 1;
 	}
 	else
 	{
@@ -78,7 +78,7 @@ mutex_acquire(mutex_t mutex, ips_node_t node)
 			   
 			IPS_NODE_WAIT_CLEAR(node);
 			
-			return 0;
+			return 1;
 		}
 		else
 		{
@@ -102,8 +102,8 @@ mutex_acquire(mutex_t mutex, ips_node_t node)
 			   
 			spinlock_release(&mutex->lock);
 			irq_restore(irq);
-			   
-			return 1;
+
+			return 0;
 		}
 	}
 }
@@ -168,41 +168,42 @@ semaphore_init(semaphore_t semaphore, uintptr_t count)
 	SEMAPHORE_WAIT_CLEAR(semaphore);
 }
 
-int
+uintptr_t
 semaphore_try_acquire(semaphore_t semaphore)
 {
-	int result;
+	uintptr_t result;
 	int irq = irq_save();
 	spinlock_acquire(&semaphore->lock);
-	if (semaphore->count > 0)
+	result = semaphore->count;
+	if (result > 0)
 	{
 		if (-- semaphore->count == 0)
 			SEMAPHORE_WAIT_CLEAR(semaphore);
-		result = 0;
 	}
-	else result = 1;
 	spinlock_release(&semaphore->lock);
 	irq_restore(irq);
 	return result;
 }
 
-int
+uintptr_t
 semaphore_acquire(semaphore_t semaphore, ips_node_t node)
 {
+	uintptr_t result;
 	if (node == NULL)
 	{
 		ips_node_s node;
-		if (semaphore_acquire(semaphore, &node))
+		result = semaphore_acquire(semaphore, &node);
+		if (!result)
 			ips_wait(&node);
 
-		return 0;
+		return result;
 	}
 	else
 	{
 		int irq = irq_save();
 		spinlock_acquire(&semaphore->lock);
-		  
-		if (semaphore->count > 0)
+		result = semaphore->count;
+		if (result > 0)
 		{
 			if (-- semaphore->count == 0)
 				SEMAPHORE_WAIT_CLEAR(semaphore);
@@ -212,7 +213,7 @@ semaphore_acquire(semaphore_t semaphore, ips_node_t node)
 			   
 			IPS_NODE_WAIT_CLEAR(node);
 		  
-			return 0;
+			return result;
 		}
 		else
 		{
@@ -237,7 +238,7 @@ semaphore_acquire(semaphore_t semaphore, ips_node_t node)
 			spinlock_release(&semaphore->lock);
 			irq_restore(irq);
 			   
-			return 1;
+			return result;
 		}		  
 	}
 }

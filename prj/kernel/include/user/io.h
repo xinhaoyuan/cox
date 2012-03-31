@@ -1,8 +1,8 @@
 #ifndef __USER_IO_H__
 #define __USER_IO_H__
 
-#include <cpu.h>
 #include <types.h>
+#include <algo/list.h>
 
 #define IO_ARGS_COUNT 6
 #define IO_ARG_UD     (IO_ARGS_COUNT - 1)
@@ -18,13 +18,14 @@ struct io_call_entry_s
 		{
 			unsigned int status;
 			iobuf_index_t prev, next;
+
 			uintptr_t data[IO_ARGS_COUNT];
 		} ce;
 
 		struct
 		{
 			iobuf_index_t head, tail;
-		} head;
+		} ctl;
 	};
 };
 typedef struct io_call_entry_s  io_call_entry_s;

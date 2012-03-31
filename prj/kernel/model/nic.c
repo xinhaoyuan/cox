@@ -29,6 +29,10 @@ static list_entry_s nic_ctl_list;
 static semaphore_s nic_ctl_sem;
 
 static void
+nic_ctl_send(mbox_io_t io, void *__data, uintptr_t *hint_a, uintptr_t *hint_b)
+{ }
+
+static void
 nic_ctl_ack(mbox_io_t io, void *__data, uintptr_t hint_a, uintptr_t hint_b)
 {
 	struct nic_ctl_s *ctl = (struct nic_ctl_s *)__data;
@@ -125,7 +129,6 @@ static void
 low_level_init(struct netif *netif)
 {
 	nic_t nic = netif->state;
-	char *ptr = nic->cfg_buf;
 
 	MARSHAL_DECLARE(buf, nic->cfg_buf, nic->cfg_buf + NIC_CFG_BUF_SIZE);
 	
@@ -162,35 +165,66 @@ low_level_init(struct netif *netif)
 	netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
 }
 
+struct nic_send_data_s
+{
+	ips_node_t ips;
+	struct pbuf *p;
+};
+
+static void
+nic_send_cb(mbox_io_t io, void * __data, uintptr_t *hint_a, uintptr_t *hint_b)
+{
+	struct nic_send_data_s *data = __data;
+	struct pbuf *q;
+	int len;
+
+#if ETH_PAD_SIZE
+	pbuf_header(data->p, -ETH_PAD_SIZE); /* drop the padding word */
+#endif
+
+	len = 0;
+	 
+	for(q = data->p; q != NULL; q = q->next) {
+		if (len + q->len > (MBOX_IO_IOBUF_PSIZE << PGSHIFT)) break;
+		memmove(io->iobuf + len, q->payload, q->len);
+		len += q->len;
+	}
+
+	*hint_a = len;
+
+#if ETH_PAD_SIZE
+	pbuf_header(data->p, ETH_PAD_SIZE); /* reclaim the padding word */
+#endif
+
+	LINK_STATS_INC(link.xmit);
+}
+
+static void
+nic_send_ack_cb(mbox_io_t io, void * __data, uintptr_t hint_a, uintptr_t hint_b)
+{
+	struct nic_send_data_s *data = __data;
+	IPS_NODE_WAIT_CLEAR(data->ips);
+	proc_notify(IPS_NODE_PTR(data->ips));
+}
+
 static err_t
 low_level_output(struct netif *netif, struct pbuf *p)
 {
 	 // uint32_t old_tick = *hpet_tick;
 	 nic_t nic = netif->state;
-	 struct pbuf *q;
-	 int len;
+	 ips_node_s ips;
+	 struct nic_send_data_s s =
+	 {
+		 .ips = &ips,
+		 .p = p,
+	 };
 
-	 mbox_io_t io = mbox_io_acquire(nic->mbox_tx);
-	 char *buf = io->iobuf;
-	 
-#if ETH_PAD_SIZE
-	 pbuf_header(p, -ETH_PAD_SIZE); /* drop the padding word */
-#endif
+	 IPS_NODE_WAIT_SET(&ips);
+	 IPS_NODE_AC_WAIT_SET(&ips);
 
-	 len = 0;
-	 
-	 for(q = p; q != NULL; q = q->next) {
-		  memmove(buf + len, q->payload, q->len);
-		  len += q->len;
-	 }
+	 mbox_send(nic->mbox_tx, nic_send_cb, &s, nic_send_ack_cb, &s);
+	 ips_wait(&ips);
 
-	 mbox_io_send(io, NULL, NULL, 0, len);
-
-#if ETH_PAD_SIZE
-	 pbuf_header(p, ETH_PAD_SIZE); /* reclaim the padding word */
-#endif
-  
-	 LINK_STATS_INC(link.xmit);
 	 return ERR_OK;
 }
 
@@ -342,6 +376,6 @@ nic_ctl_proc(void *__ignore)
 		}
 		
 		/* Get next ctl */
-		mbox_io_send(mbox_io_acquire(nic->mbox_ctl), nic_ctl_ack, ctl, 0, 0);
+		mbox_send(nic->mbox_ctl, nic_ctl_send, ctl, nic_ctl_ack, ctl);
 	}
 }

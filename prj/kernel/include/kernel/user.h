@@ -7,6 +7,20 @@
 #include <arch/user.h>
 #include <spinlock.h>
 
+/* private kernel data associated with each io call entries */
+struct io_ce_shadow_s
+{
+	proc_t        proc;
+	iobuf_index_t index;
+	int           mbox_id;
+	void         *iobuf;
+	uintptr_t     iobuf_u;
+	list_entry_s  wait_list;
+};
+
+typedef struct io_ce_shadow_s io_ce_shadow_s;
+typedef io_ce_shadow_s *io_ce_shadow_t;
+
 struct user_thread_s
 {
 	void     *tls;
@@ -19,8 +33,9 @@ struct user_thread_s
 	
 	struct
 	{
-		iobuf_index_t cap;
+		iobuf_index_t   cap;
 		io_call_entry_t head;
+		io_ce_shadow_t  shadows;
 	} ioce;
 	
 	struct

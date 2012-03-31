@@ -56,7 +56,7 @@ struct semaphore_s
 {
 	spinlock_s lock;
 	uintptr_t  count;
-	uintptr_t data;
+	uintptr_t  data;
 };
 
 typedef volatile struct semaphore_s semaphore_s;
@@ -64,20 +64,21 @@ typedef semaphore_s *semaphore_t;
 
 int  ips_is_finish(ips_node_t node);
 void ips_wait(ips_node_t node);
-/* 0 for break/success, 1 for wait(again) */
+/* 1 for break/success, 0 for wait(again) */
 int  ips_wait_try(ips_node_t node);
 
 void mutex_init(mutex_t mutex);
+/* 1 for succ, 0 for failed/wait */
 int  mutex_try_acquire(mutex_t mutex);
 int  mutex_acquire(mutex_t mutex, ips_node_t node);
 void mutex_ac_break(mutex_t mutex, ips_node_t node);
 void mutex_release(mutex_t mutex);
 
 void semaphore_init(semaphore_t sem, uintptr_t count);
-int  semaphore_try_acquire(semaphore_t sem);
-int  semaphore_acquire(semaphore_t sem, ips_node_t node);
+/* returns count before acquire */
+uintptr_t semaphore_try_acquire(semaphore_t sem);
+uintptr_t semaphore_acquire(semaphore_t sem, ips_node_t node);
 void semaphore_ac_break(semaphore_t sem, ips_node_t node);
-/* 1 for notify, 0 for no notify */
 int  semaphore_release(semaphore_t sem);
 
 #endif

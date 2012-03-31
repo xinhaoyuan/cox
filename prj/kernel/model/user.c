@@ -109,6 +109,7 @@ user_thread_init(proc_t proc, uintptr_t entry)
 	
 	proc->user_thread->iocb.cap = cap;
 	proc->user_thread->ioce.cap = cap;
+	proc->user_thread->ioce.shadows = kmalloc(sizeof(io_ce_shadow_s) * cap);
 
 	return user_thread_arch_init(proc, entry);
 }
@@ -153,17 +154,17 @@ void
 user_process_io(proc_t proc)
 {
 	io_call_entry_t head = proc->user_thread->ioce.head;
-	while (head->head.head != 0 &&
-		   head->head.head != head->head.tail)
+	while (head->ctl.head != 0 &&
+		   head->ctl.head != head->ctl.tail)
 	{
-		head->head.head %= proc->user_thread->ioce.cap;
+		head->ctl.head %= proc->user_thread->ioce.cap;
 
-		if (head[head->head.head].ce.status == IO_CALL_STATUS_PROC) break;
-		head[head->head.head].ce.status = IO_CALL_STATUS_PROC;
+		if (head[head->ctl.head].ce.status == IO_CALL_STATUS_PROC) break;
+		head[head->ctl.head].ce.status = IO_CALL_STATUS_PROC;
 		
-		io_process(proc, head + head->head.head, head->head.head);
+		io_process(proc, head + head->ctl.head, head->ctl.head);
 		
-		head->head.head = head[head->head.head].ce.next;
+		head->ctl.head = head[head->ctl.head].ce.next;
 	}
 }
 
@@ -302,7 +303,7 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 			if (entry->ce.data[2] < IRQ_COUNT)
 			{
 				entry->ce.data[0] = 0;
-				entry->ce.data[1] = mbox_irq[entry->ce.data[2]];
+				entry->ce.data[1] = mbox_irq_get(entry->ce.data[2]);
 			}
 			else
 			{
