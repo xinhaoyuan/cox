@@ -332,9 +332,22 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 		break;
 		
 	case IO_MBOX_IO:
-		mbox_io(entry->ce.data[1], entry->ce.data[2], entry->ce.data[3], entry->ce.data[4], proc, idx);
-		/* iocb would be pushed when request comes */
+	{
+		mbox_t mbox = mbox_get(entry->ce.data[1]);
+		if (mbox != NULL && mbox->proc == proc->user_proc)
+		{
+			mbox_io(mbox, entry->ce.data[2], entry->ce.data[3], entry->ce.data[4], proc, idx);
+			mbox_put(mbox);
+			/* iocb would be pushed when request comes */
+		}
+		else
+		{
+			entry->ce.data[0] = 1;
+			mbox_put(mbox);
+			user_thread_iocb_push(proc, idx);
+		}
 		break;
+	}
 
 	case IO_NIC_OPEN:
 		entry->ce.data[0] = do_io_nic_open(proc, &entry->ce.data[1], &entry->ce.data[2]);

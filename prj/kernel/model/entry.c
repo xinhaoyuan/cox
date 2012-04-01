@@ -10,6 +10,7 @@
 #include <lwip.h>
 #include <mbox.h>
 #include <nic.h>
+#include <mbox_irq.h>
 
 void
 kernel_start(void)
@@ -28,7 +29,13 @@ kernel_start(void)
 	extern char _binary_user_init_image_end[];
 	int ret = user_proc_load((void *)_binary_user_init_image_start,
 							 _binary_user_init_image_end - _binary_user_init_image_start);
-	user_thread_jump();
+
+	if (ret == 0)
+		user_thread_jump();
+	else
+	{
+		cprintf("Panic, cannot load user init\n");
+	}
 
 	while (1) __cpu_relax();
 }

@@ -4,6 +4,7 @@
 #include <string.h>
 #include <mbox.h>
 #include <lib/marshal.h>
+#include <error.h>
 
 #include <lwip/opt.h>
 #include <lwip/def.h>
@@ -84,6 +85,16 @@ int
 nic_alloc(user_proc_t proc, int *mbox_tx, int *mbox_ctl)
 {
 	list_entry_t l = NULL;
+
+	
+	if ((*mbox_tx = mbox_alloc(proc)) == -1)
+		return -E_NO_MEM;
+	
+	if ((*mbox_ctl = mbox_alloc(proc)) == -1)
+	{
+		mbox_free(*mbox_tx);
+		return -E_NO_MEM;
+	}
 	
 	int irq = irq_save();
 	spinlock_acquire(&nic_alloc_lock);
@@ -103,17 +114,25 @@ nic_alloc(user_proc_t proc, int *mbox_tx, int *mbox_ctl)
 
 		nic->status   = NIC_STATUS_UNINIT;
 		nic->proc     = proc;
-		nic->mbox_tx  = mbox_alloc(proc);
-		nic->mbox_ctl = mbox_alloc(proc);
+		nic->mbox_tx  = mbox_get(*mbox_tx);
+		nic->mbox_ctl = mbox_get(*mbox_ctl);
 
-		*mbox_tx = nic->mbox_tx;
-		*mbox_ctl = nic->mbox_ctl;
+		nic->mbox_tx->status = MBOX_STATUS_NIC_TX;
+		nic->mbox_tx->nic_tx = nic;
+
+		nic->mbox_ctl->status  = MBOX_STATUS_NIC_CTL;
+		nic->mbox_ctl->nic_ctl = nic;
 
 		/* internal ack for start the CRL loop */
 		nic_ctl_ack(NULL, &nic->ctl, 0, NIC_CTL_INIT);
 		return nic - nics;
 	}
-	else return -1;
+	else
+	{
+		mbox_free(*mbox_tx);
+		mbox_free(*mbox_ctl);
+		return -1;
+	}
 }
 
 void

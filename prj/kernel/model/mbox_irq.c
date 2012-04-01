@@ -3,6 +3,7 @@
 #include <irq.h>
 #include <lib/low_io.h>
 #include <error.h>
+#include <spinlock.h>
 
 static struct mbox_irq_data_s
 {
@@ -32,16 +33,32 @@ int
 mbox_irq_listen(int irq_no, int mbox_id)
 {
 	if (!mbox_irq_initialized) return -E_INVAL;
-	mbox_t mbox = &mboxs[mbox_id];
+	/* XXX irq_no check */
+	
+	mbox_t mbox = mbox_get(mbox_id);
 	if (mbox == NULL) return -E_INVAL;
-	if (mbox->status != MBOX_STATUS_NORMAL) return -E_INVAL;
-	mbox->status = MBOX_STATUS_IRQ_LISTEN;
 
 	int irq = irq_save();
+	spinlock_acquire(&mbox->lock);
+	
+	if (mbox->status != MBOX_STATUS_NORMAL)
+	{
+		spinlock_release(&mbox->lock);
+		irq_restore(irq);
+		
+		return -E_INVAL;
+	}
+	
+	mbox->status = MBOX_STATUS_IRQ_LISTEN;
+	spinlock_release(&mbox->lock);
+	
 	spinlock_acquire(&mbox_irq_data[irq_no].listen_lock);
 	list_add_before(&mbox_irq_data[irq_no].listen_list, &mbox->irq_listen.listen_list);
-	spinlock_release(&mbox_irq_data[irq_no].listen_lock);
+	spinlock_release(&mbox_irq_data[irq_no].listen_lock);	
 	irq_restore(irq);
+
+	/* no mbox put because of link set */
+	
 	return 0;
 }
 
@@ -71,7 +88,7 @@ mbox_irq_handler(int irq_no, uint64_t acc)
 		if (to_send)
 		{
 			cprintf("IRQ MSG TO %d\n", mbox - mboxs); 
-			mbox_send(mbox - mboxs, 1,
+			mbox_send(mbox, 1,
 					  mbox_irq_send, &mbox_irq_data[irq_no],
 					  mbox_irq_ack, &mbox_irq_data[irq_no]);
 		}

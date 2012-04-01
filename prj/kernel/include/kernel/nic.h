@@ -27,8 +27,8 @@ struct nic_s
 
 	user_proc_t proc;
 	int  status;
-	int  mbox_tx;
-	int  mbox_ctl;
+	struct mbox_s *mbox_tx;
+	struct mbox_s *mbox_ctl;
 
 	char cfg_buf[NIC_CFG_BUF_SIZE];
 

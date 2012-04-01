@@ -21,9 +21,13 @@ struct mbox_s
 			list_entry_s listen_list;
 			int          irq_no;
 		} irq_listen;
+
+		struct nic_s *nic_tx;
+		struct nic_s *nic_ctl;
 	};
 
-	int status;
+	spinlock_s  lock;
+	int         status;
 	user_proc_t proc;
 	
 	spinlock_s   io_lock;
@@ -74,6 +78,8 @@ struct mbox_io_s
 #define MBOX_STATUS_FREE       0
 #define MBOX_STATUS_NORMAL     1
 #define MBOX_STATUS_IRQ_LISTEN 2
+#define MBOX_STATUS_NIC_TX     3
+#define MBOX_STATUS_NIC_CTL    4
 
 #define MBOX_IO_STATUS_FREE            0
 #define MBOX_IO_STATUS_SEND_QUEUEING   1
@@ -94,8 +100,11 @@ int  mbox_init(void);
 int  mbox_alloc(user_proc_t proc);
 void mbox_free(int mbox_id);
 
-int  mbox_send(int mbox_id, int try, mbox_send_callback_f send_cb, void *send_data, mbox_ack_callback_f ack_cb, void *ack_data);
-int  mbox_io(int mbox_id, int ack_id, uintptr_t hint_a, uintptr_t hint_b, proc_t io_proc, iobuf_index_t io_index);
+mbox_t mbox_get(int mbox_id);
+void   mbox_put(mbox_t mbox);
+
+int  mbox_send(mbox_t mbox, int try, mbox_send_callback_f send_cb, void *send_data, mbox_ack_callback_f ack_cb, void *ack_data);
+int  mbox_io(mbox_t mbox, int ack_id, uintptr_t hint_a, uintptr_t hint_b, proc_t io_proc, iobuf_index_t io_index);
 
 /* simple ack function/data */
 
