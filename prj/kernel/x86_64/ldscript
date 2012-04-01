@@ -10,25 +10,25 @@ BOOT_AP_MAGIC =         0x001F8000;
 
 SECTIONS {
 
-	. = BOOT_AP_BASE;
+	. = ENTRY32_BASE;
 
-	PROVIDE(boot_ap_entry_64 = . + BOOT_AP_MAGIC + KERN_BASE);
-
-	PROVIDE(__text = . + BOOT_AP_MAGIC);
-
-	/* Boot code for app-cpus */
-    .boot_ap : AT(ADDR(.boot_ap) + BOOT_AP_MAGIC) {
-        *boot_1ap.S.o*(.text .rodata .data)
-    }
-
-	. = ALIGN(0x1000);
-	. += BOOT_AP_MAGIC;
+	PROVIDE(__text = .);
 
 	/* for 32-bit boot code */
     .entry32 : AT(ADDR(.entry32)) {
         *entry32.S.o*(.text .rodata .data)
+		. = ALIGN(0x1000);
     }
 
+	PROVIDE(boot_ap_entry_64 = . + KERN_BASE);
+
+	/* Boot code for app-cpus */
+    .boot_ap BOOT_AP_BASE : AT(ADDR(.entry32) + SIZEOF(.entry32)) {
+        *boot_1ap.S.o*(.text .rodata .data)
+		. = ALIGN(0x1000);
+    }
+
+	. = ENTRY32_BASE + SIZEOF(.entry32) + SIZEOF(.boot_ap);
     . = ALIGN(0x1000);
     . += KERN_BASE;
 
