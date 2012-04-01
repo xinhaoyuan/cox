@@ -236,18 +236,19 @@ user_restore_context(proc_t proc)
 
 /* USER IO PROCESS ============================================ */
 
-static inline int  do_io_page_hole_set(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
-static inline int  do_io_page_hole_clear(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
-static inline int  do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result) __attribute__((always_inline));
-static inline int  do_io_phys_free(proc_t proc, uintptr_t physaddr) __attribute__((always_inline));
-static inline int  do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result) __attribute__((always_inline));
-static inline int  do_io_mmio_close(proc_t proc, uintptr_t addr) __attribute__((always_inline));
-static inline int  do_io_brk(proc_t proc, uintptr_t end) __attribute__((always_inline));
-static inline int  do_io_mbox_open(proc_t proc) __attribute__((always_inline));
-static inline int  do_io_nic_open(proc_t proc, uintptr_t *mbox_tx, uintptr_t *mbox_ctl) __attribute__((always_inline));
-static inline int  do_io_nic_close(proc_t proc, int nic) __attribute__((always_inline));
-static inline int  do_io_nic_recv(proc_t proc, int nic, uintptr_t buf, size_t size) __attribute__((always_inline));
-static inline int  do_irq_listen(int irq_no, int mbox_id) __attribute__((always_inline));
+static inline int do_io_page_hole_set(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
+static inline int do_io_page_hole_clear(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
+static inline int do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result) __attribute__((always_inline));
+static inline int do_io_phys_free(proc_t proc, uintptr_t physaddr) __attribute__((always_inline));
+static inline int do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result) __attribute__((always_inline));
+static inline int do_io_mmio_close(proc_t proc, uintptr_t addr) __attribute__((always_inline));
+static inline int do_io_brk(proc_t proc, uintptr_t end) __attribute__((always_inline));
+static inline int do_io_mbox_open(proc_t proc) __attribute__((always_inline));
+static inline int do_io_mbox_io(proc_t proc, iobuf_index_t idx, int mbox_id, int ack_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b) __attribute__((always_inline));
+static inline int do_io_nic_open(proc_t proc, uintptr_t *mbox_tx, uintptr_t *mbox_ctl) __attribute__((always_inline));
+static inline int do_io_nic_close(proc_t proc, int nic) __attribute__((always_inline));
+static inline int do_io_nic_recv(proc_t proc, int nic, uintptr_t buf, size_t size) __attribute__((always_inline));
+static inline int do_io_irq_listen(proc_t proc, int irq_no, int mbox_id) __attribute__((always_inline));
 
 static void
 io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
@@ -297,7 +298,7 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 		break;
 
 	case IO_IRQ_LISTEN:
-		entry->ce.data[0] = do_irq_listen(entry->ce.data[1], entry->ce.data[2]);
+		entry->ce.data[0] = do_io_irq_listen(proc, entry->ce.data[1], entry->ce.data[2]);
 		user_thread_iocb_push(proc, idx);
 		break;
 
@@ -332,22 +333,8 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 		break;
 		
 	case IO_MBOX_IO:
-	{
-		mbox_t mbox = mbox_get(entry->ce.data[1]);
-		if (mbox != NULL && mbox->proc != proc->user_proc)
-		{
-			entry->ce.data[0] = 1;
-			mbox_put(mbox);
-			user_thread_iocb_push(proc, idx);
-		}
-		else
-		{
-			mbox_io(mbox, entry->ce.data[2], entry->ce.data[3], entry->ce.data[4], proc, idx);
-			if (mbox) mbox_put(mbox);
-			/* iocb would be pushed when request comes */
-		}
+		entry->ce.data[0] = do_io_mbox_io(proc, idx, entry->ce.data[1], entry->ce.data[2], entry->ce.data[3], entry->ce.data[4]);
 		break;
-	}
 
 	case IO_NIC_OPEN:
 		entry->ce.data[0] = do_io_nic_open(proc, &entry->ce.data[1], &entry->ce.data[2]);
@@ -432,6 +419,27 @@ do_io_mbox_open(proc_t proc)
 }
 
 static inline int
+do_io_mbox_io(proc_t proc, iobuf_index_t idx, int mbox_id, int ack_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b)
+{
+	mbox_t mbox = mbox_get(mbox_id);
+	if (mbox != NULL && mbox->proc != proc->user_proc)
+	{
+		mbox_put(mbox);
+		user_thread_iocb_push(proc, idx);
+		return -E_PERM;
+	}
+	else
+	{
+		int r = mbox_io(mbox, ack_id, ack_hint_a, ack_hint_b, proc, idx);
+		if (mbox) mbox_put(mbox);
+		if (r)
+			user_thread_iocb_push(proc, idx);
+		return r;
+		/* if success, iocb would be pushed when request comes */
+	}
+}
+
+static inline int
 do_io_nic_open(proc_t proc, uintptr_t *mbox_tx, uintptr_t *mbox_ctl)
 {
 	int tx, ctl;
@@ -454,7 +462,19 @@ do_io_nic_recv(proc_t proc, int nic, uintptr_t buf, size_t size)
 }
 
 static inline int
-do_irq_listen(int irq_no, int mbox_id)
+do_io_irq_listen(proc_t proc, int irq_no, int mbox_id)
 {
-	return mbox_irq_listen(irq_no, mbox_id);
+	mbox_t mbox = mbox_get(mbox_id);
+	if (mbox == NULL) return -E_INVAL;
+	if (mbox->proc != proc->user_proc)
+	{
+		mbox_put(mbox);
+		return -E_PERM;
+	}
+	else
+	{
+		int r = mbox_irq_listen(irq_no, mbox);
+		mbox_put(mbox);
+		return r;
+	}
 }

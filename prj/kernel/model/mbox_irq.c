@@ -30,13 +30,13 @@ mbox_irq_init(void)
 }
 
 int
-mbox_irq_listen(int irq_no, int mbox_id)
+mbox_irq_listen(int irq_no, mbox_t mbox)
 {
 	if (!mbox_irq_initialized) return -E_INVAL;
 	/* XXX irq_no check */
 	
-	mbox_t mbox = mbox_get(mbox_id);
-	if (mbox == NULL) return -E_INVAL;
+	/* Get for the link setting */
+	mbox_get(mbox - mboxs);	
 
 	int irq = irq_save();
 	spinlock_acquire(&mbox->lock);
@@ -56,8 +56,6 @@ mbox_irq_listen(int irq_no, int mbox_id)
 	list_add_before(&mbox_irq_data[irq_no].listen_list, &mbox->irq_listen.listen_list);
 	spinlock_release(&mbox_irq_data[irq_no].listen_lock);	
 	irq_restore(irq);
-
-	/* no mbox put because of link set */
 	
 	return 0;
 }

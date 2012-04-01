@@ -23,7 +23,7 @@ static list_entry_s nic_free_list;
 nic_s nics[NICS_MAX_COUNT];
 spinlock_s nic_alloc_lock;
 
-static char nic_ctl_proc_stack[10240];
+static char nic_ctl_proc_stack[10240] __attribute__((aligned(__PGSIZE)));
 static proc_s nic_ctl_p;
 static spinlock_s nic_ctl_list_lock;
 static list_entry_s nic_ctl_list;

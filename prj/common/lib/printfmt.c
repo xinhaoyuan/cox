@@ -28,6 +28,7 @@ static const char * const error_string[MAXERROR + 1] = {
     [E_NO_MEM]              "out of memory",
     [E_NO_FREE_PROC]        "out of processes",
     [E_FAULT]               "segmentation fault",
+	[E_PERM]                "permission error",
 };
 
 /* *
