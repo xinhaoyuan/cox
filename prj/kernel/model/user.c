@@ -334,17 +334,17 @@ io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 	case IO_MBOX_IO:
 	{
 		mbox_t mbox = mbox_get(entry->ce.data[1]);
-		if (mbox != NULL && mbox->proc == proc->user_proc)
-		{
-			mbox_io(mbox, entry->ce.data[2], entry->ce.data[3], entry->ce.data[4], proc, idx);
-			mbox_put(mbox);
-			/* iocb would be pushed when request comes */
-		}
-		else
+		if (mbox != NULL && mbox->proc != proc->user_proc)
 		{
 			entry->ce.data[0] = 1;
 			mbox_put(mbox);
 			user_thread_iocb_push(proc, idx);
+		}
+		else
+		{
+			mbox_io(mbox, entry->ce.data[2], entry->ce.data[3], entry->ce.data[4], proc, idx);
+			if (mbox) mbox_put(mbox);
+			/* iocb would be pushed when request comes */
 		}
 		break;
 	}

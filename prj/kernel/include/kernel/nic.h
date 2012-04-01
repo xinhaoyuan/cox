@@ -52,7 +52,6 @@ int  nic_init(void);
 
 int  nic_alloc(user_proc_t proc, int *mbox_tx, int *mbox_ctl);
 void nic_free(int nic_id);
-void nic_status_set(int nic_id, int status);
 /* Submit packet into network stack */
 void nic_input(int nic_id, void *packet, size_t packet_size);
 

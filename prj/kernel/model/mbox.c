@@ -159,9 +159,9 @@ mbox_send(mbox_t mbox, int try, mbox_send_callback_f send_cb, void *send_data, m
 }
 
 int
-mbox_io(mbox_t mbox, int ack_id, uintptr_t hint_a, uintptr_t hint_b, proc_t io_proc, iobuf_index_t io_index)
+mbox_io(mbox_t mbox, int ack_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b, proc_t io_proc, iobuf_index_t io_index)
 {
-	cprintf("MBOX IO %d %d %016lx %016lx\n", mbox - mboxs, ack_id, hint_a, hint_b);
+	cprintf("MBOX IO %d %d %016lx %016lx\n", mbox - mboxs, ack_id, ack_hint_a, ack_hint_b);
 	int result;
 	void *iobuf = NULL;
 	uintptr_t iobuf_u;
@@ -177,7 +177,7 @@ mbox_io(mbox_t mbox, int ack_id, uintptr_t hint_a, uintptr_t hint_b, proc_t io_p
 	{
 		mbox_io_t io = &mbox_ios[ack_id];
 		io->status = MBOX_IO_STATUS_FINISHED;
-		io->ack_cb(io, io->ack_data, hint_a, hint_b);
+		io->ack_cb(io, io->ack_data, ack_hint_a, ack_hint_b);
 		
 		iobuf   = io->iobuf;
 		iobuf_u = io->iobuf_u;
@@ -188,9 +188,15 @@ mbox_io(mbox_t mbox, int ack_id, uintptr_t hint_a, uintptr_t hint_b, proc_t io_p
 		spinlock_release(&mbox_io_alloc_lock);
 		irq_restore(irq);
 		/* Put for the ack */
-		mbox_put(mbox);
+		mbox_put(io->mbox);
 
 		semaphore_release(&mbox_io_alloc_sem);
+	}
+
+	if (mbox == NULL)
+	{
+		result = 0;
+		goto nomore_io;
 	}
 
 	if (iobuf == NULL)
