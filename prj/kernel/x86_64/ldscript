@@ -4,9 +4,7 @@ ENTRY(kern_entry32)
 
 KERN_BASE     = 0xFFFFFFFF80000000;
 ENTRY32_BASE  =         0x00200000;
-/* BOOT_AP_BASE + BOOT_AP_MAGIC = ENTRY32_BASE */
 BOOT_AP_BASE  =         0x00008000;
-BOOT_AP_MAGIC =         0x001F8000;
 
 SECTIONS {
 
@@ -31,6 +29,8 @@ SECTIONS {
 	. = ENTRY32_BASE + SIZEOF(.entry32) + SIZEOF(.boot_ap);
     . = ALIGN(0x1000);
     . += KERN_BASE;
+
+	PROVIDE(boot_ap_entry_64_end = .);
 
 	/* other code */
     .text : AT(ADDR(.text) - KERN_BASE) {

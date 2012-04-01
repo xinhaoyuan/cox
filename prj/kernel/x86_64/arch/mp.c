@@ -12,14 +12,14 @@
 
 /* Provided by link script */
 extern char boot_ap_entry_64[];
-
+extern char boot_ap_entry_64_end[];
 static uintptr_t boot_ap_stack;
 
 int
 mp_init(void)
 {
 	memset(VADDR_DIRECT(BOOT_AP_ENTRY), 0, PGSIZE);
-	memmove(VADDR_DIRECT(BOOT_AP_ENTRY), boot_ap_entry_64, PGSIZE);
+	memmove(VADDR_DIRECT(BOOT_AP_ENTRY), boot_ap_entry_64, boot_ap_entry_64_end - boot_ap_entry_64);
 
 	memset(VADDR_DIRECT(BOOT_AP_CR3), 0, 8);
 	uintptr_t cr3 = __rcr3();

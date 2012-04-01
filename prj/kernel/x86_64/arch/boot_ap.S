@@ -111,17 +111,17 @@ boot_ap_gdtdesc:
     .quad boot_ap_gdt
 
  
-		.align 4096
-		.global __boot_dos_entry
-		.code16
+	.align 4096
+	.global __boot_dos_entry
+	.code16
 __boot_dos_entry:
-		movw $0x1000, %ax
-		movw %ax, %ds
-		movw %ax, %es
-		movw %ax, %ss
-		movw %ax, %fs
-		movw %ax, %gs
-		movw $0xe000, %ax
-		movw %ax, %sp
-		ljmp $0x1020, $0x0000
-		
+	movw $0x1000, %ax
+	movw %ax, %ds
+	movw %ax, %es
+	movw %ax, %ss
+	movw %ax, %fs
+	movw %ax, %gs
+	movw $0xe000, %ax
+	movw %ax, %sp
+	ljmp $0x1020, $0x0000
+	
