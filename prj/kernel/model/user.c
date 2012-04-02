@@ -69,7 +69,7 @@ user_proc_load(void *bin, size_t bin_size)
     
     /* copy the binary */
     user_proc_copy(proc->user_proc, __start, bin, bin_size);
-    print_tls(proc);
+    // print_tls(proc);
     return 0;
 }
 

@@ -6,6 +6,8 @@
 
 #define IRQ_COUNT               32
 
+#define IRQ_SCTL                2
+
 #define IRQ_TIMER               0
 #define IRQ_KBD                 1
 #define IRQ_COM1                4

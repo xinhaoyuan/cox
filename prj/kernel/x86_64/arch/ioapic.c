@@ -26,13 +26,13 @@
 // IO APIC MMIO structure: write reg, then read or write data.
 struct ioapic_mmio_s
 {
-	uint32_t reg;
-	uint32_t __pad0[3];
-	uint32_t data;
-	uint32_t __pad1[3];
-	uint32_t irq_pin_ass;
-	uint32_t __pad2[7];
-	uint32_t eoi;
+    uint32_t reg;
+    uint32_t __pad0[3];
+    uint32_t data;
+    uint32_t __pad1[3];
+    uint32_t irq_pin_ass;
+    uint32_t __pad2[7];
+    uint32_t eoi;
 };
 
 typedef volatile struct ioapic_mmio_s ioapic_mmio_s;
@@ -40,15 +40,15 @@ typedef volatile struct ioapic_mmio_s ioapic_mmio_s;
 static uint32_t
 ioapic_read(ioapic_mmio_s *ioapic, uint32_t reg)
 {
-	ioapic->reg = reg;
-	return ioapic->data;
+    ioapic->reg = reg;
+    return ioapic->data;
 }
 
 static void
 ioapic_write(ioapic_mmio_s *ioapic, uint32_t reg, uint32_t data)
 {
-	ioapic->reg = reg;
-	ioapic->data = data;
+    ioapic->reg = reg;
+    ioapic->data = data;
 }
 
 int      ioapic_id_set[IOAPIC_COUNT];
@@ -57,85 +57,92 @@ ioapic_s ioapic[IOAPIC_COUNT];
 int
 ioapic_init(void)
 {
-	if (!sysconf_x86.ioapic.enable) return 0;
-	
-	int i, j, id, maxintr;
-	int ioapic_id;
+    if (!sysconf_x86.ioapic.enable) return 0;
+    
+    int i, j, id, maxintr;
+    int ioapic_id;
 
-	for (i = 0; i != sysconf_x86.ioapic.count; ++ i)
-	{
-		ioapic_id = ioapic_id_set[i];
+    for (i = 0; i != sysconf_x86.ioapic.count; ++ i)
+    {
+        ioapic_id = ioapic_id_set[i];
 
-		// cprintf("IOAPIC %d phys %08x\n", ioapic_id, ioapic[ioapic_id].phys);
-		ioapic[ioapic_id].mmio = mmio_open(ioapic[ioapic_id].phys, sizeof(struct ioapic_mmio_s));
+        // cprintf("IOAPIC %d phys %016x\n", ioapic_id, ioapic[ioapic_id].phys);
+        ioapic[ioapic_id].mmio = mmio_open(ioapic[ioapic_id].phys, sizeof(struct ioapic_mmio_s));
 
-		int v = ioapic_read(ioapic[ioapic_id].mmio, REG_VER);
-		maxintr = (v >> 16) & 0xFF;
-		// cprintf("VERSION: %02x\n", v & 0xFF);
-		// cprintf("MAXINTR: %d\n", maxintr);
-		if ((v & 0xFF) >= 0x20)
-			sysconf_x86.ioapic.use_eoi = 1;
-		else sysconf_x86.ioapic.use_eoi = 0;
-		id = (ioapic_read(ioapic[ioapic_id].mmio, REG_ID) >> 24) & 0xF;
-		if (id != ioapic_id)
-		{
-			cprintf("ioapic_init: id %08x isn't equal to ioapic_id %08x ; Fixing\n",
-					id, ioapic_id);
-			ioapic_write(ioapic[ioapic_id].mmio, REG_ID, ioapic_id << 24);
-		}
+        int v = ioapic_read(ioapic[ioapic_id].mmio, REG_VER);
+        maxintr = (v >> 16) & 0xFF;
+        // cprintf("VERSION: %02x, MAXINTR %d:", v & 0xFF, maxintr);
+        if ((v & 0xFF) >= 0x20)
+            sysconf_x86.ioapic.use_eoi = 1;
+        else sysconf_x86.ioapic.use_eoi = 0;
+        id = (ioapic_read(ioapic[ioapic_id].mmio, REG_ID) >> 24) & 0xF;
+        if (id != ioapic_id)
+        {
+            cprintf("ioapic_init: id %08x isn't equal to ioapic_id %08x ; Fixing\n",
+                    id, ioapic_id);
+            ioapic_write(ioapic[ioapic_id].mmio, REG_ID, ioapic_id << 24);
+        }
 
 #if 1
-		// Mark all interrupts edge-triggered, active high, disabled,
-		// and not routed to any CPUs.
-		for(j = 0; j <= maxintr; j++)
-		{
-			ioapic_write(ioapic[ioapic_id].mmio, REG_TABLE + 2 * j, INT_DISABLED | (IRQ_OFFSET + j));
-			ioapic_write(ioapic[ioapic_id].mmio, REG_TABLE + 2 * j + 1, 0);
-		}
+        // Mark all interrupts edge-triggered, active high, disabled,
+        // and not routed to any CPUs.
+        for(j = 0; j <= maxintr; j++)
+        {
+            ioapic_write(ioapic[ioapic_id].mmio, REG_TABLE + 2 * j, INT_DISABLED | (IRQ_OFFSET + j));
+            ioapic_write(ioapic[ioapic_id].mmio, REG_TABLE + 2 * j + 1, 0);
+        }
 #else
-		// Redirect all interrupt to cpu 0
-		for(j = 0; j <= maxintr; j++)
-		{
-			/* Omit the 2nd IRQ controller? */
-			// if (i == IRQ_SCTL) continue;
-			ioapic_write(ioapic[ioapic_id].mmio, REG_TABLE + 2 * j, (IRQ_OFFSET + j));
-			ioapic_write(ioapic[ioapic_id].mmio, REG_TABLE + 2 * j + 1, 0);
-		}
+        // Redirect all interrupt to BSP
+        for(j = 0; j <= maxintr; j++)
+        {
+            /* Omit the 2nd IRQ controller? */
+            if (0 && j == IRQ_SCTL) {
+                ioapic_write(ioapic[ioapic_id].mmio, REG_TABLE + 2 * j, INT_DISABLED | (IRQ_OFFSET + j));
+                ioapic_write(ioapic[ioapic_id].mmio, REG_TABLE + 2 * j + 1, 0);
+            }
+            else
+            {
+                ioapic_write(ioapic[ioapic_id].mmio, REG_TABLE + 2 * j, (IRQ_OFFSET + j));
+                ioapic_write(ioapic[ioapic_id].mmio, REG_TABLE + 2 * j + 1, sysconf_x86.cpu.boot << 24);
+            }
+        }
 #endif
-	}
+    }
 
-	// IMCR:
-	// Bochs doesn't support IMCR, so this doesn't run on Bochs.
-	// But it would on real hardware.
-	__outb(0x22, 0x70);   // Select IMCR
-	__outb(0x23, __inb(0x23) | 1);  // Mask external interrupts.
+#if 1
+    // IMCR:
+    // Bochs doesn't support IMCR, so this doesn't run on Bochs.
+    // But it would on real hardware.
+    __outb(0x22, 0x70);             // Select IMCR
+    __outb(0x23, 1);  // Mask external interrupts.
+#endif
 
-	return 0;
+    return 0;
 }
 
 // XXX THIS ROUTINE IS BUGGY
 void
 ioapic_send_eoi(int apic_id, int irq)
 {
-	ioapic[apic_id].mmio->eoi = irq & 0xFF;
+    ioapic[apic_id].mmio->eoi = irq & 0xFF;
 }
 
 void
 ioapic_enable(int apic_id, int irq, int cpunum)
 {
-	// Mark interrupt edge-triggered, active high,
-	// enabled, and routed to the given cpunum,
-	// which happens to be that cpu's APIC ID.
-	ioapic_write(ioapic[apic_id].mmio, REG_TABLE + 2 * irq, IRQ_OFFSET + irq);
-	ioapic_write(ioapic[apic_id].mmio, REG_TABLE + 2 * irq + 1, cpunum << 24);
+    // Mark interrupt edge-triggered, active high,
+    // enabled, and routed to the given cpunum,
+    // which happens to be that cpu's APIC ID.
+    ioapic_write(ioapic[apic_id].mmio, REG_TABLE + 2 * irq, (IRQ_OFFSET + irq));
+    ioapic_write(ioapic[apic_id].mmio, REG_TABLE + 2 * irq + 1, cpunum << 24);
 }
 
 void
 ioapic_disable(int apic_id, int irq)
 {
-	// Mark interrupt edge-triggered, active high,
-	// enabled, and routed to the given cpunum,
-	// which happens to be that cpu's APIC ID.
-	ioapic_write(ioapic[apic_id].mmio, REG_TABLE + 2 * irq, INT_DISABLED | (IRQ_OFFSET + irq));
-	ioapic_write(ioapic[apic_id].mmio, REG_TABLE + 2 * irq + 1, 0);
+    // Mark interrupt edge-triggered, active high,
+    // enabled, and routed to the given cpunum,
+    // which happens to be that cpu's APIC ID.
+    ioapic_write(ioapic[apic_id].mmio, REG_TABLE + 2 * irq, INT_DISABLED | (IRQ_OFFSET + irq));
+    ioapic_write(ioapic[apic_id].mmio, REG_TABLE + 2 * irq + 1, 0);
 }

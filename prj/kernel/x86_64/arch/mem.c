@@ -52,7 +52,7 @@ struct segdesc gdt[SEG_COUNT + 1] = {
     [SEG_KDATA]    = SEG(STA_W, DPL_KERNEL),
     [SEG_UTEXT]    = SEG(STA_X | STA_R, DPL_USER),
     [SEG_UDATA]    = SEG(STA_W, DPL_USER),
-	[SEG_TSS_BOOT] = SEG_NULL,
+    [SEG_TSS_BOOT] = SEG_NULL,
 };
 
 struct pseudodesc gdt_pd = {
@@ -73,7 +73,7 @@ boot_get_pud(pgd_t *pgdir, uintptr_t la, bool create) {
         return NULL;
     }
     if (!(*pgdp & PTE_P)) {
-		pud_t *pud;
+        pud_t *pud;
         if (!create || (pud = boot_alloc(PGSIZE, PGSIZE, 0)) == NULL) {
             return NULL;
         }
@@ -91,7 +91,7 @@ boot_get_pmd(pgd_t *pgdir, uintptr_t la, bool create) {
         return NULL;
     }
     if (!(*pudp & PTE_P)) {
-		pmd_t *pmd;
+        pmd_t *pmd;
         if (!create || (pmd = boot_alloc(PGSIZE, PGSIZE, 0)) == NULL) {
             return NULL;
         }
@@ -108,7 +108,7 @@ boot_get_pte(pgd_t *pgdir, uintptr_t la, bool create) {
     if ((pmdp = boot_get_pmd(pgdir, la, create)) == NULL) {
         return NULL;
     }
-	
+    
     if (!(*pmdp & PTE_P)) {
         pte_t *pte;
         if (!create || (pte = boot_alloc(PGSIZE, PGSIZE, 0)) == NULL) {
@@ -146,7 +146,7 @@ lgdt(struct pseudodesc *pd) {
     asm volatile ("movw %%ax, %%ds" :: "a" (KERNEL_DS));
     // reload cs & ss
     asm volatile (
-		"pushq %%rax;"
+        "pushq %%rax;"
         "movq %%rsp, %%rax;"            // move %rsp to %rax
         "pushq %1;"                     // push %ss
         "pushq %%rax;"                  // push %rsp
@@ -155,7 +155,7 @@ lgdt(struct pseudodesc *pd) {
         "call 1f;"                      // push %rip
         "jmp 2f;"
         "1: iretq; 2:"
-		"popq %%rax;"
+        "popq %%rax;"
         :: "i" (KERNEL_CS), "i" (KERNEL_DS));
 }
 
@@ -242,93 +242,93 @@ print_pgdir(void) {
 static void
 mmu_init(void)
 {
-	int i;
-		
-	pgdir_scratch = boot_pgdir = boot_alloc(PGSIZE, PGSIZE, 0);
+    int i;
+        
+    pgdir_scratch = boot_pgdir = boot_alloc(PGSIZE, PGSIZE, 0);
     memset(boot_pgdir, 0, PGSIZE);
     boot_cr3 = PADDR_DIRECT(boot_pgdir);
 
-	// recursively insert boot_pgdir in itself
+    // recursively insert boot_pgdir in itself
     // to form a virtual page table at virtual address VPT
     boot_pgdir[PGX(VPT)] = PADDR_DIRECT(boot_pgdir) | PTE_P | PTE_W;
 
-	int id = 0;
-	uintptr_t start, end;
-	while (memmap_enumerate(id, &start, &end) == 0) ++ id;
-	phys_end = end;
-	nr_pages = (phys_end + PGSIZE - 1) >> PGSHIFT;
+    int id = 0;
+    uintptr_t start, end;
+    while (memmap_enumerate(id, &start, &end) == 0) ++ id;
+    phys_end = end;
+    nr_pages = (phys_end + PGSIZE - 1) >> PGSHIFT;
 
-	cprintf("phys max boundary: %p\n", phys_end);
-	cprintf("number of pages: %d\n", nr_pages);
+    cprintf("phys max boundary: %p\n", phys_end);
+    cprintf("number of pages: %d\n", nr_pages);
 
-	/* touch all pud page for PHYSBASE ~ PHYSBASE + PHYSSIZE, so all
-	 * page tables shares the same mmio mapping*/
-	int num_of_pudtables = (PHYSSIZE + PUSIZE - 1) / PUSIZE;
-	for (i = 0; i < num_of_pudtables; ++ i)
-	{
-		boot_get_pud(boot_pgdir, PHYSBASE + PUSIZE * i, 1);
-	}
-	
-	/* same for kv mapping */
-	num_of_pudtables = (KVSIZE + PUSIZE - 1) / PUSIZE;
-	for (i = 0; i < num_of_pudtables; ++ i)
-	{
-		boot_get_pud(boot_pgdir, KVBASE + PUSIZE * i, 1);
-	}
-	
-	
+    /* touch all pud page for PHYSBASE ~ PHYSBASE + PHYSSIZE, so all
+     * page tables shares the same mmio mapping*/
+    int num_of_pudtables = (PHYSSIZE + PUSIZE - 1) / PUSIZE;
+    for (i = 0; i < num_of_pudtables; ++ i)
+    {
+        boot_get_pud(boot_pgdir, PHYSBASE + PUSIZE * i, 1);
+    }
+    
+    /* same for kv mapping */
+    num_of_pudtables = (KVSIZE + PUSIZE - 1) / PUSIZE;
+    for (i = 0; i < num_of_pudtables; ++ i)
+    {
+        boot_get_pud(boot_pgdir, KVBASE + PUSIZE * i, 1);
+    }
+    
+    
     /* map all physical memory at PHYSBASE by 2m pages*/
-	int num_of_2m_pages = (phys_end + 0x1fffff) / 0x200000;
-	for (i = 0; i < num_of_2m_pages; ++ i)
-	{
-		uintptr_t phys = i << 21;
-		pmd_t *pmd = boot_get_pmd(boot_pgdir, PHYSBASE + phys, 1);
-		*pmd = phys | PTE_PS | PTE_W | PTE_P;
-	}
+    int num_of_2m_pages = (phys_end + 0x1fffff) / 0x200000;
+    for (i = 0; i < num_of_2m_pages; ++ i)
+    {
+        uintptr_t phys = i << 21;
+        pmd_t *pmd = boot_get_pmd(boot_pgdir, PHYSBASE + phys, 1);
+        *pmd = phys | PTE_PS | PTE_W | PTE_P;
+    }
 
-	/* and map the first 1MB for the ap booting */
-	boot_map_segment(boot_pgdir, 0, 0x100000, 0, PTE_W);
-	
-	extern char __text[], __end[];
-	kern_start = (uintptr_t)__text;
-	kern_end   = (uintptr_t)__end;
-	cprintf("kernel boundary: %p - %p\n", kern_start, kern_end);
-	/* remap kernel self */
-	boot_map_segment(boot_pgdir, KERNBASE + kern_start, kern_end - kern_start, kern_start, PTE_W);
+    /* and map the first 1MB for the ap booting */
+    boot_map_segment(boot_pgdir, 0, 0x100000, 0, PTE_W);
+    
+    extern char __text[], __end[];
+    kern_start = (uintptr_t)__text;
+    kern_end   = (uintptr_t)__end;
+    cprintf("kernel boundary: %p - %p\n", kern_start, kern_end);
+    /* remap kernel self */
+    boot_map_segment(boot_pgdir, KERNBASE + kern_start, kern_end - kern_start, kern_start, PTE_W);
 
-	__lcr3(boot_cr3);
+    __lcr3(boot_cr3);
 
-	// set CR0
+    // set CR0
     uint64_t cr0 = __rcr0();
     cr0 |= CR0_PE | CR0_PG | CR0_AM | CR0_WP | CR0_NE | CR0_TS | CR0_EM | CR0_MP;
     cr0 &= ~(CR0_TS | CR0_EM);
     __lcr0(cr0);
 
-	memset(&ts_boot, sizeof(ts_boot), 0);
-	// initialize the BOOT TSS
-	gdt[SEG_TSS_BOOT] = SEGTSS(STS_T32A, (uintptr_t)&ts_boot, sizeof(ts_boot), DPL_KERNEL);
-	// then for mp
-	/* 6 for start of dynamic segment */
-	for (i = 6; i <= SEG_COUNT; ++ i)
-	{
-		gdt[i] = SEG_NULL;
-	}
+    memset(&ts_boot, sizeof(ts_boot), 0);
+    // initialize the BOOT TSS
+    gdt[SEG_TSS_BOOT] = SEGTSS(STS_T32A, (uintptr_t)&ts_boot, sizeof(ts_boot), DPL_KERNEL);
+    // then for mp
+    /* 6 for start of dynamic segment */
+    for (i = 6; i <= SEG_COUNT; ++ i)
+    {
+        gdt[i] = SEG_NULL;
+    }
 
     // reload all segment registers
     lgdt(&gdt_pd);
-	
-	// load the TSS, a little work around about gcc -O
-	// ltr(GD_TSS_BOOT); // may crash
-	volatile uint16_t tss = GD_TSS_BOOT;
-	__ltr(tss);
+    
+    // load the TSS, a little work around about gcc -O
+    // ltr(GD_TSS_BOOT); // may crash
+    volatile uint16_t tss = GD_TSS_BOOT;
+    __ltr(tss);
 
-	print_pgdir();
+    // print_pgdir();
 }
 
 static int
 config_by_memmap(uintptr_t num)
 {
-	return memmap_test(num << PGSHIFT, (num << PGSHIFT) + PGSIZE);
+    return memmap_test(num << PGSHIFT, (num << PGSHIFT) + PGSIZE);
 }
 
 static int
@@ -342,37 +342,37 @@ static spinlock_s mmio_fix_lock;
 static void *
 __boot_page_alloc(size_t size)
 {
-	return boot_alloc(size, PGSIZE, 1);
+    return boot_alloc(size, PGSIZE, 1);
 }
 
 int
 memory_init(void)
 {
-	memmap_process_e820();
-	boot_alloc_init();
+    memmap_process_e820();
+    boot_alloc_init();
 
-	mmu_init();
+    mmu_init();
 
-	/* Mark the supervisor area and boot alloc area reserved */
-	memmap_append(kern_start, kern_end, MEMMAP_FLAG_RESERVED);
+    /* Mark the supervisor area and boot alloc area reserved */
+    memmap_append(kern_start, kern_end, MEMMAP_FLAG_RESERVED);
 
-	page_alloc_init_struct(nr_pages, __boot_page_alloc);
-	kv_buddy.node = boot_alloc(BUDDY_CALC_ARRAY_SIZE(KVSIZE >> PGSHIFT) * sizeof(struct buddy_node_s), PGSIZE, 0);
-	buddy_build(&kv_buddy, KVSIZE >> PGSHIFT, kv_config);
-	
-	uintptr_t start, end;
-	boot_alloc_get_area(&start, &end);
+    page_alloc_init_struct(nr_pages, __boot_page_alloc);
+    kv_buddy.node = boot_alloc(BUDDY_CALC_ARRAY_SIZE(KVSIZE >> PGSHIFT) * sizeof(struct buddy_node_s), PGSIZE, 0);
+    buddy_build(&kv_buddy, KVSIZE >> PGSHIFT, kv_config);
+    
+    uintptr_t start, end;
+    boot_alloc_get_area(&start, &end);
 
-	memmap_append(start, end, MEMMAP_FLAG_RESERVED);
-	memmap_process(1);
+    memmap_append(start, end, MEMMAP_FLAG_RESERVED);
+    memmap_process(1);
 
-	/* Initialize the page allocator with free areas */
+    /* Initialize the page allocator with free areas */
 
-	page_alloc_init_layout(config_by_memmap);
-	spinlock_init(&kv_lock);
-	spinlock_init(&mmio_fix_lock);
+    page_alloc_init_layout(config_by_memmap);
+    spinlock_init(&kv_lock);
+    spinlock_init(&mmio_fix_lock);
 
-	return 0;
+    return 0;
 }
 
 /* INIT CODE END ================================================== */
@@ -389,12 +389,12 @@ get_pud(pgd_t *pgdir, uintptr_t la, bool create) {
         return NULL;
     }
     if (!(*pgdp & PTE_P)) {
-		pud_t *pud;
-		page_t page;
+        pud_t *pud;
+        page_t page;
         if (!create || (page = page_alloc_atomic(1)) == NULL) {
             return NULL;
         }
-		uintptr_t pa = PAGE_TO_PHYS(page);
+        uintptr_t pa = PAGE_TO_PHYS(page);
         pud = VADDR_DIRECT(pa);
         memset(pud, 0, PGSIZE);
         *pgdp = pa | PTE_U | PTE_W | PTE_P;
@@ -409,13 +409,13 @@ get_pmd(pgd_t *pgdir, uintptr_t la, bool create) {
         return NULL;
     }
     if (!(*pudp & PTE_P)) {
-		pmd_t *pmd;
-		page_t page;
+        pmd_t *pmd;
+        page_t page;
         if (!create || (page = page_alloc_atomic(1)) == NULL) {
             return NULL;
         }
-		uintptr_t pa = PAGE_TO_PHYS(page);
-		pmd = VADDR_DIRECT(pa);
+        uintptr_t pa = PAGE_TO_PHYS(page);
+        pmd = VADDR_DIRECT(pa);
         memset(pmd, 0, PGSIZE);
         *pudp = pa | PTE_U | PTE_W | PTE_P;
     }
@@ -428,15 +428,15 @@ get_pte(pgd_t *pgdir, uintptr_t la, bool create) {
     if ((pmdp = get_pmd(pgdir, la, create)) == NULL) {
         return NULL;
     }
-	
+    
     if (!(*pmdp & PTE_P)) {
         pte_t *pte;
-		page_t page;
+        page_t page;
         if (!create || (page = page_alloc_atomic(1)) == 0) {
             return NULL;
         }
-		uintptr_t pa = PAGE_TO_PHYS(page);
-		pte = VADDR_DIRECT(pa);
+        uintptr_t pa = PAGE_TO_PHYS(page);
+        pte = VADDR_DIRECT(pa);
         memset(pte, 0, PGSIZE);
         *pmdp = pa | PTE_U | PTE_W | PTE_P;
     }
@@ -447,40 +447,40 @@ get_pte(pgd_t *pgdir, uintptr_t la, bool create) {
 void
 pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
 {
-	if (PHYSBASE <= la && la < PHYSBASE + PHYSSIZE)
-	{
-		if (err & 4)
-		{
-			/* MMIO AREA IS NOT ALLOWED FOR USER */
-			cprintf("PANIC: MMIO FROM USER\n");
-			while (1) ;
-		}
-		else
-		{
-			/* KERNEL MMIO PG FAULT, fix it */
-			la = la & ~(uintptr_t)0x1fffff;
-			
-			spinlock_acquire(&mmio_fix_lock);
-			pmd_t *pmd = get_pmd(boot_pgdir, la, 1);
-			spinlock_release(&mmio_fix_lock);
+    if (PHYSBASE <= la && la < PHYSBASE + PHYSSIZE)
+    {
+        if (err & 4)
+        {
+            /* MMIO AREA IS NOT ALLOWED FOR USER */
+            cprintf("PANIC: MMIO FROM USER\n");
+            while (1) ;
+        }
+        else
+        {
+            /* KERNEL MMIO PG FAULT, fix it */
+            la = la & ~(uintptr_t)0x1fffff;
+            
+            spinlock_acquire(&mmio_fix_lock);
+            pmd_t *pmd = get_pmd(boot_pgdir, la, 1);
+            spinlock_release(&mmio_fix_lock);
 
-			/* All mmio mappings are the same across all page tables, so just
-			 * modify it for one place */
-			if (pmd)
-				*pmd = PADDR_DIRECT(la) | PTE_PS | PTE_W | PTE_P;
-		}
-	}
-	else
-	{
-		cprintf("page fault(%08x) at %016lx by %016lx\n", err, la, pc);
-		while (1) ;
-	}
+            /* All mmio mappings are the same across all page tables, so just
+             * modify it for one place */
+            if (pmd)
+                *pmd = PADDR_DIRECT(la) | PTE_PS | PTE_W | PTE_P;
+        }
+    }
+    else
+    {
+        cprintf("page fault(%08x) at %016lx by %016lx\n", err, la, pc);
+        while (1) ;
+    }
 }
 
 volatile void *
 mmio_open(uintptr_t addr, size_t size)
 {
-	return VADDR_DIRECT(addr);
+    return VADDR_DIRECT(addr);
 }
 
 void
@@ -491,29 +491,29 @@ mmio_close(volatile void *addr)
 void *
 valloc(size_t num)
 {
-	int irq = irq_save();
-	spinlock_acquire(&kv_lock);
+    int irq = irq_save();
+    spinlock_acquire(&kv_lock);
 
-	buddy_node_id_t result = buddy_alloc(&kv_buddy, num);
+    buddy_node_id_t result = buddy_alloc(&kv_buddy, num);
 
-	spinlock_release(&kv_lock);
-	irq_restore(irq);
-	
-	if (result == BUDDY_NODE_ID_NULL) return NULL;
-	else return (void *)(KVBASE + (result << PGSHIFT));
+    spinlock_release(&kv_lock);
+    irq_restore(irq);
+    
+    if (result == BUDDY_NODE_ID_NULL) return NULL;
+    else return (void *)(KVBASE + (result << PGSHIFT));
 }
 
 void
 vfree(void *addr)
 {
-	if (addr == NULL) return;
-	if (KVBASE > (uintptr_t)addr || (uintptr_t)addr >= KVBASE + KVSIZE) return;
+    if (addr == NULL) return;
+    if (KVBASE > (uintptr_t)addr || (uintptr_t)addr >= KVBASE + KVSIZE) return;
 
-	int irq = irq_save();
-	spinlock_acquire(&kv_lock);
-	
-	buddy_free(&kv_buddy, ((uintptr_t)addr - KVBASE) >> PGSHIFT);
-	
-	spinlock_release(&kv_lock);
-	irq_restore(irq);
+    int irq = irq_save();
+    spinlock_acquire(&kv_lock);
+    
+    buddy_free(&kv_buddy, ((uintptr_t)addr - KVBASE) >> PGSHIFT);
+    
+    spinlock_release(&kv_lock);
+    irq_restore(irq);
 }

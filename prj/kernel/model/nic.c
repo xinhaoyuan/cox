@@ -371,7 +371,6 @@ nic_ctl_proc(void *__ignore)
         struct nic_ctl_s *ctl = CONTAINER_OF(l, struct nic_ctl_s, ctl_list);
         nic_t nic = CONTAINER_OF(ctl, nic_s, ctl);
 
-        cprintf("NIC CTL %d!\n", ctl->func);
         switch(ctl->func)
         {
         case NIC_CTL_CFG_SET:

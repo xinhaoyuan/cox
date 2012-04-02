@@ -56,7 +56,7 @@ __kern_early_init(void) {
     lapic_init();
     ioapic_init();
 
-    ioapic_enable(ioapic_id_set[0], IRQ_KBD, 0);
+    ioapic_enable(ioapic_id_set[0], IRQ_KBD, sysconf_x86.cpu.boot);
     
     if (sysconf_x86.hpet.enable)
         hpet_init();

@@ -55,7 +55,6 @@ fiber1(void *arg)
         nic = nic_open.io[0];
         mbox_tx = nic_open.io[1];
         mbox_ctl = nic_open.io[2];
-        cprintf("Get NIC ID %d TX MBOX %d CTL MBOX %d\n", nic, mbox_tx, mbox_ctl);
     }
 
     /* { */
@@ -83,7 +82,6 @@ fiber1(void *arg)
         MARSHAL(buf, sizeof(uintptr_t), (data = 4, &data));
         MARSHAL(buf, 4, "    ");
 
-        cprintf("NIC_CTL_CFG_SET\n");
         mbox_io_get(&mbox_io, IO_MODE_SYNC, mbox_ctl, MARSHAL_SIZE(buf), NIC_CTL_CFG_SET);
         
         mbox_io.io[0] = IO_MBOX_IO;
@@ -91,7 +89,6 @@ fiber1(void *arg)
         mbox_io.io[2] = 0;
         mbox_io.io[3] = NIC_CTL_ADD;
 
-        cprintf("NIC_CTL_ADD\n");
         mbox_io_get(&mbox_io, IO_MODE_SYNC, mbox_ctl, 0, NIC_CTL_ADD);
     }
 
@@ -111,6 +108,7 @@ fiber1(void *arg)
         if (irq_listen.io[0]) cprintf("irq listen failed\n");
     }
 
+    kbd_proc_data();
     {
         io_data_s mbox_io;
         mbox_io_begin(&mbox_io);
