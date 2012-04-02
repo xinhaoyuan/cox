@@ -8,31 +8,31 @@ BOOT_AP_BASE  =         0x00008000;
 
 SECTIONS {
 
-	. = ENTRY32_BASE;
+    . = ENTRY32_BASE;
 
-	PROVIDE(__text = .);
+    PROVIDE(__text = .);
 
-	/* for 32-bit boot code */
+    /* for 32-bit boot code */
     .entry32 : AT(ADDR(.entry32)) {
         *entry32.S.o*(.text .rodata .data)
-		. = ALIGN(0x1000);
+        . = ALIGN(0x1000);
     }
 
-	PROVIDE(boot_ap_entry_64 = . + KERN_BASE);
+    PROVIDE(boot_ap_entry_64 = . + KERN_BASE);
 
-	/* Boot code for app-cpus */
+    /* Boot code for app-cpus */
     .boot_ap BOOT_AP_BASE : AT(ADDR(.entry32) + SIZEOF(.entry32)) {
         *boot_1ap.S.o*(.text .rodata .data)
-		. = ALIGN(0x1000);
+        . = ALIGN(0x1000);
     }
 
-	. = ENTRY32_BASE + SIZEOF(.entry32) + SIZEOF(.boot_ap);
+    . = ENTRY32_BASE + SIZEOF(.entry32) + SIZEOF(.boot_ap);
     . = ALIGN(0x1000);
     . += KERN_BASE;
 
-	PROVIDE(boot_ap_entry_64_end = .);
+    PROVIDE(boot_ap_entry_64_end = .);
 
-	/* other code */
+    /* other code */
     .text : AT(ADDR(.text) - KERN_BASE) {
         *(.text .stub .text.* .gnu.linkonce.t.*)
     }
@@ -45,23 +45,23 @@ SECTIONS {
 
     /* Adjust the address for the data segment to the next page */
     . = ALIGN(0x1000);
-	PROVIDE(__data = . - KERN_BASE);
+    PROVIDE(__data = . - KERN_BASE);
 
-	PROVIDE(pls_start = .);
+    PROVIDE(pls_start = .);
 
     .pls : {
-	   *(.pls)				
-	}
-							
-	. = ALIGN(0x1000);
-	PROVIDE(pls_end = .);
+       *(.pls)              
+    }
+                            
+    . = ALIGN(0x1000);
+    PROVIDE(pls_end = .);
 
     /* The data segment */
     .data : AT(ADDR(.data) - KERN_BASE) {
         *(.data)
     }
 
-	. = ALIGN(0x1000);
+    . = ALIGN(0x1000);
 
     PROVIDE(__bss = . - KERN_BASE);
 
@@ -69,7 +69,7 @@ SECTIONS {
         *(.bss)
     }
 
-	. = ALIGN(0x1000);
+    . = ALIGN(0x1000);
 
     PROVIDE(__end = . - KERN_BASE);
 

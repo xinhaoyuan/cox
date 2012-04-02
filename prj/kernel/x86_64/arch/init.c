@@ -28,8 +28,9 @@ static char   init_proc_stack[INIT_PROC_STACK_SIZE] __attribute__((aligned(__PGS
 static proc_s init_proc;
 
 /* GRUB info filled by entry32.S */
-uint32_t mb_magic;
-uint32_t mb_info_phys;
+/* do not put them in bss section */
+uint32_t __attribute__((section(".data"))) mb_magic = 0;
+uint32_t __attribute__((section(".data"))) mb_info_phys = 0;
 
 void
 __kern_early_init(void) {

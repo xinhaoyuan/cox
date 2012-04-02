@@ -1,35 +1,34 @@
 #include <mmu.h>
 #include <arch/memlayout.h>
 
-#define	MULTIBOOT_PAGE_ALIGN   (1<<0)
-#define	MULTIBOOT_MEMORY_INFO  (1<<1)
+#define MULTIBOOT_PAGE_ALIGN   (1<<0)
+#define MULTIBOOT_MEMORY_INFO  (1<<1)
 #define MULTIBOOT_AOUT_KLUDGE  (1<<16)
-#define	MULTIBOOT_HEADER_MAGIC (0x1BADB002)
-#define	MULTIBOOT_HEADER_FLAGS (MULTIBOOT_MEMORY_INFO | MULTIBOOT_PAGE_ALIGN | MULTIBOOT_AOUT_KLUDGE)
-#define	CHECKSUM               (-(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS))
-		
+#define MULTIBOOT_HEADER_MAGIC (0x1BADB002)
+#define MULTIBOOT_HEADER_FLAGS (MULTIBOOT_MEMORY_INFO | MULTIBOOT_PAGE_ALIGN | MULTIBOOT_AOUT_KLUDGE)
+#define CHECKSUM               (-(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS))
+        
 .text
 .code32
 kern_start32:
-		
-	# Multi Boot Header
-	.align 4
-	.long MULTIBOOT_HEADER_MAGIC
-	.long MULTIBOOT_HEADER_FLAGS
-	.long CHECKSUM
-	   
-	.long kern_start32
-
-	.long __text
-	.long __bss
-	.long __end
-	.long kern_entry32
+        
+    # Multi Boot Header
+    .align 4
+    .long MULTIBOOT_HEADER_MAGIC
+    .long MULTIBOOT_HEADER_FLAGS
+    .long CHECKSUM
+       
+    .long kern_start32
+    .long __text
+    .long __bss
+    .long __end
+    .long kern_entry32
 
 .global kern_entry32
 kern_entry32:
-	movl %eax, mb_magic - KERNBASE
-	movl %ebx, mb_info_phys - KERNBASE
-		
+    movl %eax, mb_magic - KERNBASE
+    movl %ebx, mb_info_phys - KERNBASE
+        
     # Detection of CPUID:
     #  Basically, detecting wheterh CPUID is supported is covered here.
     #  CPUID is supported when the ID-bit in the FLAGS-register can be flipped.
@@ -66,14 +65,14 @@ kern_entry32:
     movl $pud, %eax
     orl $0x3, %eax
     movl %eax, (%edi)
-    movl %eax, 0xFF8(%edi) 		# For KERNBASE
-	movl %eax, 0x900(%edi)	    # For PHYSBASE
+    movl %eax, 0xFF8(%edi)      # For KERNBASE
+    movl %eax, 0x900(%edi)      # For PHYSBASE
 
     # clear and set pud, mark pmd as (PTE_W | PTE_P)
     movl $pud, %edi
     movl $pmd, %eax
     orl $0x3, %eax
-	movl %eax, 0xFF0(%edi)		# FOR KERNBASE
+    movl %eax, 0xFF0(%edi)      # FOR KERNBASE
     movl %eax, (%edi)
 
     # set pmd, Mark each entry as (PTE_W | PTE_P | PTE_PS)
