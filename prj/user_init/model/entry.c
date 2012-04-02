@@ -8,9 +8,23 @@
 #include <driver/e1000/glue_inc.h>
 #include <mach.h>
 #include <lib/marshal.h>
+#include "kbdreg.h"
+#include <io.h>
 
 static char f1stack[4096];
 static fiber_s f1;
+
+static void
+kbd_proc_data(void) {
+    uint8_t data;
+
+    if ((__inb(KBSTATP) & KBS_DIB) == 0) {
+        return;
+    }
+
+    data = __inb(KBDATAP);
+    cprintf("KB get data %02x\n", data);
+}
 
 static void
 fiber1(void *arg)
@@ -32,7 +46,7 @@ fiber1(void *arg)
         
 #endif
 
-#if 0
+#if 1
     int mbox_tx, mbox_ctl, nic;
     
     {
@@ -52,8 +66,9 @@ fiber1(void *arg)
 
     {
         cprintf("Wait for syscall\n");
-        io_data_s mbox_io = IO_DATA_INITIALIZER(4, IO_MBOX_IO, mbox_ctl, 0, 0);
-        io(&mbox_io, IO_MODE_SYNC);
+        io_data_s mbox_io;
+        mbox_io_begin(&mbox_io);
+        mbox_io_get(&mbox_io, IO_MODE_SYNC, mbox_ctl, 0, 0);
         uintptr_t data;
         
         MARSHAL_DECLARE(buf, mbox_io.io[1], mbox_io.io[1] + 256);
@@ -67,20 +82,17 @@ fiber1(void *arg)
         MARSHAL(buf, 4, "    ");
         MARSHAL(buf, sizeof(uintptr_t), (data = 4, &data));
         MARSHAL(buf, 4, "    ");
-        
-        mbox_io.io[0] = IO_MBOX_IO;
-        mbox_io.io[1] = mbox_ctl;
-        mbox_io.io[2] = MARSHAL_SIZE(buf);
-        mbox_io.io[3] = NIC_CTL_CFG_SET;
-        
-        io(&mbox_io, IO_MODE_SYNC);
+
+        cprintf("NIC_CTL_CFG_SET\n");
+        mbox_io_get(&mbox_io, IO_MODE_SYNC, mbox_ctl, MARSHAL_SIZE(buf), NIC_CTL_CFG_SET);
         
         mbox_io.io[0] = IO_MBOX_IO;
         mbox_io.io[1] = mbox_ctl;
         mbox_io.io[2] = 0;
         mbox_io.io[3] = NIC_CTL_ADD;
 
-        io(&mbox_io, IO_MODE_SYNC);
+        cprintf("NIC_CTL_ADD\n");
+        mbox_io_get(&mbox_io, IO_MODE_SYNC, mbox_ctl, 0, NIC_CTL_ADD);
     }
 
 #endif
@@ -100,12 +112,14 @@ fiber1(void *arg)
     }
 
     {
-        io_data_s mbox_io = IO_DATA_INITIALIZER(4, IO_MBOX_IO, mbox, 0, 0);
+        io_data_s mbox_io;
+        mbox_io_begin(&mbox_io);
         int count = 0;
         while (1)
         {
-            io(&mbox_io, IO_MODE_SYNC);
+            mbox_io_get(&mbox_io, IO_MODE_SYNC, mbox, 0, 0);
             cprintf("%d\n", count ++ );
+            kbd_proc_data();
 
             mbox_io.io[0] = IO_MBOX_IO;
             mbox_io.io[1] = mbox;

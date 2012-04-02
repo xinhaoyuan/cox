@@ -45,6 +45,7 @@ nic_ctl_ack(void *__data, void *buf, uintptr_t hint_a, uintptr_t hint_b)
 
         memmove(ctl->buf, buf, hint_a);
     }
+    
     ctl->func = hint_b;
     
     int irq = irq_save();
@@ -124,7 +125,7 @@ nic_alloc(user_proc_t proc, int *mbox_tx, int *mbox_ctl)
         nic->mbox_ctl->nic_ctl = nic;
 
         /* internal ack for start the CRL loop */
-        nic_ctl_ack(NULL, &nic->ctl, 0, NIC_CTL_INIT);
+        nic_ctl_ack(&nic->ctl, NULL, 0, NIC_CTL_INIT);
         return nic - nics;
     }
     else

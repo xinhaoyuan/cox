@@ -12,21 +12,22 @@ typedef unsigned int iobuf_index_t;
 
 struct io_call_entry_s
 {
-	union
-	{
-		struct
-		{
-			unsigned int status;
-			iobuf_index_t prev, next;
+    union
+    {
+        struct
+        {
+            unsigned int status;
+            iobuf_index_t prev, next;
 
-			uintptr_t data[IO_ARGS_COUNT];
-		} ce;
+            uintptr_t data[IO_ARGS_COUNT];
+        } ce;
 
-		struct
-		{
-			iobuf_index_t head, tail;
-		} ctl;
-	};
+        struct
+        {
+            iobuf_index_t head; /* when = 0, could be written by user for a new start */
+            iobuf_index_t tail, free; /* by user */
+        } ctl;
+    };
 };
 typedef struct io_call_entry_s  io_call_entry_s;
 typedef struct io_call_entry_s *io_call_entry_t;

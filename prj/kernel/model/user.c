@@ -156,17 +156,20 @@ void
 user_process_io(proc_t proc)
 {
     io_call_entry_t head = proc->user_thread->ioce.head;
-    while (head->ctl.head != 0 &&
-           head->ctl.head != head->ctl.tail)
+    head->ctl.head %= proc->user_thread->ioce.cap;
+    while (head->ctl.head != 0)
     {
-        head->ctl.head %= proc->user_thread->ioce.cap;
-
-        if (head[head->ctl.head].ce.status == IO_CALL_STATUS_PROC) break;
-        head[head->ctl.head].ce.status = IO_CALL_STATUS_PROC;
+        iobuf_index_t idx = head->ctl.head;
+        head->ctl.head = head[head->ctl.head].ce.next % proc->user_thread->ioce.cap;
         
-        do_io_process(proc, head + head->ctl.head, head->ctl.head);
+        if (head[idx].ce.status == IO_CALL_STATUS_PROC)
+        {
+            head->ctl.head = 0;
+            break;
+        }
         
-        head->ctl.head = head[head->ctl.head].ce.next;
+        head[idx].ce.status = IO_CALL_STATUS_PROC;
+        do_io_process(proc, head + idx, idx);
     }
 }
 

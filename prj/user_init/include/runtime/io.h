@@ -15,13 +15,13 @@ __io_save(void)
 inline static void
 __io_restore(int status)
 {
-	if (status == 0)
-	{
-		__io_ubusy_set(0);
-		if (__iocb_busy)
-			__iocb(NULL);
-	}
-	else __io_ubusy_set(1);
+    if (status == 0)
+    {
+        __io_ubusy_set(0);
+        if (__iocb_busy)
+            __iocb(NULL);
+    }
+    else __io_ubusy_set(1);
 }
 
 #define IO_DATA_PTR(iod)           ((void *)((iod)->data & ~(uintptr_t)3))
@@ -32,14 +32,18 @@ __io_restore(int status)
 
 struct io_data_s
 {
-	struct
-	{
-		short int argc;
-		short int retc;
-	} __attribute__((packed));
+    struct
+    {
+        union
+        {
+            short int argc;
+            short int index;
+        };
+        short int retc;
+    } __attribute__((packed));
 
-	uintptr_t data;
-	uintptr_t io[IO_ARGS_COUNT];
+    uintptr_t data;
+    uintptr_t io[IO_ARGS_COUNT];
 };
 
 typedef struct io_data_s io_data_s;
@@ -53,5 +57,9 @@ typedef io_data_s *io_data_t;
 
 void io_init(void);
 int  io(io_data_t iod, int mode);
+
+void mbox_io_begin(io_data_t iod);
+void mbox_io_end(io_data_t iod);
+void mbox_io_get(io_data_t iod, int mode, int mbox, uintptr_t hint_a, uintptr_t hint_b);
 
 #endif
