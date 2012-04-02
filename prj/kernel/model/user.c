@@ -6,6 +6,7 @@
 #include <mbox.h>
 #include <nic.h>
 #include <irq.h>
+#include <string.h>
 #include <mbox_irq.h>
 #include <arch/irq.h>
 #include <lib/low_io.h>
@@ -40,7 +41,7 @@ user_proc_load(void *bin, size_t bin_size)
 
     proc_t proc = current;
 
-    if ((proc->user_proc = kmalloc(sizeof(user_proc_s))) == NULL) return -E_NO_MEM;
+    if ((proc->user_proc   = kmalloc(sizeof(user_proc_s))) == NULL) return -E_NO_MEM;
     if ((proc->user_thread = kmalloc(sizeof(user_thread_s))) == NULL) return -E_NO_MEM;
 
     uintptr_t __start = start;
@@ -110,6 +111,7 @@ user_thread_init(proc_t proc, uintptr_t entry)
     proc->user_thread->iocb.cap = cap;
     proc->user_thread->ioce.cap = cap;
     proc->user_thread->ioce.shadows = kmalloc(sizeof(io_ce_shadow_s) * cap);
+    memset(proc->user_thread->ioce.shadows, 0, sizeof(io_ce_shadow_s) * cap);
 
     return user_thread_arch_init(proc, entry);
 }
@@ -244,7 +246,7 @@ static inline int do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, 
 static inline int do_io_mmio_close(proc_t proc, uintptr_t addr) __attribute__((always_inline));
 static inline int do_io_brk(proc_t proc, uintptr_t end) __attribute__((always_inline));
 static inline int do_io_mbox_open(proc_t proc) __attribute__((always_inline));
-static inline int do_io_mbox_io(proc_t proc, iobuf_index_t idx, int mbox_id, int ack_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b) __attribute__((always_inline));
+static inline int do_io_mbox_io(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b) __attribute__((always_inline));
 static inline int do_io_nic_open(proc_t proc, uintptr_t *mbox_tx, uintptr_t *mbox_ctl) __attribute__((always_inline));
 static inline int do_io_nic_close(proc_t proc, int nic) __attribute__((always_inline));
 static inline int do_io_nic_recv(proc_t proc, int nic, uintptr_t buf, size_t size) __attribute__((always_inline));
@@ -333,7 +335,7 @@ do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
         break;
         
     case IO_MBOX_IO:
-        entry->ce.data[0] = do_io_mbox_io(proc, idx, entry->ce.data[1], entry->ce.data[2], entry->ce.data[3], entry->ce.data[4]);
+        entry->ce.data[0] = do_io_mbox_io(proc, idx, entry->ce.data[1], entry->ce.data[2], entry->ce.data[3]);
         break;
 
     case IO_NIC_OPEN:
@@ -419,7 +421,7 @@ do_io_mbox_open(proc_t proc)
 }
 
 static inline int
-do_io_mbox_io(proc_t proc, iobuf_index_t idx, int mbox_id, int ack_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b)
+do_io_mbox_io(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b)
 {
     mbox_t mbox = mbox_get(mbox_id);
     if (mbox != NULL && mbox->proc != proc->user_proc)
@@ -430,7 +432,7 @@ do_io_mbox_io(proc_t proc, iobuf_index_t idx, int mbox_id, int ack_id, uintptr_t
     }
     else
     {
-        int r = mbox_io(mbox, ack_id, ack_hint_a, ack_hint_b, proc, idx);
+        int r = mbox_io(mbox, proc, idx, ack_hint_a, ack_hint_b);
         if (mbox) mbox_put(mbox);
         if (r)
             user_thread_iocb_push(proc, idx);

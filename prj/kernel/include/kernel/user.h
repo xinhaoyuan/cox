@@ -6,50 +6,57 @@
 #include <user/io.h>
 #include <arch/user.h>
 #include <spinlock.h>
+#include <mbox.h>
 
 /* private kernel data associated with each io call entries */
 struct io_ce_shadow_s
 {
-	proc_t         proc;
-	iobuf_index_t  index;
-	struct mbox_s *mbox;
-	void          *iobuf;
-	uintptr_t      iobuf_u;
-	list_entry_s   wait_list;
+    int            type;
+    proc_t         proc;
+    iobuf_index_t  index;
+
+    union
+    {
+        mbox_send_io_s mbox_send_io;
+        mbox_recv_io_s mbox_recv_io;
+    };
 };
+
+#define IO_CE_SHADOW_TYPE_INIT         0
+#define IO_CE_SHADOW_TYPE_MBOX_RECV_IO 1
 
 typedef struct io_ce_shadow_s io_ce_shadow_s;
 typedef io_ce_shadow_s *io_ce_shadow_t;
 
 struct user_thread_s
 {
-	void     *tls;
-	uintptr_t tls_u;
-	
-	uintptr_t iobuf_size;
-	uintptr_t iocb_stack_size;
-	uintptr_t user_size;
-	int       mbox_ex;
-	
-	struct
-	{
-		iobuf_index_t   cap;
-		io_call_entry_t head;
-		io_ce_shadow_t  shadows;
-	} ioce;
-	
-	struct
-	{
-		spinlock_s     push_lock;
-		iobuf_index_t  cap;
-		iobuf_index_t *entry;
-		uintptr_t     *head, *tail, *busy;
-		void          *stack;
-		uintptr_t      stack_u;
-		uintptr_t      callback_u;
-	} iocb;
+    void     *tls;
+    uintptr_t tls_u;
+    
+    uintptr_t iobuf_size;
+    uintptr_t iocb_stack_size;
+    uintptr_t user_size;
+    int       mbox_ex;
+    
+    struct
+    {
+        iobuf_index_t   cap;
+        io_call_entry_t head;
+        io_ce_shadow_t  shadows;
+    } ioce;
+    
+    struct
+    {
+        spinlock_s     push_lock;
+        iobuf_index_t  cap;
+        iobuf_index_t *entry;
+        uintptr_t     *head, *tail, *busy;
+        void          *stack;
+        uintptr_t      stack_u;
+        uintptr_t      callback_u;
+    } iocb;
 
-	user_thread_arch_s arch;
+    user_thread_arch_s arch;
 };
 
 typedef struct user_thread_s  user_thread_s;
@@ -66,12 +73,12 @@ void user_thread_arch_jump(void) __attribute__((noreturn));
 
 struct user_proc_s
 {
-	/* address range */
-	uintptr_t start;
-	uintptr_t end;
+    /* address range */
+    uintptr_t start;
+    uintptr_t end;
 
-	/* arch data */
-	user_proc_arch_s arch;
+    /* arch data */
+    user_proc_arch_s arch;
 };
 
 typedef struct user_proc_s  user_proc_s;

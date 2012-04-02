@@ -61,11 +61,11 @@ mbox_irq_listen(int irq_no, mbox_t mbox)
 }
 
 static void
-mbox_irq_send(mbox_io_t io, void *__data, uintptr_t *hint_a, uintptr_t *hint_b)
+mbox_irq_send(void *__data, void *buf, uintptr_t *hint_a, uintptr_t *hint_b)
 { }
 
 static void
-mbox_irq_ack(mbox_io_t io, void *__data, uintptr_t hint_a, uintptr_t hint_b)
+mbox_irq_ack(void *__data, void *buf, uintptr_t hint_a, uintptr_t hint_b)
 { }
 
 int
@@ -80,15 +80,16 @@ mbox_irq_handler(int irq_no, uint64_t acc)
         mbox_t mbox = CONTAINER_OF(l, mbox_s, irq_listen.listen_list);
         /* Hack code to detect whether the mbox is send-pending */
         spinlock_acquire(&mbox->io_lock);
-        int to_send = list_empty(&mbox->io_send_list);
+        int to_send = list_empty(&mbox->send_io_list);
         spinlock_release(&mbox->io_lock);
         /* Not pending, send a mail without blocking*/
         if (to_send)
         {
-            cprintf("IRQ MSG TO %d\n", mbox - mboxs); 
-            mbox_send(mbox, 1,
-                      mbox_irq_send, &mbox_irq_data[irq_no],
-                      mbox_irq_ack, &mbox_irq_data[irq_no]);
+            cprintf("IRQ MSG TO %d\n", mbox - mboxs);
+            mbox_send_io_t io = mbox_send_io_acquire(mbox, 1);
+            if (io)
+                mbox_send(io, mbox_irq_send, &mbox_irq_data[irq_no],
+                          mbox_irq_ack, &mbox_irq_data[irq_no]);
         }
         l = list_next(l);
     }

@@ -30,20 +30,20 @@ static list_entry_s nic_ctl_list;
 static semaphore_s  nic_ctl_sem;
 
 static void
-nic_ctl_send(mbox_io_t io, void *__data, uintptr_t *hint_a, uintptr_t *hint_b)
+nic_ctl_send(void *__data, void *buf, uintptr_t *hint_a, uintptr_t *hint_b)
 { }
 
 static void
-nic_ctl_ack(mbox_io_t io, void *__data, uintptr_t hint_a, uintptr_t hint_b)
+nic_ctl_ack(void *__data, void *buf, uintptr_t hint_a, uintptr_t hint_b)
 {
     struct nic_ctl_s *ctl = (struct nic_ctl_s *)__data;
     
-    if (io)
+    if (buf)
     {
         if (hint_a > NIC_CTL_BUF_SIZE)
             hint_a = NIC_CTL_BUF_SIZE;
 
-        memmove(ctl->buf, io->iobuf, hint_a);
+        memmove(ctl->buf, buf, hint_a);
     }
     ctl->func = hint_b;
     
@@ -191,7 +191,7 @@ struct nic_send_data_s
 };
 
 static void
-nic_send_cb(mbox_io_t io, void * __data, uintptr_t *hint_a, uintptr_t *hint_b)
+nic_send_cb(void * __data, void *buf, uintptr_t *hint_a, uintptr_t *hint_b)
 {
     struct nic_send_data_s *data = __data;
     struct pbuf *q;
@@ -204,8 +204,8 @@ nic_send_cb(mbox_io_t io, void * __data, uintptr_t *hint_a, uintptr_t *hint_b)
     len = 0;
      
     for(q = data->p; q != NULL; q = q->next) {
-        if (len + q->len > (MBOX_IO_IOBUF_PSIZE << PGSHIFT)) break;
-        memmove(io->iobuf + len, q->payload, q->len);
+        if (len + q->len > (MBOX_IOBUF_PSIZE << PGSHIFT)) break;
+        memmove(buf + len, q->payload, q->len);
         len += q->len;
     }
 
@@ -219,7 +219,7 @@ nic_send_cb(mbox_io_t io, void * __data, uintptr_t *hint_a, uintptr_t *hint_b)
 }
 
 static void
-nic_send_ack_cb(mbox_io_t io, void * __data, uintptr_t hint_a, uintptr_t hint_b)
+nic_send_ack_cb(void * __data, void *buf, uintptr_t hint_a, uintptr_t hint_b)
 {
     struct nic_send_data_s *data = __data;
     IPS_NODE_WAIT_CLEAR(data->ips);
@@ -241,7 +241,7 @@ low_level_output(struct netif *netif, struct pbuf *p)
      IPS_NODE_WAIT_SET(&ips);
      IPS_NODE_AC_WAIT_SET(&ips);
 
-     mbox_send(nic->mbox_tx, 0, nic_send_cb, &s, nic_send_ack_cb, &s);
+     mbox_send(mbox_send_io_acquire(nic->mbox_tx, 0), nic_send_cb, &s, nic_send_ack_cb, &s);
      ips_wait(&ips);
 
      return ERR_OK;
@@ -395,6 +395,6 @@ nic_ctl_proc(void *__ignore)
         }
         
         /* Get next ctl */
-        mbox_send(nic->mbox_ctl, 0, nic_ctl_send, ctl, nic_ctl_ack, ctl);
+        mbox_send(mbox_send_io_acquire(nic->mbox_ctl, 0), nic_ctl_send, ctl, nic_ctl_ack, ctl);
     }
 }
