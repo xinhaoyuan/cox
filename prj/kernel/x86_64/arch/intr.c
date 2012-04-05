@@ -22,13 +22,13 @@ idt_init(void) {
     for (i = 0; i < sizeof(idt) / sizeof(struct gatedesc); i ++) {
         SETGATE(idt[i], 0, GD_KTEXT, __vectors[i], DPL_KERNEL);
     }
-	
-	SETGATE(idt[T_SYSCALL], 0, GD_KTEXT, __vectors[T_SYSCALL], DPL_USER);
-	SETGATE(idt[T_IPI], 0, GD_KTEXT, __vectors[T_IPI], DPL_USER);
-	SETGATE(idt[T_IPI_DOS], 0, GD_KTEXT, __vectors[T_IPI_DOS], DPL_USER);
+    
+    SETGATE(idt[T_SYSCALL], 0, GD_KTEXT, __vectors[T_SYSCALL], DPL_USER);
+    SETGATE(idt[T_IPI], 0, GD_KTEXT, __vectors[T_IPI], DPL_USER);
+    SETGATE(idt[T_IPI_DOS], 0, GD_KTEXT, __vectors[T_IPI_DOS], DPL_USER);
 
-	/* Load IDT for BOOT CPU */
-	__lidt(&idt_pd);
+    /* Load IDT for BOOT CPU */
+    __lidt(&idt_pd);
 }
 
 static const char *
@@ -125,50 +125,55 @@ PLS_ATOM_DECLARE(int, __local_irq_save);
 static void
 trap_dispatch(struct trapframe *tf)
 {
-	bool from_user = !trap_in_kernel(tf);
-	if (from_user)
-	{
-		current->user_thread->arch.tf = tf;
-	}
+    bool from_user = !trap_in_kernel(tf);
+    if (from_user)
+    {
+        current->user_thread->arch.tf = tf;
+    }
 
-	if (tf->tf_trapno < EXCEPTION_COUNT) {
-		switch (tf->tf_trapno)
-		{
-		case T_PGFLT:
-			pgflt_handler(tf->tf_err, __rcr2(), tf->tf_rip);
-			break;
-			
-		default:
-			print_trapframe(tf);
-			cprintf("unhandled exception %d.\n", tf->tf_trapno);
-			while (1) ;
-		}
-	}
-	else if (tf->tf_trapno >= IRQ_OFFSET &&
-			 tf->tf_trapno <  IRQ_OFFSET + IRQ_COUNT)
-	{
-		lapic_eoi_send();
-		irq_entry(tf->tf_trapno - IRQ_OFFSET);
-	}
-	else if (tf->tf_trapno == T_SYSCALL)
-	{
-		/* Kick to kernel, nothing to do (maybe sleep?) */
+    if (tf->tf_trapno < EXCEPTION_COUNT) {
+        switch (tf->tf_trapno)
+        {
+        case T_PGFLT:
+            pgflt_handler(tf->tf_err, __rcr2(), tf->tf_rip);
+            break;
+            
+        default:
+            print_trapframe(tf);
+            cprintf("unhandled exception %d.\n", tf->tf_trapno);
+            while (1) ;
+        }
+    }
+    else if (tf->tf_trapno >= IRQ_OFFSET &&
+             tf->tf_trapno <  IRQ_OFFSET + IRQ_COUNT)
+    {
+        lapic_eoi_send();
+        irq_entry(tf->tf_trapno - IRQ_OFFSET);
+    }
+    else if (tf->tf_trapno == T_SYSCALL)
+    {
+        /* additional syscalls */
+        switch (tf->tf_regs.reg_rax)
+        {
+        case T_SYSCALL_DEBUG_PUTC:
+            low_io_putc(tf->tf_regs.reg_rbx);
+            break;
 
-		/* additional debug calls */
-		if (tf->tf_regs.reg_rax == 1)
-		{
-			low_io_putc(tf->tf_regs.reg_rbx);
-		}
-	}
+        case T_SYSCALL_GET_TICK:
+            /* XXX: */
+            tf->tf_regs.reg_rax = timer_tick_get();
+            break;
+        }
+    }
 
-	if (from_user)
-	{
-		__irq_enable();
-		user_process_io(current);
-		__irq_disable();
-		if (PLS(__local_irq_save) != 0) cprintf("PANIC: return to user with irq saved\n");
-		user_before_return(current);
-	}
+    if (from_user)
+    {
+        __irq_enable();
+        user_process_io(current);
+        __irq_disable();
+        if (PLS(__local_irq_save) != 0) cprintf("PANIC: return to user with irq saved\n");
+        user_before_return(current);
+    }
 }
 
 void

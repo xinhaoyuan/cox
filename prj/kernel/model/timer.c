@@ -71,6 +71,20 @@ timer_process(tick_t c)
     spinlock_release(&timer_lock);
 }
 
+tick_t
+timer_tick_get(void)
+{
+    tick_t result;
+    
+    int irq = irq_save();
+    spinlock_acquire(&timer_lock);
+    result = timer_tick;
+    spinlock_release(&timer_lock);
+    irq_restore(irq);
+
+    return result;
+}
+
 
 static int
 __tick_handler(int irq_no, uint64_t acc)
