@@ -23,12 +23,12 @@ static __inline void __debug_putc(int ch) __attribute__((always_inline));
 static __inline void __debug_putc(int ch)
 { __asm __volatile ("int %0": : "i" (T_SYSCALL), "a"((uintptr_t)T_SYSCALL_DEBUG_PUTC), "b"((uintptr_t)ch) : "cc", "memory"); }
 
-static __inline uint64_t __get_tick(void) __attribute__((always_inline));
+static __inline uintptr_t __get_tick(void) __attribute__((always_inline));
 
-static __inline uint64_t __get_tick(void)
+static __inline uintptr_t __get_tick(void)
 {
     uint64_t result;
-    __asm __volatile ("int %0": "=a"(result) : "i" (T_SYSCALL), "a"((uintptr_t)T_SYSCALL_GET_TICK) : "cc", "memory");
+    __asm __volatile ("int %1": "=a"(result) : "i" (T_SYSCALL), "a"((uintptr_t)T_SYSCALL_GET_TICK) : "cc", "memory");
     return result;
 }
 

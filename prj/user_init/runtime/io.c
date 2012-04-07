@@ -1,5 +1,6 @@
 #include <string.h>
 #include <user/arch/iocb.h>
+#include <user/arch/syscall.h>
 #include <runtime/io.h>
 #include <runtime/fiber.h>
 
@@ -241,4 +242,10 @@ mbox_io_get(io_data_t iod, int mode, int mbox, uintptr_t hint_a, uintptr_t hint_
         while (IO_DATA_WAIT(iod))
             fiber_wait_try();
     }
+}
+
+uintptr_t
+get_tick(void)
+{
+    return __get_tick();
 }

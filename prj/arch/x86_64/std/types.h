@@ -9,7 +9,8 @@ typedef int bool;
 #define FALSE 0
 #define TRUE  1
 
-#define CHAR_BIT        8
+#define CHAR_BITS       8
+#define PTR_BITS        64
 
 typedef char               int8_t;
 typedef unsigned char      uint8_t;
@@ -45,7 +46,7 @@ typedef intptr_t  off_t;
  * @type:   the type of the struct this is embedded in
  * @member: the name of the member within the struct
  * */
-#define CONTAINER_OF(ptr, type, member)					\
+#define CONTAINER_OF(ptr, type, member)                 \
     ((type *)((char *)(ptr) - OFFSET_OF(type, member)))
 
 #endif

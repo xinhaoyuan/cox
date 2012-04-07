@@ -23,7 +23,7 @@ kbd_proc_data(void) {
     }
 
     data = __inb(KBDATAP);
-    cprintf("KB get data %02x\n", data);
+    cprintf("%ld KB get data %02x\n", TICK, data);
 }
 
 static void
