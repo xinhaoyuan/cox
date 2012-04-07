@@ -1,6 +1,7 @@
 #include <timer.h>
 #include <irq.h>
 #include <proc.h>
+#include <user.h>
 #include <arch/local.h>
 #include <lib/low_io.h>
 #include <arch/irq.h>
@@ -20,7 +21,7 @@ timer_master_cpu_set(void)
 
 
 int
-timer_init(void)
+timer_sys_init(void)
 {
     spinlock_init(&timer_lock);
     timer_tick = 0;
@@ -31,7 +32,7 @@ timer_init(void)
 }
 
 int
-timer_init_mp(void)
+timer_sys_init_mp(void)
 {
     irq_handler_set(IRQ_TIMER, 0, __tick_handler);
     return 0;
@@ -59,9 +60,22 @@ timer_process(tick_t c)
             crh_node_t cur = node;
             while (1)
             {
-                proc_timer_t t = CONTAINER_OF(cur, proc_timer_s, node);
+                timer_t t = CONTAINER_OF(cur, timer_s, node);
                 t->in = 0;
-                proc_notify(CONTAINER_OF(t, proc_s, timer));
+                switch (t->type)
+                {
+                case TIMER_TYPE_WAKEUP:
+                    proc_notify(CONTAINER_OF(t, proc_s, timer));
+                    break;
+
+                case TIMER_TYPE_USERIO:
+                {
+                    io_ce_shadow_t shd = CONTAINER_OF(t, io_ce_shadow_s, timer);
+                    shd->type = IO_CE_SHADOW_TYPE_INIT;
+                    user_thread_iocb_push(shd->proc, shd->index);
+                    break;
+                }
+                }
                 
                 if ((cur = cur->next) == node) break;
             }
@@ -96,13 +110,14 @@ __tick_handler(int irq_no, uint64_t acc)
 }
 
 void
-proc_timer_init(proc_timer_t timer)
+timer_init(timer_t timer, int type)
 {
     timer->in = 0;
+    timer->type = type;
 }
 
 int
-proc_timer_set(proc_timer_t timer, tick_t tick)
+timer_set(timer_t timer, tick_t tick)
 {
     int result;
     int irq = irq_save();

@@ -12,37 +12,37 @@
 typedef struct sched_node_s *sched_node_t;
 typedef struct sched_node_s
 {
-	struct sched_class_s *class;
-	struct
-	{
-		sched_node_t prev, next;
-	} rr;
+    struct sched_class_s *class;
+    struct
+    {
+        sched_node_t prev, next;
+    } rr;
 } sched_node_s;
 
 typedef struct runqueue_s *runqueue_t;
 typedef struct runqueue_s
 {
-	spinlock_s lock;
-	
-	struct
-	{
-		sched_node_t node;
-	} idle;
-	
-	struct
-	{
-		sched_node_t first;
-	} rr;
+    spinlock_s lock;
+    
+    struct
+    {
+        sched_node_t node;
+    } idle;
+    
+    struct
+    {
+        sched_node_t first;
+    } rr;
 } runqueue_s;
 
 /* Func in sched_class can be called only with rq->lock acquired */
 typedef struct sched_class_s *sched_class_t;
 typedef struct sched_class_s 
 {
-	void (*init)(runqueue_t rq);
-	void (*enqueue)(runqueue_t rq, sched_node_t node);
-	void (*dequeue)(runqueue_t rq, sched_node_t node);
-	sched_node_t (*pick)(runqueue_t rq);
+    void (*init)(runqueue_t rq);
+    void (*enqueue)(runqueue_t rq, sched_node_t node);
+    void (*dequeue)(runqueue_t rq, sched_node_t node);
+    sched_node_t (*pick)(runqueue_t rq);
 } sched_class_s;
 
 #define SCHED_CLASS_COUNT 2
@@ -57,33 +57,33 @@ sched_class_t sched_class[SCHED_CLASS_COUNT];
 typedef struct proc_s *proc_t;
 typedef struct proc_s
 {
-	/* INIT DATA */
-	
-	char name[PROC_NAME_MAX];
-	void (*entry)(void *arg);
+    /* INIT DATA */
+    
+    char name[PROC_NAME_MAX];
+    void (*entry)(void *arg);
 
-	void *priv;
+    void *priv;
 
-	/* SCHEDULER DATA */
+    /* SCHEDULER DATA */
 
-	spinlock_s lock;
-	int status;
-	int irq;
+    spinlock_s lock;
+    int status;
+    int irq;
 
-	context_s ctx;
-	sched_node_s sched_node;
+    context_s ctx;
+    sched_node_s sched_node;
 
-	int type;
+    int type;
 
-	proc_t sched_prev_usr;
-	proc_t sched_prev;
+    proc_t sched_prev_usr;
+    proc_t sched_prev;
 
-	proc_timer_s timer;
+    timer_s timer;
 
-	/* USER DATA */
+    /* USER DATA */
 
-	struct user_thread_s  *user_thread;
-	struct user_proc_s      *user_proc;
+    struct user_thread_s  *user_thread;
+    struct user_proc_s      *user_proc;
 } proc_s;
 
 #define PROC_TYPE_KERN 0

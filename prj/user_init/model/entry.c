@@ -29,6 +29,8 @@ kbd_proc_data(void) {
 static void
 fiber1(void *arg)
 {
+    cprintf("Hello curel world\n");
+    
 #if 0
     io_data_s mmio = IO_DATA_INITIALIZER(2, IO_MMIO_OPEN, 0xB8000, 0x1000);
     io(&mmio, IO_MODE_SYNC);
@@ -47,6 +49,14 @@ fiber1(void *arg)
 #endif
 
 #if 1
+
+    {
+        io_data_s sleep = IO_DATA_INITIALIZER(0, IO_SLEEP, TICK + 200);
+        io(&sleep, IO_MODE_SYNC);
+    }
+
+    cprintf("hello again\n");
+    
     int mbox_tx, mbox_ctl, nic;
     
     {

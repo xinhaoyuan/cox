@@ -248,6 +248,7 @@ static inline int do_io_phys_free(proc_t proc, uintptr_t physaddr) __attribute__
 static inline int do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result) __attribute__((always_inline));
 static inline int do_io_mmio_close(proc_t proc, uintptr_t addr) __attribute__((always_inline));
 static inline int do_io_brk(proc_t proc, uintptr_t end) __attribute__((always_inline));
+static inline int do_io_sleep(proc_t proc, iobuf_index_t idx, uintptr_t until) __attribute__((always_inline));
 static inline int do_io_mbox_open(proc_t proc) __attribute__((always_inline));
 static inline int do_io_mbox_io(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b) __attribute__((always_inline));
 static inline int do_io_nic_open(proc_t proc, uintptr_t *mbox_tx, uintptr_t *mbox_ctl) __attribute__((always_inline));
@@ -275,6 +276,11 @@ do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
     case IO_BRK:
         entry->ce.data[0] = do_io_brk(proc, entry->ce.data[1]);
         user_thread_iocb_push(proc, idx);
+        break;
+
+    case IO_SLEEP:
+        entry->ce.data[0] = do_io_sleep(proc, idx, entry->ce.data[1]);
+        /* IOCB would be pushed when finished */
         break;
 
     case IO_EXIT:
@@ -415,6 +421,22 @@ static inline int
 do_io_brk(proc_t proc, uintptr_t end)
 {
     return user_proc_brk(proc->user_proc, end);
+}
+
+static inline
+int do_io_sleep(proc_t proc, iobuf_index_t idx, uintptr_t until)
+{
+    io_ce_shadow_t shd = &proc->user_thread->ioce.shadows[idx];
+    shd->type  = IO_CE_SHADOW_TYPE_TIMER;
+    shd->proc  = proc;
+    shd->index = idx;
+    timer_init(&shd->timer, TIMER_TYPE_USERIO);
+    if (timer_set(&shd->timer, until))
+    {
+        shd->type = IO_CE_SHADOW_TYPE_INIT;
+        user_thread_iocb_push(proc, idx);
+    }
+    return 0;
 }
 
 static inline int

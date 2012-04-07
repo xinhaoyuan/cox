@@ -3,6 +3,7 @@
 
 #include <types.h>
 #include <proc.h>
+#include <timer.h>
 #include <user/io.h>
 #include <arch/user.h>
 #include <spinlock.h>
@@ -19,11 +20,13 @@ struct io_ce_shadow_s
     {
         mbox_send_io_s mbox_send_io;
         mbox_recv_io_s mbox_recv_io;
+        timer_s        timer;
     };
 };
 
 #define IO_CE_SHADOW_TYPE_INIT         0
 #define IO_CE_SHADOW_TYPE_MBOX_RECV_IO 1
+#define IO_CE_SHADOW_TYPE_TIMER        2
 
 typedef struct io_ce_shadow_s io_ce_shadow_s;
 typedef io_ce_shadow_s *io_ce_shadow_t;

@@ -86,7 +86,7 @@ __kern_cpu_init(void)
         malloc_init();
         irq_init();
         sched_init();
-        timer_init();
+        timer_sys_init();
         timer_master_cpu_set();
         /* Stage 0 ends */
         __cpu_global_init = 1;
@@ -99,7 +99,7 @@ __kern_cpu_init(void)
     /* put self into idle proc */
     sched_init_mp();
     
-    timer_init_mp();
+    timer_sys_init_mp();
 
     if (lapic_id() == sysconf_x86.cpu.boot)
     {
