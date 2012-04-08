@@ -372,7 +372,6 @@ do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result)
 
     page_t p = page_alloc_atomic(size);
     *result = PAGE_TO_PHYS(p);
-
     return 0;
 }
 

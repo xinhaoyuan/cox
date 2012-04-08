@@ -30,7 +30,9 @@ static void
 fiber1(void *arg)
 {
     cprintf("Hello curel world\n");
-    
+
+    e1000_test();
+        
 #if 0
     io_data_s mmio = IO_DATA_INITIALIZER(2, IO_MMIO_OPEN, 0xB8000, 0x1000);
     io(&mmio, IO_MODE_SYNC);
@@ -44,11 +46,9 @@ fiber1(void *arg)
         buf[i] = "I have control! :)"[i] | 0x0700;
     }
 
-    e1000_test();
-        
 #endif
 
-#if 1
+#if 0
 
     {
         io_data_s sleep = IO_DATA_INITIALIZER(0, IO_SLEEP, TICK + 200);
@@ -115,6 +115,7 @@ fiber1(void *arg)
 
 #endif
 
+#if 0
     int mbox;
     
     {
@@ -144,8 +145,10 @@ fiber1(void *arg)
             mbox_io.io[1] = mbox;
         }
     }
+
+#endif
     
-    while (1) ;
+    while (1) fiber_schedule();
 }
 
 void

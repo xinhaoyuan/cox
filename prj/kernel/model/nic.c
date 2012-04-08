@@ -72,7 +72,7 @@ nic_rx_ack(void *__data, void *buf, uintptr_t hint_a, uintptr_t hint_b)
     nic_t nic = (nic_t)__data;
 
     cprintf("NIC %p submit %d bytes packet\n", nic, hint_a);
-    /* nic_input(nic, buf, hint_a); */
+    nic_input(nic, buf, hint_a);
 }
 
 static void nic_ctl_proc(void *__ignore);
@@ -195,7 +195,7 @@ low_level_init(struct netif *netif)
     UNMARSHAL(buf, sizeof(uintptr_t), &netif->hwaddr_len);
     UNMARSHAL(buf, netif->hwaddr_len, &netif->hwaddr[0]);
 
-    int addr_len;
+    uintptr_t addr_len;
     struct ip_addr ip, nm, gw;
 
     UNMARSHAL(buf, sizeof(uintptr_t), &addr_len);
@@ -278,6 +278,7 @@ low_level_output(struct netif *netif, struct pbuf *p)
 
      IPS_NODE_WAIT_SET(&ips);
      IPS_NODE_AC_WAIT_SET(&ips);
+     IPS_NODE_PTR_SET(&ips, current);
 
      mbox_send(mbox_send_io_acquire(nic->mbox_tx, 0), nic_send_cb, &s, nic_send_ack_cb, &s);
      ips_wait(&ips);
@@ -428,6 +429,17 @@ nic_ctl_proc(void *__ignore)
             }
         }
         break;
+
+        case NIC_CTL_UP:
+            if (nic->status == NIC_STATUS_ATTACHED)
+            {
+                netif_set_default(&nic->netif);
+                netif_set_up(&nic->netif);
+            }
+            break;
+
+        default:
+            break;
         
         }
         

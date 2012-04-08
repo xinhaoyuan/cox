@@ -71,7 +71,7 @@ ioapic_init(void)
 
         int v = ioapic_read(ioapic[ioapic_id].mmio, REG_VER);
         maxintr = (v >> 16) & 0xFF;
-        // cprintf("VERSION: %02x, MAXINTR %d:", v & 0xFF, maxintr);
+        cprintf("VERSION: %02x, MAXINTR: %d\n", v & 0xFF, maxintr);
         if ((v & 0xFF) >= 0x20)
             sysconf_x86.ioapic.use_eoi = 1;
         else sysconf_x86.ioapic.use_eoi = 0;
@@ -83,7 +83,7 @@ ioapic_init(void)
             ioapic_write(ioapic[ioapic_id].mmio, REG_ID, ioapic_id << 24);
         }
 
-#if 1
+#if 0
         // Mark all interrupts edge-triggered, active high, disabled,
         // and not routed to any CPUs.
         for(j = 0; j <= maxintr; j++)
