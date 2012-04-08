@@ -225,12 +225,6 @@ user_thread_iocb_push(proc_t proc, iobuf_index_t index)
     return 0;
 }
 
-static void
-user_set_tls(uintptr_t tls)
-{
-    /* XXX */
-}
-
 void
 user_save_context(proc_t proc)
 { user_arch_save_context(proc); }
@@ -264,12 +258,6 @@ do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
     case IO_SET_CALLBACK:
         entry->ce.data[0] = 0;
         proc->user_thread->iocb.callback_u = entry->ce.data[1];
-        user_thread_iocb_push(proc, idx);
-        break;
-
-    case IO_SET_TLS:
-        entry->ce.data[0] = 0;
-        user_set_tls(entry->ce.data[1]);
         user_thread_iocb_push(proc, idx);
         break;
 
