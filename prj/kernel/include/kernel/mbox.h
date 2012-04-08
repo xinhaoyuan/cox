@@ -23,6 +23,7 @@ struct mbox_s
         } irq_listen;
 
         struct nic_s *nic_tx;
+        struct nic_s *nic_rx;
         struct nic_s *nic_ctl;
     };
 
@@ -83,11 +84,13 @@ struct mbox_recv_io_s
 #define MBOX_STATUS_NORMAL     1
 #define MBOX_STATUS_IRQ_LISTEN 2
 #define MBOX_STATUS_NIC_TX     3
-#define MBOX_STATUS_NIC_CTL    4
+#define MBOX_STATUS_NIC_RX     4
+#define MBOX_STATUS_NIC_CTL    5
 
 #define MBOX_SEND_IO_TYPE_FREE 0
-#define MBOX_SEND_IO_TYPE_KERN 1
-#define MBOX_SEND_IO_TYPE_USER 2
+#define MBOX_SEND_IO_TYPE_KERN_ALLOC  1
+#define MBOX_SEND_IO_TYPE_KERN_STATIC 2
+#define MBOX_SEND_IO_TYPE_USER_SHADOW 3
 
 #define MBOX_SEND_IO_STATUS_INIT       0
 #define MBOX_SEND_IO_STATUS_QUEUEING   1

@@ -29,6 +29,8 @@ static spinlock_s   nic_ctl_list_lock;
 static list_entry_s nic_ctl_list;
 static semaphore_s  nic_ctl_sem;
 
+static void nic_input(nic_t nic, void *packet, size_t packet_size);
+
 static void
 nic_ctl_send(void *__data, void *buf, uintptr_t *hint_a, uintptr_t *hint_b)
 { }
@@ -57,10 +59,25 @@ nic_ctl_ack(void *__data, void *buf, uintptr_t hint_a, uintptr_t hint_b)
     semaphore_release(&nic_ctl_sem);
 }
 
+static void
+nic_rx_send(void *__data, void *buf, uintptr_t *hint_a, uintptr_t *hint_b)
+{ }
+
+static void
+nic_rx_ack(void *__data, void *buf, uintptr_t hint_a, uintptr_t hint_b)
+{
+    if (hint_a > (MBOX_IOBUF_PSIZE << __PGSHIFT))
+        hint_a = MBOX_IOBUF_PSIZE << __PGSHIFT;
+
+    nic_t nic = (nic_t)__data;
+
+    nic_input(nic, buf, hint_a);
+}
+
 static void nic_ctl_proc(void *__ignore);
 
 int
-nic_init(void)
+nic_sys_init(void)
 {
     list_init(&nic_free_list);
     list_init(&nic_ctl_list);
@@ -83,7 +100,7 @@ nic_init(void)
 
 
 int
-nic_alloc(user_proc_t proc, int *mbox_tx, int *mbox_ctl)
+nic_alloc(user_proc_t proc, int *mbox_tx, int *mbox_rx, int *mbox_ctl)
 {
     list_entry_t l = NULL;
 
@@ -91,11 +108,19 @@ nic_alloc(user_proc_t proc, int *mbox_tx, int *mbox_ctl)
     if ((*mbox_tx = mbox_alloc(proc)) == -1)
         return -E_NO_MEM;
     
-    if ((*mbox_ctl = mbox_alloc(proc)) == -1)
+    if ((*mbox_rx = mbox_alloc(proc)) == -1)
     {
         mbox_free(*mbox_tx);
         return -E_NO_MEM;
     }
+
+    if ((*mbox_ctl = mbox_alloc(proc)) == -1)
+    {
+        mbox_free(*mbox_tx);
+        mbox_free(*mbox_rx);
+        return -E_NO_MEM;
+    }
+
     
     int irq = irq_save();
     spinlock_acquire(&nic_alloc_lock);
@@ -116,13 +141,23 @@ nic_alloc(user_proc_t proc, int *mbox_tx, int *mbox_ctl)
         nic->status   = NIC_STATUS_UNINIT;
         nic->proc     = proc;
         nic->mbox_tx  = mbox_get(*mbox_tx);
+        nic->mbox_rx  = mbox_get(*mbox_rx);
         nic->mbox_ctl = mbox_get(*mbox_ctl);
 
         nic->mbox_tx->status = MBOX_STATUS_NIC_TX;
         nic->mbox_tx->nic_tx = nic;
 
+        nic->mbox_rx->status = MBOX_STATUS_NIC_RX;
+        nic->mbox_rx->nic_rx = nic;
+        
         nic->mbox_ctl->status  = MBOX_STATUS_NIC_CTL;
         nic->mbox_ctl->nic_ctl = nic;
+
+        /* set the static handler for rx */
+        nic->rx_io.type = MBOX_SEND_IO_TYPE_KERN_STATIC;
+        nic->rx_io.status = MBOX_SEND_IO_STATUS_INIT;
+        nic->rx_io.mbox = nic->mbox_rx;
+        mbox_send(&nic->rx_io, nic_rx_send, nic, nic_rx_ack, nic);
 
         /* internal ack for start the CRL loop */
         nic_ctl_ack(&nic->ctl, NULL, 0, NIC_CTL_INIT);
@@ -131,6 +166,7 @@ nic_alloc(user_proc_t proc, int *mbox_tx, int *mbox_ctl)
     else
     {
         mbox_free(*mbox_tx);
+        mbox_free(*mbox_rx);
         mbox_free(*mbox_ctl);
         return -1;
     }
@@ -248,11 +284,11 @@ low_level_output(struct netif *netif, struct pbuf *p)
      return ERR_OK;
 }
 
-void
-nic_input(int nic_id, void *packet, size_t packet_size)
+static void
+nic_input(nic_t nic, void *packet, size_t packet_size)
 {
      struct eth_hdr *ethhdr;
-     struct netif *netif = &nics[nic_id].netif;
+     struct netif *netif = &nic->netif;
      unsigned cur = 0;
      struct pbuf *p, *q;
 

@@ -52,8 +52,8 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_PAGE_HOLE_CLEAR  0x022
 #define IO_SLEEP            0x030
 /* DEBUG */
-#define IO_DEBUG_PUTCHAR    0x101
-#define IO_DEBUG_GETCHAR    0x102
+#define IO_DEBUG_PUTCHAR    0x100
+#define IO_DEBUG_GETCHAR    0x101
 /* STD SOCKET API */
 /* All arguments should be same as standard interface */
 #define IO_SOCK_OPEN        0x200
@@ -89,7 +89,6 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_MBOX_IO          0x412
 #define IO_NIC_OPEN         0x420
 #define IO_NIC_CLOSE        0x421
-#define IO_NIC_RECV         0x423
 
 #define NIC_CTL_BUF_SIZE 0x100
 #define NIC_CTL_INIT     0x0
@@ -97,9 +96,6 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define NIC_CTL_ADD      0x2
 #define NIC_CTL_UP       0x3
 #define NIC_CTL_DOWN     0x4
-
-
-#define NIC_HINT_GET_CONFIGURE 0x0
 
 typedef void (*io_callback_handler_f)(void *ret);
 

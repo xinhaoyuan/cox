@@ -57,14 +57,15 @@ fiber1(void *arg)
 
     cprintf("hello again\n");
     
-    int mbox_tx, mbox_ctl, nic;
+    int mbox_tx, mbox_rx, mbox_ctl, nic;
     
     {
-        io_data_s nic_open = IO_DATA_INITIALIZER(3, IO_NIC_OPEN);
+        io_data_s nic_open = IO_DATA_INITIALIZER(4, IO_NIC_OPEN);
         io(&nic_open, IO_MODE_SYNC);
         nic = nic_open.io[0];
         mbox_tx = nic_open.io[1];
-        mbox_ctl = nic_open.io[2];
+        mbox_rx = nic_open.io[2];
+        mbox_ctl = nic_open.io[3];
     }
 
     /* { */

@@ -6,34 +6,37 @@
 #include <user/io.h>
 #include <algo/list.h>
 #include <lwip/netif.h>
+#include <mbox.h>
 
 struct nic_ctl_s
 {
-	list_entry_s ctl_list;
-	
-	uintptr_t func;
-	char buf[NIC_CTL_BUF_SIZE];
+    list_entry_s ctl_list;
+    
+    uintptr_t func;
+    char buf[NIC_CTL_BUF_SIZE];
 };
 
 #define NIC_CFG_BUF_SIZE 256
 
 struct nic_s
 {
-	union
-	{
-		list_entry_s free_list;
-		list_entry_s nic_list;
-	};
+    union
+    {
+        list_entry_s free_list;
+        list_entry_s nic_list;
+    };
 
-	user_proc_t proc;
-	int  status;
-	struct mbox_s *mbox_tx;
-	struct mbox_s *mbox_ctl;
+    user_proc_t proc;
+    int  status;
+    struct mbox_s *mbox_tx;
+    struct mbox_s *mbox_rx;
+    struct mbox_s *mbox_ctl;
 
-	char cfg_buf[NIC_CFG_BUF_SIZE];
+    char cfg_buf[NIC_CFG_BUF_SIZE];
 
-	struct nic_ctl_s ctl;
-	struct netif netif;
+    struct nic_ctl_s ctl;
+    struct netif netif;
+    mbox_send_io_s rx_io;
 };
 
 typedef struct nic_s nic_s;
@@ -48,11 +51,9 @@ typedef nic_s *nic_t;
 
 extern nic_s nics[NICS_MAX_COUNT];
 
-int  nic_init(void);
+int  nic_sys_init(void);
 
-int  nic_alloc(user_proc_t proc, int *mbox_tx, int *mbox_ctl);
+int  nic_alloc(user_proc_t proc, int *mbox_tx, int *nic_rx, int *mbox_ctl);
 void nic_free(int nic_id);
-/* Submit packet into network stack */
-void nic_input(int nic_id, void *packet, size_t packet_size);
 
 #endif
