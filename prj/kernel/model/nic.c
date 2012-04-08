@@ -71,7 +71,8 @@ nic_rx_ack(void *__data, void *buf, uintptr_t hint_a, uintptr_t hint_b)
 
     nic_t nic = (nic_t)__data;
 
-    nic_input(nic, buf, hint_a);
+    cprintf("NIC %p submit %d bytes packet\n", nic, hint_a);
+    /* nic_input(nic, buf, hint_a); */
 }
 
 static void nic_ctl_proc(void *__ignore);

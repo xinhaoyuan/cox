@@ -103,6 +103,16 @@ fiber1(void *arg)
         mbox_io_get(&mbox_io, IO_MODE_SYNC, mbox_ctl, 0, NIC_CTL_ADD);
     }
 
+    {
+        io_data_s rx_io;
+        mbox_io_begin(&rx_io);
+        mbox_io_get(&rx_io, IO_MODE_SYNC, mbox_rx, 0, 0);
+        mbox_io_get(&rx_io, IO_MODE_SYNC, mbox_rx, 1234, 0);
+        mbox_io_get(&rx_io, IO_MODE_SYNC, mbox_rx, 2345, 0);
+        mbox_io_get(&rx_io, IO_MODE_SYNC, mbox_rx, 5678, 0);
+    }
+
+
 #endif
 
     int mbox;
