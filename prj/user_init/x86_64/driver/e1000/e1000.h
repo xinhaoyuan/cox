@@ -39,7 +39,7 @@
 #define E1000_IOBUF_SIZE 2048
 
 /** Debug verbosity. */
-#define E1000_VERBOSE 10
+#define E1000_VERBOSE 1
 
 /** MAC address override variable. */
 #define E1000_ENVVAR "E1000ETH"
@@ -86,10 +86,10 @@
  * @param args Arguments to printf().
  */
 #define E1000_DEBUG(level, args) \
-	if ((level) <= E1000_VERBOSE) \
-	{ \
-	    cprintf args; \
-	} \
+    if ((level) <= E1000_VERBOSE) \
+    { \
+        cprintf args; \
+    } \
 
 /**
  * Read a byte from flash memory.
@@ -134,34 +134,34 @@
  */
 typedef struct e1000
 {
-    char name[8];		  /**< String containing the device name. */    
-    int status;			  /**< Describes the card's current state. */
-    int irq;			  /**< Interrupt Request Vector. */
+    char name[8];         /**< String containing the device name. */    
+    int status;           /**< Describes the card's current state. */
+    int irq;              /**< Interrupt Request Vector. */
     int irq_hook;                 /**< Interrupt Request Vector Hook. */
-    int revision;		  /**< Hardware Revision Number. */
-    u8_t *regs;		  	  /**< Memory mapped hardware registers. */
-    u8_t *flash;		  /**< Optional flash memory. */
-    u32_t flash_base_addr;	  /**< Flash base address. */
-    ether_addr_t address;	  /**< Ethernet MAC address. */
+    int revision;         /**< Hardware Revision Number. */
+    u8_t *regs;           /**< Memory mapped hardware registers. */
+    u8_t *flash;          /**< Optional flash memory. */
+    u32_t flash_base_addr;    /**< Flash base address. */
+    ether_addr_t address;     /**< Ethernet MAC address. */
     u16_t (*eeprom_read)(void *, int reg); /**< Function to read  
                                                 the EEPROM. */
-    int eeprom_done_bit;	  /**< Offset of the EERD.DONE bit. */    
-    int eeprom_addr_off;	  /**< Offset of the EERD.ADDR field. */
+    int eeprom_done_bit;      /**< Offset of the EERD.DONE bit. */    
+    int eeprom_addr_off;      /**< Offset of the EERD.ADDR field. */
 
-    e1000_rx_desc_t *rx_desc;	  /**< Receive Descriptor table. */
-    int rx_desc_count;		  /**< Number of Receive Descriptors. */
-    char *rx_buffer;		  /**< Receive buffer returned by malloc(). */
-    int rx_buffer_size;		  /**< Size of the receive buffer. */
+    e1000_rx_desc_t *rx_desc;     /**< Receive Descriptor table. */
+    int rx_desc_count;        /**< Number of Receive Descriptors. */
+    char *rx_buffer;          /**< Receive buffer returned by malloc(). */
+    int rx_buffer_size;       /**< Size of the receive buffer. */
 
-    e1000_tx_desc_t *tx_desc;	  /**< Transmit Descriptor table. */
-    int tx_desc_count;		  /**< Number of Transmit Descriptors. */
-    char *tx_buffer;		  /**< Transmit buffer returned by malloc(). */
-    int tx_buffer_size;		  /**< Size of the transmit buffer. */
+    e1000_tx_desc_t *tx_desc;     /**< Transmit Descriptor table. */
+    int tx_desc_count;        /**< Number of Transmit Descriptors. */
+    char *tx_buffer;          /**< Transmit buffer returned by malloc(). */
+    int tx_buffer_size;       /**< Size of the transmit buffer. */
 #if 0
     int client;                   /**< Process ID being served by e1000. */
-    message rx_message;		  /**< Read message received from client. */
-    message tx_message;		  /**< Write message received from client. */
-    size_t rx_size;		  /**< Size of one packet received. */
+    message rx_message;       /**< Read message received from client. */
+    message tx_message;       /**< Write message received from client. */
+    size_t rx_size;       /**< Size of one packet received. */
 #endif
 }
 e1000_t;

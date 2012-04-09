@@ -43,7 +43,7 @@ e1000_test(void)
     mbox_io_begin(&io_rx);
     mbox_io_begin(&io_ctl);
 
-    semaphore_init(&sem_tx, 1);
+    semaphore_init(&sem_tx, 0);
 
     /* Start recv by active io */
     mbox_io_get(&io_rx, IO_MODE_SYNC, mbox_rx, 0, 0);
