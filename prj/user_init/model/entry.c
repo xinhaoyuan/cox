@@ -11,8 +11,26 @@
 #include "kbdreg.h"
 #include <io.h>
 
-static char f1stack[4096];
+static char f1stack[4096] __attribute__((aligned(__PGSIZE)));
+static char f2stack[4096] __attribute__((aligned(__PGSIZE)));
 static fiber_s f1;
+static fiber_s f2;
+
+int mbox;
+
+static void
+fiber2(void *arg)
+{
+    io_data_s mbox_io;
+    mbox_io_begin(&mbox_io);
+    mbox_io_send(&mbox_io, IO_MODE_SYNC, -1, 0, 0);
+        
+    while (1)
+    {
+        strcpy((char *)mbox_io.io[1], "HELLO WORLD FROM MBOX");
+        mbox_io_send(&mbox_io, IO_MODE_SYNC, mbox, 0x1234, 0x4567);
+    }
+}
 
 static void
 kbd_proc_data(void) {
@@ -31,7 +49,7 @@ fiber1(void *arg)
 {
     cprintf("Hello curel world\n");
 
-    e1000_test();
+    // e1000_test();
         
 #if 0
     io_data_s mmio = IO_DATA_INITIALIZER(2, IO_MMIO_OPEN, 0xB8000, 0x1000);
@@ -144,6 +162,27 @@ fiber1(void *arg)
         }
     }
 
+#endif
+
+#if 1
+    {
+        io_data_s mbox_open = IO_DATA_INITIALIZER(1, IO_MBOX_OPEN);
+        io(&mbox_open, IO_MODE_SYNC);
+        mbox = mbox_open.io[0];
+    }
+
+    fiber_init(&f2, fiber2, (void *)0x12345678, f2stack, 4096);
+
+    io_data_s mbox_io;
+    mbox_io_begin(&mbox_io);
+
+    while (1)
+    {
+        mbox_io_recv(&mbox_io, IO_MODE_SYNC, mbox, 0, 0);
+        cprintf("GET IO HINT (%016lx, %016lx) BUF: %s\n", mbox_io.io[2], mbox_io.io[3], mbox_io.io[1]);
+    }
+
+    
 #endif
     
     while (1) fiber_schedule();
