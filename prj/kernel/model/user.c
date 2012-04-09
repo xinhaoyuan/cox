@@ -4,7 +4,6 @@
 #include <user.h>
 #include <page.h>
 #include <mbox.h>
-#include <nic.h>
 #include <irq.h>
 #include <string.h>
 #include <mbox_irq.h>
@@ -245,9 +244,6 @@ static inline int do_io_brk(proc_t proc, uintptr_t end) __attribute__((always_in
 static inline int do_io_sleep(proc_t proc, iobuf_index_t idx, uintptr_t until) __attribute__((always_inline));
 static inline int do_io_mbox_open(proc_t proc) __attribute__((always_inline));
 static inline int do_io_mbox_io_end(proc_t proc, iobuf_index_t idx) __attribute__((always_inline));
-static inline int do_io_nic_open(proc_t proc, uintptr_t *mbox_tx, uintptr_t *mbox_rx, uintptr_t *mbox_ctl) __attribute__((always_inline));
-static inline int do_io_nic_close(proc_t proc, int nic) __attribute__((always_inline));
-static inline int do_io_nic_recv(proc_t proc, int nic, uintptr_t buf, size_t size) __attribute__((always_inline));
 static inline int do_io_irq_listen(proc_t proc, int irq_no, int mbox_id) __attribute__((always_inline));
 
 static inline void do_io_mbox_recv(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b) __attribute__((always_inline));
@@ -348,16 +344,6 @@ do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
         do_io_mbox_send(proc, idx, entry->ce.data[1], entry->ce.data[2], entry->ce.data[3]);
         break;
 
-    case IO_NIC_OPEN:
-        entry->ce.data[0] = do_io_nic_open(proc, &entry->ce.data[1], &entry->ce.data[2], &entry->ce.data[3]);
-        user_thread_iocb_push(proc, idx);
-        break;
-
-    case IO_NIC_CLOSE:
-        /* XXX */
-        user_thread_iocb_push(proc, idx);
-        break;
-        
     default: break;
     }
 }
@@ -474,28 +460,6 @@ do_io_mbox_send(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t hint_a, u
         user_thread_iocb_push(proc, idx);
     }
     if (mbox) mbox_put(mbox);
-}
-
-static inline int
-do_io_nic_open(proc_t proc, uintptr_t *mbox_tx, uintptr_t *mbox_rx, uintptr_t *mbox_ctl)
-{
-    int tx, rx, ctl;
-    int r = nic_alloc(proc->user_proc, &tx, &rx, &ctl);
-
-    *mbox_tx = tx; *mbox_rx = rx; *mbox_ctl = ctl;
-    return r;
-}
-
-static inline int
-do_io_nic_close(proc_t proc, int nic)
-{
-    return -E_INVAL;
-}
-
-static inline int
-do_io_nic_recv(proc_t proc, int nic, uintptr_t buf, size_t size)
-{
-    return -E_INVAL;
 }
 
 static inline int

@@ -30,47 +30,47 @@ e1000_test(void)
         cprintf("e1000_test init FAILED\n");
     }
 
-    {
-        io_data_s nic_open = IO_DATA_INITIALIZER(4, IO_NIC_OPEN);
-        io(&nic_open, IO_MODE_SYNC);
-        nic = nic_open.io[0];
-        mbox_tx = nic_open.io[1];
-        mbox_rx = nic_open.io[2];
-        mbox_ctl = nic_open.io[3];
-    }
+    /* { */
+    /*     io_data_s nic_open = IO_DATA_INITIALIZER(4, IO_NIC_OPEN); */
+    /*     io(&nic_open, IO_MODE_SYNC); */
+    /*     nic = nic_open.io[0]; */
+    /*     mbox_tx = nic_open.io[1]; */
+    /*     mbox_rx = nic_open.io[2]; */
+    /*     mbox_ctl = nic_open.io[3]; */
+    /* } */
     
-    mbox_io_begin(&io_tx);
-    mbox_io_begin(&io_rx);
-    mbox_io_begin(&io_ctl);
+    /* mbox_io_begin(&io_tx); */
+    /* mbox_io_begin(&io_rx); */
+    /* mbox_io_begin(&io_ctl); */
 
-    semaphore_init(&sem_tx, 0);
+    /* semaphore_init(&sem_tx, 0); */
 
-    /* Start recv by active io */
-    mbox_io_recv(&io_rx, IO_MODE_SYNC, mbox_rx, 0, 0);
+    /* /\* Start recv by active io *\/ */
+    /* mbox_io_recv(&io_rx, IO_MODE_SYNC, mbox_rx, 0, 0); */
 
-    fiber_init(&e1000_if, e1000_interrupt_fiber, e, e1000_if_stack, 10240);
-    fiber_init(&e1000_tf, e1000_tx_fiber, e, e1000_tf_stack, 10240);
+    /* fiber_init(&e1000_if, e1000_interrupt_fiber, e, e1000_if_stack, 10240); */
+    /* fiber_init(&e1000_tf, e1000_tx_fiber, e, e1000_tf_stack, 10240); */
 
-    mbox_io_recv(&io_ctl, IO_MODE_SYNC, mbox_ctl, 0, 0);
+    /* mbox_io_recv(&io_ctl, IO_MODE_SYNC, mbox_ctl, 0, 0); */
     
-    uintptr_t data;
-    MARSHAL_DECLARE(buf, io_ctl.io[1], io_ctl.io[1] + 256);
+    /* uintptr_t data; */
+    /* MARSHAL_DECLARE(buf, io_ctl.io[1], io_ctl.io[1] + 256); */
 
-    MARSHAL(buf, sizeof(uintptr_t), (data = 0, &data));
-    MARSHAL(buf, sizeof(uintptr_t), (data = 1500, &data));
-    MARSHAL(buf, sizeof(uintptr_t), (data = 6, &data));
-    MARSHAL(buf, 6, &e->address.ea_addr[0]);
-    MARSHAL(buf, sizeof(uintptr_t), (data = 4, &data));
-    MARSHAL(buf, 4, "\xa\x0\x2\xf");
-    MARSHAL(buf, sizeof(uintptr_t), (data = 4, &data));
-    MARSHAL(buf, 4, "\xff\xff\xff\x0");
-    MARSHAL(buf, sizeof(uintptr_t), (data = 4, &data));
-    MARSHAL(buf, 4, "\xa\x0\x2\x2");
-    mbox_io_recv(&io_ctl, IO_MODE_SYNC, mbox_ctl, MARSHAL_SIZE(buf), NIC_CTL_CFG_SET);
+    /* MARSHAL(buf, sizeof(uintptr_t), (data = 0, &data)); */
+    /* MARSHAL(buf, sizeof(uintptr_t), (data = 1500, &data)); */
+    /* MARSHAL(buf, sizeof(uintptr_t), (data = 6, &data)); */
+    /* MARSHAL(buf, 6, &e->address.ea_addr[0]); */
+    /* MARSHAL(buf, sizeof(uintptr_t), (data = 4, &data)); */
+    /* MARSHAL(buf, 4, "\xa\x0\x2\xf"); */
+    /* MARSHAL(buf, sizeof(uintptr_t), (data = 4, &data)); */
+    /* MARSHAL(buf, 4, "\xff\xff\xff\x0"); */
+    /* MARSHAL(buf, sizeof(uintptr_t), (data = 4, &data)); */
+    /* MARSHAL(buf, 4, "\xa\x0\x2\x2"); */
+    /* mbox_io_recv(&io_ctl, IO_MODE_SYNC, mbox_ctl, MARSHAL_SIZE(buf), NIC_CTL_CFG_SET); */
 
-    mbox_io_recv(&io_ctl, IO_MODE_SYNC, mbox_ctl, 0, NIC_CTL_ADD);
+    /* mbox_io_recv(&io_ctl, IO_MODE_SYNC, mbox_ctl, 0, NIC_CTL_ADD); */
     
-    mbox_io_recv(&io_ctl, IO_MODE_SYNC, mbox_ctl, 0, NIC_CTL_UP);
+    /* mbox_io_recv(&io_ctl, IO_MODE_SYNC, mbox_ctl, 0, NIC_CTL_UP); */
 }
 
 /* From e1000_writev_s / e1000_readv_s */

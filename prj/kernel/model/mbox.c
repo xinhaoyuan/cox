@@ -34,7 +34,7 @@ mbox_put(mbox_t mbox)
 }
 
 int
-mbox_init(void)
+mbox_sys_init(void)
 {
     list_init(&mbox_free_list);
     list_init(&mbox_send_io_free_list);

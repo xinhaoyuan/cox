@@ -72,64 +72,8 @@ fiber1(void *arg)
     }
 
     cprintf("hello again\n");
-    
-    int mbox_tx, mbox_rx, mbox_ctl, nic;
-    
-    {
-        io_data_s nic_open = IO_DATA_INITIALIZER(4, IO_NIC_OPEN);
-        io(&nic_open, IO_MODE_SYNC);
-        nic = nic_open.io[0];
-        mbox_tx = nic_open.io[1];
-        mbox_rx = nic_open.io[2];
-        mbox_ctl = nic_open.io[3];
-    }
-
-    /* { */
-    /*  io_data_s nic_up = IO_DATA_INITIALIZER(1, IO_NIC_CTL, nic, IO_NIC_CTL_UP); */
-    /*  io(&nic_up, IO_MODE_SYNC); */
-    /* } */
-
-
-    {
-        cprintf("Wait for syscall\n");
-        io_data_s mbox_io;
-        mbox_io_begin(&mbox_io);
-        mbox_io_recv(&mbox_io, IO_MODE_SYNC, mbox_ctl, 0, 0);
-        uintptr_t data;
-        
-        MARSHAL_DECLARE(buf, mbox_io.io[1], mbox_io.io[1] + 256);
-        MARSHAL(buf, sizeof(uintptr_t), (data = 0, &data));
-        MARSHAL(buf, sizeof(uintptr_t), (data = 1500, &data));
-        MARSHAL(buf, sizeof(uintptr_t), (data = 6, &data));
-        MARSHAL(buf, 6, "      ");
-        MARSHAL(buf, sizeof(uintptr_t), (data = 4, &data));
-        MARSHAL(buf, 4, "    ");
-        MARSHAL(buf, sizeof(uintptr_t), (data = 4, &data));
-        MARSHAL(buf, 4, "    ");
-        MARSHAL(buf, sizeof(uintptr_t), (data = 4, &data));
-        MARSHAL(buf, 4, "    ");
-
-        mbox_io_recv(&mbox_io, IO_MODE_SYNC, mbox_ctl, MARSHAL_SIZE(buf), NIC_CTL_CFG_SET);
-        
-        mbox_io.io[0] = IO_MBOX_IO;
-        mbox_io.io[1] = mbox_ctl;
-        mbox_io.io[2] = 0;
-        mbox_io.io[3] = NIC_CTL_ADD;
-
-        mbox_io_recv(&mbox_io, IO_MODE_SYNC, mbox_ctl, 0, NIC_CTL_ADD);
-    }
-
-    {
-        io_data_s rx_io;
-        mbox_io_begin(&rx_io);
-        mbox_io_recv(&rx_io, IO_MODE_SYNC, mbox_rx, 0, 0);
-        mbox_io_recv(&rx_io, IO_MODE_SYNC, mbox_rx, 1234, 0);
-        mbox_io_recv(&rx_io, IO_MODE_SYNC, mbox_rx, 2345, 0);
-        mbox_io_recv(&rx_io, IO_MODE_SYNC, mbox_rx, 5678, 0);
-    }
-
-
 #endif
+    
 
 #if 0
     int mbox;

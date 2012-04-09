@@ -123,7 +123,7 @@ typedef mbox_recv_io_s *mbox_recv_io_t;
 #define MBOXS_MAX_COUNT 256
 extern mbox_s mboxs[MBOXS_MAX_COUNT];
 
-int  mbox_init(void);
+int  mbox_sys_init(void);
 int  mbox_alloc(struct user_proc_s *proc);
 void mbox_free(int mbox_id);
 
