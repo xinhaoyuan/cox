@@ -33,7 +33,7 @@ __iocb(void *ret)
                 IO_DATA_WAIT_CLEAR(iod);
                 if (fiber != NULL) fiber_notify(fiber);
 
-                if (iod->io[0] != IO_MBOX_IO)
+                if (iod->io[0] != IO_MBOX_RECV && iod->io[0] != IO_MBOX_SEND)
                 {
                     ioce_free_unsafe(ce);
                     semaphore_release(&p->io_sem);
@@ -208,14 +208,20 @@ void
 mbox_io_end(io_data_t iod)
 {
     int io = __io_save();
-    upriv_t p = __upriv;
-    ioce_free_unsafe(iod->index);
-    semaphore_release(&p->io_sem);
-    __io_restore(io);
+    io_call_entry_t entry = __ioce_head;
+    io_call_entry_t ce = entry + iod->index;
+
+    /* fill the ioce data */
+    iod->retc = 0;
+    ce->ce.data[0] = IO_MBOX_IO_END;
+    ce->ce.status  = IO_CALL_STATUS_WAIT;
+    ce->ce.data[IO_ARG_UD] = 0;
+    
+    ioce_advance_unsafe(iod->index);
 }
 
 void
-mbox_io_get(io_data_t iod, int mode, int mbox, uintptr_t hint_a, uintptr_t hint_b)
+mbox_io_recv(io_data_t iod, int mode, int mbox, uintptr_t ack_hint_a, uintptr_t ack_hint_b)
 {
     int io = __io_save();
     io_call_entry_t entry = __ioce_head;
@@ -223,7 +229,37 @@ mbox_io_get(io_data_t iod, int mode, int mbox, uintptr_t hint_a, uintptr_t hint_
 
     /* fill the ioce data */
     iod->retc = 4;
-    ce->ce.data[0] = IO_MBOX_IO;
+    ce->ce.data[0] = IO_MBOX_RECV;
+    ce->ce.data[1] = mbox;
+    ce->ce.data[2] = ack_hint_a;
+    ce->ce.data[3] = ack_hint_b;
+    ce->ce.status = IO_CALL_STATUS_WAIT;
+    
+    ce->ce.data[IO_ARG_UD] = (uintptr_t)iod;
+    IO_DATA_WAIT_SET(iod);
+    IO_DATA_PTR_SET(iod, __current_fiber);
+
+    ioce_advance_unsafe(iod->index);
+
+    __io_restore(io);
+
+    if (mode == IO_MODE_SYNC)
+    {
+        while (IO_DATA_WAIT(iod))
+            fiber_wait_try();
+    }
+}
+
+void
+mbox_io_send(io_data_t iod, int mode, int mbox, uintptr_t hint_a, uintptr_t hint_b)
+{
+    int io = __io_save();
+    io_call_entry_t entry = __ioce_head;
+    io_call_entry_t ce = entry + iod->index;
+
+    /* fill the ioce data */
+    iod->retc = 2;
+    ce->ce.data[0] = IO_MBOX_SEND;
     ce->ce.data[1] = mbox;
     ce->ce.data[2] = hint_a;
     ce->ce.data[3] = hint_b;

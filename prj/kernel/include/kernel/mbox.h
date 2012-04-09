@@ -2,6 +2,7 @@
 #define __KERN_MBOX_H__
 
 #include <ips.h>
+#include <page.h>
 #include <algo/list.h>
 #include <user/io.h>
 #include <proc.h>
@@ -56,11 +57,25 @@ struct mbox_send_io_s
     short  status;
     mbox_t mbox;
 
-    mbox_send_callback_f send_cb;
-    void                *send_data;
+    union
+    {
+        struct
+        {
+            mbox_send_callback_f send_cb;
+            void                *send_data;
+            
+            mbox_ack_callback_f  ack_cb;
+            void                *ack_data;
+        };
 
-    mbox_ack_callback_f  ack_cb;
-    void                *ack_data;
+        struct
+        {
+            page_t    iobuf_p;
+            uintptr_t iobuf_u;
+            uintptr_t hint_a;
+            uintptr_t hint_b;
+        };
+    };
 };
 
 struct mbox_recv_io_s
@@ -72,10 +87,12 @@ struct mbox_recv_io_s
     };
 
     struct mbox_send_io_s *send_io;
-    mbox_t  mbox;
+    mbox_t    mbox;
 
     void     *iobuf;
+    page_t    iobuf_p;
     uintptr_t iobuf_u;
+    uintptr_t iobuf_u_target;
 };
 
 #define MBOX_IOBUF_PSIZE 1
@@ -113,10 +130,11 @@ void mbox_free(int mbox_id);
 mbox_t mbox_get(int mbox_id);
 void   mbox_put(mbox_t mbox);
 
-mbox_send_io_t mbox_send_io_acquire(mbox_t mbox, int try);
-int            mbox_send(mbox_send_io_t io, mbox_send_callback_f send_cb, void *send_data, mbox_ack_callback_f ack_cb, void *ack_data);
-
-int            mbox_io(mbox_t mbox, proc_t io_proc, iobuf_index_t io_index, uintptr_t ack_hint_a, uintptr_t ack_hint_b);
+mbox_send_io_t mbox_send_io_acquire(int try);
+int            mbox_kern_send(mbox_send_io_t io);
+int            mbox_user_send(mbox_t mbox, proc_t io_proc, iobuf_index_t io_index, uintptr_t hint_a, uintptr_t hint_b);
+int            mbox_user_recv(mbox_t mbox, proc_t io_proc, iobuf_index_t io_index, uintptr_t ack_hint_a, uintptr_t ack_hint_b);
+int            mbox_user_io_end(proc_t io_proc, iobuf_index_t io_index);
 
 /* simple ack function/data */
 

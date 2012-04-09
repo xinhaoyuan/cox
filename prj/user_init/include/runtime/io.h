@@ -63,6 +63,7 @@ uintptr_t get_tick(void);
 
 void mbox_io_begin(io_data_t iod);
 void mbox_io_end(io_data_t iod);
-void mbox_io_get(io_data_t iod, int mode, int mbox, uintptr_t hint_a, uintptr_t hint_b);
+void mbox_io_recv(io_data_t iod, int mode, int mbox, uintptr_t ack_hint_a, uintptr_t ack_hint_b);
+void mbox_io_send(io_data_t iod, int mode, int mbox, uintptr_t hint_a, uintptr_t hint_b);
 
 #endif

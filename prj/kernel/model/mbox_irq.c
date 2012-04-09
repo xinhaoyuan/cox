@@ -86,10 +86,16 @@ mbox_irq_handler(int irq_no, uint64_t acc)
         if (to_send)
         {
             cprintf("IRQ MSG TO %d\n", mbox - mboxs);
-            mbox_send_io_t io = mbox_send_io_acquire(mbox, 1);
+            mbox_send_io_t io = mbox_send_io_acquire(1);
             if (io)
-                mbox_send(io, mbox_irq_send, &mbox_irq_data[irq_no],
-                          mbox_irq_ack, &mbox_irq_data[irq_no]);
+            {
+                io->mbox = mbox;
+                io->send_cb = mbox_irq_send;
+                io->send_data = &mbox_irq_data[irq_no];
+                io->ack_cb = mbox_irq_ack;
+                io->ack_data = &mbox_irq_data[irq_no];                
+                mbox_kern_send(io);
+            }
         }
         l = list_next(l);
     }

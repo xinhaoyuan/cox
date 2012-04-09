@@ -46,12 +46,12 @@ e1000_test(void)
     semaphore_init(&sem_tx, 0);
 
     /* Start recv by active io */
-    mbox_io_get(&io_rx, IO_MODE_SYNC, mbox_rx, 0, 0);
+    mbox_io_recv(&io_rx, IO_MODE_SYNC, mbox_rx, 0, 0);
 
     fiber_init(&e1000_if, e1000_interrupt_fiber, e, e1000_if_stack, 10240);
     fiber_init(&e1000_tf, e1000_tx_fiber, e, e1000_tf_stack, 10240);
 
-    mbox_io_get(&io_ctl, IO_MODE_SYNC, mbox_ctl, 0, 0);
+    mbox_io_recv(&io_ctl, IO_MODE_SYNC, mbox_ctl, 0, 0);
     
     uintptr_t data;
     MARSHAL_DECLARE(buf, io_ctl.io[1], io_ctl.io[1] + 256);
@@ -66,11 +66,11 @@ e1000_test(void)
     MARSHAL(buf, 4, "\xff\xff\xff\x0");
     MARSHAL(buf, sizeof(uintptr_t), (data = 4, &data));
     MARSHAL(buf, 4, "\xa\x0\x2\x2");
-    mbox_io_get(&io_ctl, IO_MODE_SYNC, mbox_ctl, MARSHAL_SIZE(buf), NIC_CTL_CFG_SET);
+    mbox_io_recv(&io_ctl, IO_MODE_SYNC, mbox_ctl, MARSHAL_SIZE(buf), NIC_CTL_CFG_SET);
 
-    mbox_io_get(&io_ctl, IO_MODE_SYNC, mbox_ctl, 0, NIC_CTL_ADD);
+    mbox_io_recv(&io_ctl, IO_MODE_SYNC, mbox_ctl, 0, NIC_CTL_ADD);
     
-    mbox_io_get(&io_ctl, IO_MODE_SYNC, mbox_ctl, 0, NIC_CTL_UP);
+    mbox_io_recv(&io_ctl, IO_MODE_SYNC, mbox_ctl, 0, NIC_CTL_UP);
 }
 
 /* From e1000_writev_s / e1000_readv_s */
@@ -179,7 +179,7 @@ e1000_rx(e1000_t *e)
         void *buf = io_rx.io[1];
         if (e1000_rx_packet(e, buf,  __PGSIZE, &rx_size) < 0)
             break;
-        mbox_io_get(&io_rx, IO_MODE_SYNC, mbox_rx, rx_size, 0);
+        mbox_io_recv(&io_rx, IO_MODE_SYNC, mbox_rx, rx_size, 0);
     }
     cprintf("e1000_rx end!\n");
 }
@@ -192,7 +192,7 @@ e1000_tx_fiber(void *__data)
     while (1)
     {
         cprintf("wait for tx request\n");
-        mbox_io_get(&io_tx, IO_MODE_SYNC, mbox_tx, 0, 0);
+        mbox_io_recv(&io_tx, IO_MODE_SYNC, mbox_tx, 0, 0);
         void *buf = io_tx.io[1];
         size_t buf_size = io_tx.io[2]; 
 
@@ -250,7 +250,7 @@ e1000_interrupt_fiber(void *__data)
                 semaphore_release(&sem_tx);
         }
 
-        mbox_io_get(&mbox_io, IO_MODE_SYNC, mbox_irq, 0, 0);
+        mbox_io_recv(&mbox_io, IO_MODE_SYNC, mbox_irq, 0, 0);
     }
 
     mbox_io_end(&mbox_io);

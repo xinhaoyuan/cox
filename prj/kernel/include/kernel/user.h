@@ -26,6 +26,7 @@ struct io_ce_shadow_s
 
 #define IO_CE_SHADOW_TYPE_INIT         0
 #define IO_CE_SHADOW_TYPE_MBOX_RECV_IO 1
+#define IO_CE_SHADOW_TYPE_MBOX_SEND_IO 1
 #define IO_CE_SHADOW_TYPE_TIMER        2
 
 typedef struct io_ce_shadow_s io_ce_shadow_s;

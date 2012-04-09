@@ -244,11 +244,15 @@ static inline int do_io_mmio_close(proc_t proc, uintptr_t addr) __attribute__((a
 static inline int do_io_brk(proc_t proc, uintptr_t end) __attribute__((always_inline));
 static inline int do_io_sleep(proc_t proc, iobuf_index_t idx, uintptr_t until) __attribute__((always_inline));
 static inline int do_io_mbox_open(proc_t proc) __attribute__((always_inline));
-static inline int do_io_mbox_io(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b) __attribute__((always_inline));
+static inline int do_io_mbox_io_end(proc_t proc, iobuf_index_t idx) __attribute__((always_inline));
 static inline int do_io_nic_open(proc_t proc, uintptr_t *mbox_tx, uintptr_t *mbox_rx, uintptr_t *mbox_ctl) __attribute__((always_inline));
 static inline int do_io_nic_close(proc_t proc, int nic) __attribute__((always_inline));
 static inline int do_io_nic_recv(proc_t proc, int nic, uintptr_t buf, size_t size) __attribute__((always_inline));
 static inline int do_io_irq_listen(proc_t proc, int irq_no, int mbox_id) __attribute__((always_inline));
+
+static inline void do_io_mbox_recv(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b) __attribute__((always_inline));
+static inline void do_io_mbox_send(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t hint_a, uintptr_t hint_b) __attribute__((always_inline));
+
 
 static void
 do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
@@ -330,9 +334,18 @@ do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
         /* XXX */
         user_thread_iocb_push(proc, idx);
         break;
-        
-    case IO_MBOX_IO:
-        entry->ce.data[0] = do_io_mbox_io(proc, idx, entry->ce.data[1], entry->ce.data[2], entry->ce.data[3]);
+
+    case IO_MBOX_IO_END:
+        entry->ce.data[0] = do_io_mbox_io_end(proc, idx);
+        user_thread_iocb_push(proc, idx);
+        break;
+
+    case IO_MBOX_RECV:
+        do_io_mbox_recv(proc, idx, entry->ce.data[1], entry->ce.data[2], entry->ce.data[3]);
+        break;
+
+    case IO_MBOX_SEND:
+        do_io_mbox_send(proc, idx, entry->ce.data[1], entry->ce.data[2], entry->ce.data[3]);
         break;
 
     case IO_NIC_OPEN:
@@ -428,24 +441,39 @@ do_io_mbox_open(proc_t proc)
 }
 
 static inline int
-do_io_mbox_io(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b)
+do_io_mbox_io_end(proc_t proc, iobuf_index_t idx)
+{
+    return mbox_user_io_end(proc, idx);
+}
+
+static inline void
+do_io_mbox_recv(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b)
 {
     mbox_t mbox = mbox_get(mbox_id);
     if (mbox != NULL && mbox->proc != proc->user_proc)
     {
         mbox_put(mbox);
+        proc->user_thread->ioce.head[idx].ce.data[0] = -E_INVAL;
         user_thread_iocb_push(proc, idx);
-        return -E_PERM;
     }
     else
     {
-        int r = mbox_io(mbox, proc, idx, ack_hint_a, ack_hint_b);
-        if (mbox) mbox_put(mbox);
-        if (r)
+        if (mbox_user_recv(mbox, proc, idx, ack_hint_a, ack_hint_b) == 0)
             user_thread_iocb_push(proc, idx);
-        return r;
-        /* if success, iocb would be pushed when request comes */
+        if (mbox) mbox_put(mbox);        
     }
+}
+
+static inline void
+do_io_mbox_send(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t hint_a, uintptr_t hint_b)
+{
+    mbox_t mbox = mbox_get(mbox_id);
+    /* XXX: PERM CHECK? */
+    if (mbox_user_send(mbox, proc, idx, hint_a, hint_b) == 0)
+    {
+        user_thread_iocb_push(proc, idx);
+    }
+    if (mbox) mbox_put(mbox);
 }
 
 static inline int

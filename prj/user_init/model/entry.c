@@ -45,11 +45,9 @@ fiber1(void *arg)
     {
         buf[i] = "I have control! :)"[i] | 0x0700;
     }
-
 #endif
 
 #if 0
-
     {
         io_data_s sleep = IO_DATA_INITIALIZER(0, IO_SLEEP, TICK + 200);
         io(&sleep, IO_MODE_SYNC);
@@ -78,7 +76,7 @@ fiber1(void *arg)
         cprintf("Wait for syscall\n");
         io_data_s mbox_io;
         mbox_io_begin(&mbox_io);
-        mbox_io_get(&mbox_io, IO_MODE_SYNC, mbox_ctl, 0, 0);
+        mbox_io_recv(&mbox_io, IO_MODE_SYNC, mbox_ctl, 0, 0);
         uintptr_t data;
         
         MARSHAL_DECLARE(buf, mbox_io.io[1], mbox_io.io[1] + 256);
@@ -93,23 +91,23 @@ fiber1(void *arg)
         MARSHAL(buf, sizeof(uintptr_t), (data = 4, &data));
         MARSHAL(buf, 4, "    ");
 
-        mbox_io_get(&mbox_io, IO_MODE_SYNC, mbox_ctl, MARSHAL_SIZE(buf), NIC_CTL_CFG_SET);
+        mbox_io_recv(&mbox_io, IO_MODE_SYNC, mbox_ctl, MARSHAL_SIZE(buf), NIC_CTL_CFG_SET);
         
         mbox_io.io[0] = IO_MBOX_IO;
         mbox_io.io[1] = mbox_ctl;
         mbox_io.io[2] = 0;
         mbox_io.io[3] = NIC_CTL_ADD;
 
-        mbox_io_get(&mbox_io, IO_MODE_SYNC, mbox_ctl, 0, NIC_CTL_ADD);
+        mbox_io_recv(&mbox_io, IO_MODE_SYNC, mbox_ctl, 0, NIC_CTL_ADD);
     }
 
     {
         io_data_s rx_io;
         mbox_io_begin(&rx_io);
-        mbox_io_get(&rx_io, IO_MODE_SYNC, mbox_rx, 0, 0);
-        mbox_io_get(&rx_io, IO_MODE_SYNC, mbox_rx, 1234, 0);
-        mbox_io_get(&rx_io, IO_MODE_SYNC, mbox_rx, 2345, 0);
-        mbox_io_get(&rx_io, IO_MODE_SYNC, mbox_rx, 5678, 0);
+        mbox_io_recv(&rx_io, IO_MODE_SYNC, mbox_rx, 0, 0);
+        mbox_io_recv(&rx_io, IO_MODE_SYNC, mbox_rx, 1234, 0);
+        mbox_io_recv(&rx_io, IO_MODE_SYNC, mbox_rx, 2345, 0);
+        mbox_io_recv(&rx_io, IO_MODE_SYNC, mbox_rx, 5678, 0);
     }
 
 
@@ -137,7 +135,7 @@ fiber1(void *arg)
         int count = 0;
         while (1)
         {
-            mbox_io_get(&mbox_io, IO_MODE_SYNC, mbox, 0, 0);
+            mbox_io_recv(&mbox_io, IO_MODE_SYNC, mbox, 0, 0);
             cprintf("%d\n", count ++ );
             kbd_proc_data();
 

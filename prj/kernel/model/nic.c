@@ -158,7 +158,11 @@ nic_alloc(user_proc_t proc, int *mbox_tx, int *mbox_rx, int *mbox_ctl)
         nic->rx_io.type = MBOX_SEND_IO_TYPE_KERN_STATIC;
         nic->rx_io.status = MBOX_SEND_IO_STATUS_INIT;
         nic->rx_io.mbox = nic->mbox_rx;
-        mbox_send(&nic->rx_io, nic_rx_send, nic, nic_rx_ack, nic);
+        nic->rx_io.send_cb = nic_rx_send;
+        nic->rx_io.send_data = nic;
+        nic->rx_io.ack_cb = nic_rx_ack;
+        nic->rx_io.ack_data = nic;
+        mbox_kern_send(&nic->rx_io);
 
         /* internal ack for start the CRL loop */
         nic_ctl_ack(&nic->ctl, NULL, 0, NIC_CTL_INIT);
@@ -229,7 +233,7 @@ struct nic_send_data_s
 };
 
 static void
-nic_send_cb(void * __data, void *buf, uintptr_t *hint_a, uintptr_t *hint_b)
+nic_send_send_cb(void * __data, void *buf, uintptr_t *hint_a, uintptr_t *hint_b)
 {
     struct nic_send_data_s *data = __data;
     struct pbuf *q;
@@ -280,7 +284,14 @@ low_level_output(struct netif *netif, struct pbuf *p)
      IPS_NODE_AC_WAIT_SET(&ips);
      IPS_NODE_PTR_SET(&ips, current);
 
-     mbox_send(mbox_send_io_acquire(nic->mbox_tx, 0), nic_send_cb, &s, nic_send_ack_cb, &s);
+     mbox_send_io_t io = mbox_send_io_acquire(0);
+     io->mbox = nic->mbox_tx;
+     io->send_cb   = nic_send_send_cb;
+     io->send_data = &s;
+     io->ack_cb    = nic_send_ack_cb;
+     io->ack_data  = &s;
+     
+     mbox_kern_send(io);
      ips_wait(&ips);
 
      return ERR_OK;
@@ -444,6 +455,12 @@ nic_ctl_proc(void *__ignore)
         }
         
         /* Get next ctl */
-        mbox_send(mbox_send_io_acquire(nic->mbox_ctl, 0), nic_ctl_send, ctl, nic_ctl_ack, ctl);
+        mbox_send_io_t io = mbox_send_io_acquire(0);
+        io->mbox = nic->mbox_ctl;
+        io->send_cb = nic_ctl_send;
+        io->send_data = ctl;
+        io->ack_cb = nic_ctl_ack;
+        io->ack_data = ctl;
+        mbox_kern_send(io);
     }
 }
