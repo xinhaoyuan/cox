@@ -51,6 +51,9 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_PAGE_HOLE_SET    0x021
 #define IO_PAGE_HOLE_CLEAR  0x022
 #define IO_SLEEP            0x030
+#define IO_MBOX_RECV        0x040
+#define IO_MBOX_SEND        0x041
+#define IO_MBOX_IO_END      0x042
 /* DEBUG */
 #define IO_DEBUG_PUTCHAR    0x100
 #define IO_DEBUG_GETCHAR    0x101
@@ -86,9 +89,6 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_PHYS_FREE        0x404
 #define IO_MBOX_OPEN        0x410
 #define IO_MBOX_CLOSE       0x411
-#define IO_MBOX_RECV        0x412
-#define IO_MBOX_SEND        0x413
-#define IO_MBOX_IO_END      0x414
 #define IO_NIC_OPEN         0x420
 #define IO_NIC_CLOSE        0x421
 
