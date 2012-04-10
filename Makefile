@@ -26,10 +26,10 @@ ${T_OBJ}:
 LAYOUT_FILE := ${T_OBJ}/layout.mk
 
 layout: ${T_OBJ}
-	${V}${T_BASE}/utl/mklayout ${T_BASE}/prj ${T_OBJ}/__ts_ ${T_OBJ}/__ts_dep_ > ${LAYOUT_FILE}
+	${V}${T_BASE}/utl/mklayout ${T_BASE}/prj $$\{T_BASE\}/prj $$\{T_OBJ\}/__ts_ $$\{T_OBJ\}/__ts_dep_ > ${LAYOUT_FILE}
 
 ${LAYOUT_FILE}: ${T_OBJ}
-	${V}${T_BASE}/utl/mklayout ${T_BASE}/prj ${T_OBJ}/__ts_ ${T_OBJ}/__ts_dep_ > $@
+	${V}${T_BASE}/utl/mklayout ${T_BASE}/prj $$\{T_BASE\}/prj $$\{T_OBJ\}/__ts_ $$\{T_OBJ\}/__ts_dep_ > $@
 
 -include ${LAYOUT_FILE}
 
