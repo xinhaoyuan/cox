@@ -1,11 +1,2 @@
-- io call: irq listen
+- mbox message: error handling on mmio open
 
-- user space driver
-
-  - base benchmark
-  
-  - k/u NIC
-
-  - e1000 from minix
-
-- BUG: hang on startup

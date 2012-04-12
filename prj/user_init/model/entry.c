@@ -35,7 +35,7 @@ fiber2(void *arg)
     while (1)
     {
         strcpy(buf, "HELLO WORLD FROM MBOX");
-        ce->data[1] = 1;
+        ce->data[1] = MBOX_IOBUF_POLICY_DO_MAP;
         ce->data[2] = 0x1234;
         ce->data[3] = 0x4567;
         mbox_do_io(&mbox_io, IO_MODE_SYNC);

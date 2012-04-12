@@ -201,6 +201,18 @@ mbox_user_send(proc_t io_proc, iobuf_index_t io_index)
         return 0;
     }
 
+    send_io->iobuf_policy = send_ce->data[1];
+    if ((send_io->iobuf_policy & MBOX_IOBUF_POLICY_DO_MAP) && send_io->iobuf_target_u == 0)
+    {
+        if (user_proc_arch_mmio_open(mbox->proc, PAGE_TO_PHYS(send_io->iobuf_p),
+                                     send_io->iobuf_size, &send_io->iobuf_target_u))
+        {
+            send_ce->data[0] = -E_NO_MEM;
+            return 0;
+        }
+    }
+    
+
     irq = irq_save();
     spinlock_acquire(&mbox->io_lock);
 
@@ -222,27 +234,21 @@ mbox_user_send(proc_t io_proc, iobuf_index_t io_index)
         spinlock_release(&mbox->io_lock);
         irq_restore(irq);
 
-        mbox_recv_io_t recv_io = CONTAINER_OF(rl, mbox_recv_io_s, io_list);
+        mbox_recv_io_t  recv_io = CONTAINER_OF(rl, mbox_recv_io_s, io_list);
         io_ce_shadow_t recv_shd = CONTAINER_OF(recv_io, io_ce_shadow_s, mbox_recv_io);
         io_call_entry_t recv_ce = &USER_THREAD(recv_shd->proc).ioce[recv_shd->index];
         
         send_io->status  = MBOX_SEND_IO_STATUS_PROCESSING;
         recv_io->send_io = send_io;
 
-        if (send_ce->data[1])
+        if (send_io->iobuf_policy)
         {
-            recv_io->iobuf_mapped = 1;
-            /* XXX: PROCESS ERROR HERE */
-            user_proc_arch_mmio_open(USER_THREAD(recv_shd->proc).user_proc, PAGE_TO_PHYS(send_io->iobuf_p),
-                                     send_io->iobuf_size, &recv_io->iobuf_u);
-            
-            /* XXX: indicate the iobuf is mapped */
+            recv_io->iobuf_u = send_io->iobuf_target_u;
             recv_ce->data[0] = 0;
             recv_ce->data[1] = recv_io->iobuf_u;
         }
         else
         {
-            recv_io->iobuf_mapped = 0;
             recv_ce->data[0] = 0;
             recv_ce->data[1] = 0;
         }
@@ -260,10 +266,11 @@ mbox_ack_io(mbox_send_io_t ack_io, io_ce_shadow_t recv_shd, io_call_entry_t recv
     mbox_recv_io_t recv_io = &recv_shd->mbox_recv_io;
     int irq;
 
-    if (recv_io->iobuf_mapped)
+    if ((ack_io->iobuf_policy & MBOX_IOBUF_POLICY_DO_MAP) &&
+        !(ack_io->iobuf_policy & MBOX_IOBUF_POLICY_PERSISTENT))
     {
         user_proc_arch_mmio_close(USER_THREAD(recv_shd->proc).user_proc, recv_io->iobuf_u);
-        recv_io->iobuf_mapped = 0;
+        ack_io->iobuf_target_u = 0;
     }
     
     switch (ack_io->type)
@@ -350,19 +357,15 @@ mbox_user_recv(proc_t io_proc, iobuf_index_t io_index)
             io_ce_shadow_t send_shd = CONTAINER_OF(send_io, io_ce_shadow_s, mbox_send_io);
             io_call_entry_t send_ce = &USER_THREAD(send_shd->proc).ioce[send_shd->index];
 
-            if (send_ce->data[1])
+            if (send_io->iobuf_policy)
             {
-                /* XXX: PROCESS ERROR HERE */
-                user_proc_arch_mmio_open(USER_THREAD(io_proc).user_proc, PAGE_TO_PHYS(send_io->iobuf_p),
-                                         send_io->iobuf_size, &recv_io->iobuf_u);
                 /* XXX: indicate the page was mapped */
+                recv_io->iobuf_u = send_io->iobuf_target_u;
                 recv_ce->data[0] = 0;
                 recv_ce->data[1] = recv_io->iobuf_u;
-                recv_io->iobuf_mapped = 1;
             }
             else
             {
-                recv_io->iobuf_mapped = 0;
                 recv_ce->data[0] = 0;
                 recv_ce->data[1] = 0;
             }
@@ -418,6 +421,8 @@ mbox_user_io_attach(proc_t io_proc, iobuf_index_t io_index, mbox_t mbox, int typ
         mbox_send_io_t send_io = &shd->mbox_send_io;
         if (shd->type == type)
         {
+            if (send_io->iobuf_target_u)
+                user_proc_arch_mmio_close(send_io->mbox->proc, send_io->iobuf_target_u);
             user_proc_arch_mmio_close(USER_THREAD(io_proc).user_proc, send_io->iobuf_u);
             page_free_atomic(send_io->iobuf_p);
         }
@@ -443,7 +448,11 @@ mbox_user_io_attach(proc_t io_proc, iobuf_index_t io_index, mbox_t mbox, int typ
         }
 
         send_io->type = MBOX_SEND_IO_TYPE_USER_SHADOW;
-        send_io->iobuf_size = buf_size;
+        
+        send_io->iobuf_size     = buf_size;
+        send_io->iobuf_policy   = 0;
+        send_io->iobuf_target_u = 0;
+
         send_io->mbox = mbox;
 
         ce->data[1] = send_io->iobuf_u;

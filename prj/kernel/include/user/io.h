@@ -13,7 +13,7 @@ struct io_call_entry_s
 {
     unsigned status;
     uintptr_t data[IO_ARGS_COUNT];
-} __cacheline_aligned__;
+};
 
 typedef struct io_call_entry_s  io_call_entry_s;
 typedef struct io_call_entry_s *io_call_entry_t;
@@ -50,6 +50,10 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_PHYS_FREE        0x204
 #define IO_MBOX_OPEN        0x210
 #define IO_MBOX_CLOSE       0x211
+
+#define MBOX_IOBUF_POLICY_DO_MAP     0x1
+#define MBOX_IOBUF_POLICY_PERSISTENT 0x2
+
 
 typedef void (*io_callback_handler_f)(void *ret);
 

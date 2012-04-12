@@ -22,10 +22,6 @@ struct mbox_s
             list_entry_s listen_list;
             int          irq_no;
         } irq_listen;
-
-        struct nic_s *nic_tx;
-        struct nic_s *nic_rx;
-        struct nic_s *nic_ctl;
     };
 
     spinlock_s          lock;
@@ -73,6 +69,8 @@ struct mbox_send_io_s
             page_t    iobuf_p;
             size_t    iobuf_size;
             uintptr_t iobuf_u;
+            uintptr_t iobuf_target_u;
+            uintptr_t iobuf_policy;
         };
     };
 };
@@ -99,9 +97,6 @@ struct mbox_recv_io_s
 #define MBOX_STATUS_FREE       0
 #define MBOX_STATUS_NORMAL     1
 #define MBOX_STATUS_IRQ_LISTEN 2
-#define MBOX_STATUS_NIC_TX     3
-#define MBOX_STATUS_NIC_RX     4
-#define MBOX_STATUS_NIC_CTL    5
 
 #define MBOX_SEND_IO_TYPE_FREE 0
 #define MBOX_SEND_IO_TYPE_KERN_ALLOC  1
