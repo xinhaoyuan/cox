@@ -194,7 +194,6 @@ mbox_user_send(proc_t io_proc, iobuf_index_t io_index)
     io_call_entry_t send_ce = &USER_THREAD(io_proc).ioce[io_index];
     mbox_send_io_t  send_io = &send_shd->mbox_send_io;
     mbox_t             mbox = send_io->mbox;
-    int          with_iobuf = 0;
 
     if (send_shd->type != IO_CE_SHADOW_TYPE_MBOX_SEND_IO)
     {
@@ -222,7 +221,7 @@ mbox_user_send(proc_t io_proc, iobuf_index_t io_index)
         list_del(rl);
         spinlock_release(&mbox->io_lock);
         irq_restore(irq);
-            
+
         mbox_recv_io_t recv_io = CONTAINER_OF(rl, mbox_recv_io_s, io_list);
         io_ce_shadow_t recv_shd = CONTAINER_OF(recv_io, io_ce_shadow_s, mbox_recv_io);
         io_call_entry_t recv_ce = &USER_THREAD(recv_shd->proc).ioce[recv_shd->index];
@@ -230,7 +229,7 @@ mbox_user_send(proc_t io_proc, iobuf_index_t io_index)
         send_io->status  = MBOX_SEND_IO_STATUS_PROCESSING;
         recv_io->send_io = send_io;
 
-        if (with_iobuf)
+        if (send_ce->data[1])
         {
             recv_io->iobuf_mapped = 1;
             /* XXX: PROCESS ERROR HERE */
@@ -350,7 +349,7 @@ mbox_user_recv(proc_t io_proc, iobuf_index_t io_index)
         {
             io_ce_shadow_t send_shd = CONTAINER_OF(send_io, io_ce_shadow_s, mbox_send_io);
             io_call_entry_t send_ce = &USER_THREAD(send_shd->proc).ioce[send_shd->index];
-                
+
             if (send_ce->data[1])
             {
                 /* XXX: PROCESS ERROR HERE */
@@ -410,7 +409,7 @@ mbox_user_io_attach(proc_t io_proc, iobuf_index_t io_index, mbox_t mbox, int typ
             shd->index = io_index;
             shd->type  = type;
         }
-        
+
         recv_io->send_io = NULL;
         recv_io->mbox = mbox;
     }
@@ -442,7 +441,8 @@ mbox_user_io_attach(proc_t io_proc, iobuf_index_t io_index, mbox_t mbox, int typ
             err = -E_NO_MEM;
             goto error;
         }
-        
+
+        send_io->type = MBOX_SEND_IO_TYPE_USER_SHADOW;
         send_io->iobuf_size = buf_size;
         send_io->mbox = mbox;
 

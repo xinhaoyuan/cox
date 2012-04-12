@@ -72,7 +72,7 @@ ioce_alloc_unsafe(void)
     io_call_entry_t ce = __ioce;
     iobuf_index_t  idx = __ioce_free;
 
-    if (idx != 0)
+    if (idx != IOBUF_INDEX_NULL)
     {
         iobuf_index_t next = ce[idx].data[IO_ARG_FREE_NEXT];
         iobuf_index_t prev = ce[idx].data[IO_ARG_FREE_PREV];
@@ -80,7 +80,7 @@ ioce_alloc_unsafe(void)
         ce[next].data[IO_ARG_FREE_PREV] = prev;
         ce[prev].data[IO_ARG_FREE_NEXT] = next;
 
-        __ioce_free_set(next == idx ? 0 : next);
+        __ioce_free_set(next == idx ? IOBUF_INDEX_NULL : next);
         ce[idx].status = IO_CALL_STATUS_USED;
     }
     
@@ -103,7 +103,7 @@ ioce_free_unsafe(iobuf_index_t idx)
     io_call_entry_t ce = __ioce;
     ce[idx].status = IO_CALL_STATUS_FREE;
     
-    if (__ioce_free == 0)
+    if (__ioce_free == IOBUF_INDEX_NULL)
     {
         ce[idx].data[IO_ARG_FREE_NEXT] =
             ce[idx].data[IO_ARG_FREE_PREV] = idx;

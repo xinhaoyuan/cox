@@ -14,7 +14,7 @@
 static char f1stack[4096] __attribute__((aligned(__PGSIZE)));
 static fiber_s f1;
 
-#if 0
+#if 1
 
 static char f2stack[4096] __attribute__((aligned(__PGSIZE)));
 static fiber_s f2;
@@ -24,20 +24,29 @@ static void
 fiber2(void *arg)
 {
     io_data_s mbox_io;
-    mbox_io_begin(&mbox_io);
-    mbox_io_send(&mbox_io, IO_MODE_SYNC, -1, 0, 0);
+    io_call_entry_t ce = mbox_io_begin(&mbox_io);
+    mbox_io_attach(&mbox_io, mbox, 1, __PGSIZE);
+    if (ce->data[0] != 0)
+    {
+        cprintf("error\n");
+    }
+    void *buf = (void *)ce->data[1];
         
     while (1)
     {
-        strcpy((char *)mbox_io.io[1], "HELLO WORLD FROM MBOX");
-        mbox_io_send(&mbox_io, IO_MODE_SYNC, mbox, 0x1234, 0x4567);
+        strcpy(buf, "HELLO WORLD FROM MBOX");
+        ce->data[1] = 1;
+        ce->data[2] = 0x1234;
+        ce->data[3] = 0x4567;
+        mbox_do_io(&mbox_io, IO_MODE_SYNC);
     }
 }
 
 #endif
 
 static void
-kbd_proc_data(void) {
+kbd_proc_data(void)
+{
     uint8_t data;
 
     if ((__inb(KBSTATP) & KBS_DIB) == 0) {
@@ -69,7 +78,7 @@ fiber1(void *arg)
     }
 #endif
 
-#if 0
+#if 1
     {
         io_data_s sleep = IO_DATA_INITIALIZER(0, IO_SLEEP, TICK + 200);
         io(&sleep, IO_MODE_SYNC);
@@ -79,7 +88,7 @@ fiber1(void *arg)
 #endif
     
 
-#if 1
+#if 0
     int mbox;
 
     {
@@ -104,6 +113,7 @@ fiber1(void *arg)
         int count = 0;
         while (1)
         {
+            cprintf("TO RECV\n");
             mbox_do_io(&mbox_io, IO_MODE_SYNC);
             cprintf("%d\n", count ++ );
             kbd_proc_data();
@@ -112,7 +122,7 @@ fiber1(void *arg)
 
 #endif
 
-#if 0
+#if 1
     {
         io_data_s mbox_open = IO_DATA_INITIALIZER(1, IO_MBOX_OPEN);
         io(&mbox_open, IO_MODE_SYNC);
@@ -122,12 +132,13 @@ fiber1(void *arg)
     fiber_init(&f2, fiber2, (void *)0x12345678, f2stack, 4096);
 
     io_data_s mbox_io;
-    mbox_io_begin(&mbox_io);
+    io_call_entry_t ce = mbox_io_begin(&mbox_io);
+    mbox_io_attach(&mbox_io, mbox, 0, 0);
 
     while (1)
     {
-        mbox_io_recv(&mbox_io, IO_MODE_SYNC, mbox, 0, 0);
-        cprintf("GET IO HINT (%016lx, %016lx) BUF: %s\n", mbox_io.io[2], mbox_io.io[3], mbox_io.io[1]);
+        mbox_do_io(&mbox_io, IO_MODE_SYNC);
+        cprintf("GET IO HINT (%016lx, %016lx) BUF: %s\n", ce->data[2], ce->data[3], ce->data[1]);
     }
 
     
