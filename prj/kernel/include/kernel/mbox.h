@@ -40,10 +40,12 @@ struct mbox_s
 typedef struct mbox_s mbox_s;
 typedef mbox_s *mbox_t;
 
-struct mbox_io_s;
+struct mbox_send_io_s;
+struct io_ce_shadow_s;
+struct io_call_entry_s;
 
-typedef void(*mbox_ack_callback_f) (void *data, void *buf, uintptr_t hint_a, uintptr_t hint_b);
-typedef void(*mbox_send_callback_f)(void *data, void *buf, uintptr_t *hint_a, uintptr_t *hint_b);
+typedef void(*mbox_send_callback_f)(struct mbox_send_io_s *send_io, struct io_ce_shadow_s *recv_shd, struct io_call_entry_s *recv_ce);
+typedef void(*mbox_ack_callback_f) (struct mbox_send_io_s *send_io, struct io_ce_shadow_s *recv_shd, struct io_call_entry_s *recv_ce);
 
 struct mbox_send_io_s
 {
@@ -62,18 +64,15 @@ struct mbox_send_io_s
         struct
         {
             mbox_send_callback_f send_cb;
-            void                *send_data;
-            
             mbox_ack_callback_f  ack_cb;
-            void                *ack_data;
+            void                *priv;
         };
 
         struct
         {
             page_t    iobuf_p;
+            size_t    iobuf_size;
             uintptr_t iobuf_u;
-            uintptr_t hint_a;
-            uintptr_t hint_b;
         };
     };
 };
@@ -89,10 +88,10 @@ struct mbox_recv_io_s
     struct mbox_send_io_s *send_io;
     mbox_t    mbox;
 
+    int       iobuf_mapped;
     void     *iobuf;
     page_t    iobuf_p;
     uintptr_t iobuf_u;
-    uintptr_t iobuf_u_target;
 };
 
 #define MBOX_IOBUF_PSIZE 1
@@ -131,28 +130,11 @@ mbox_t mbox_get(int mbox_id);
 void   mbox_put(mbox_t mbox);
 
 mbox_send_io_t mbox_send_io_acquire(int try);
-int            mbox_kern_send(mbox_send_io_t io);
-int            mbox_user_send(mbox_t mbox, proc_t io_proc, iobuf_index_t io_index, uintptr_t hint_a, uintptr_t hint_b);
-int            mbox_user_recv(mbox_t mbox, proc_t io_proc, iobuf_index_t io_index, uintptr_t ack_hint_a, uintptr_t ack_hint_b);
-int            mbox_user_io_end(proc_t io_proc, iobuf_index_t io_index);
 
-/* simple ack function/data */
-
-struct mbox_io_data_s
-{
-    ips_node_t ips;
-    void      *send_buf;
-    size_t     send_buf_size;
-    uintptr_t  hint_send;
-    void      *recv_buf;
-    size_t     recv_buf_size;
-    uintptr_t  hint_ack;
-};
-
-typedef struct mbox_io_data_s mbox_io_data_s;
-typedef mbox_io_data_s *mbox_io_data_t;
-
-void mbox_ack_func(void *data, void *buf, uintptr_t hint_a, uintptr_t hint_b);
-void mbox_send_func(void *data, void *buf, uintptr_t *hint_a, uintptr_t *hint_b);
+int mbox_kern_send(mbox_send_io_t io);
+int mbox_user_send(proc_t io_proc, iobuf_index_t io_index);
+int mbox_user_recv(proc_t io_proc, iobuf_index_t io_index);
+int mbox_user_io_attach(proc_t io_proc, iobuf_index_t io_index, mbox_t mbox, int type, size_t buf_size);
+int mbox_user_io_detach(proc_t io_proc, iobuf_index_t io_index);
 
 #endif

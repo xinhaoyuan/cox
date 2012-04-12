@@ -4,18 +4,20 @@
 #include <runtime/fiber.h>
 #include <runtime/io.h>
 #include <runtime/page.h>
-#include <driver/pci/pci.h>
-#include <driver/e1000/glue_inc.h>
+/* #include <driver/pci/pci.h> */
+/* #include <driver/e1000/glue_inc.h> */
 #include <mach.h>
 #include <lib/marshal.h>
 #include "kbdreg.h"
 #include <io.h>
 
 static char f1stack[4096] __attribute__((aligned(__PGSIZE)));
-static char f2stack[4096] __attribute__((aligned(__PGSIZE)));
 static fiber_s f1;
-static fiber_s f2;
 
+#if 0
+
+static char f2stack[4096] __attribute__((aligned(__PGSIZE)));
+static fiber_s f2;
 int mbox;
 
 static void
@@ -31,6 +33,8 @@ fiber2(void *arg)
         mbox_io_send(&mbox_io, IO_MODE_SYNC, mbox, 0x1234, 0x4567);
     }
 }
+
+#endif
 
 static void
 kbd_proc_data(void) {
@@ -75,13 +79,14 @@ fiber1(void *arg)
 #endif
     
 
-#if 0
+#if 1
     int mbox;
-    
+
     {
         io_data_s mbox_open = IO_DATA_INITIALIZER(1, IO_MBOX_OPEN);
         io(&mbox_open, IO_MODE_SYNC);
         mbox = mbox_open.io[0];
+        cprintf("got mbox %d\n", mbox);
     }
 
     {
@@ -93,22 +98,21 @@ fiber1(void *arg)
     kbd_proc_data();
     {
         io_data_s mbox_io;
-        mbox_io_begin(&mbox_io);
+        io_call_entry_t ce = mbox_io_begin(&mbox_io);
+        mbox_io_attach(&mbox_io, mbox, 0, 0);
+        
         int count = 0;
         while (1)
         {
-            mbox_io_recv(&mbox_io, IO_MODE_SYNC, mbox, 0, 0);
+            mbox_do_io(&mbox_io, IO_MODE_SYNC);
             cprintf("%d\n", count ++ );
             kbd_proc_data();
-
-            mbox_io.io[0] = IO_MBOX_IO;
-            mbox_io.io[1] = mbox;
         }
     }
 
 #endif
 
-#if 1
+#if 0
     {
         io_data_s mbox_open = IO_DATA_INITIALIZER(1, IO_MBOX_OPEN);
         io(&mbox_open, IO_MODE_SYNC);
@@ -135,11 +139,10 @@ fiber1(void *arg)
 void
 entry(void)
 {
-    char *buf = palloc(1);
-    memset(buf, 0, __PGSIZE);
+    /* char *buf = palloc(1); */
+    /* memset(buf, 0, __PGSIZE); */
     
     fiber_init(&f1, fiber1, (void *)0x12345678, f1stack, 4096);
 
-    while (1)
-        fiber_schedule();
+    /* cprintf("Hello world\n"); */
 }

@@ -5,30 +5,16 @@
 #include <algo/list.h>
 
 #define IO_ARGS_COUNT 6
-#define IO_ARG_UD     (IO_ARGS_COUNT - 1)
 
 typedef unsigned int iobuf_index_t;
 #define IOBUF_INDEX_NULL ((iobuf_index_t)-1)
 
 struct io_call_entry_s
 {
-    union
-    {
-        struct
-        {
-            unsigned int status;
-            iobuf_index_t prev, next;
+    unsigned status;
+    uintptr_t data[IO_ARGS_COUNT];
+} __cacheline_aligned__;
 
-            uintptr_t data[IO_ARGS_COUNT];
-        } ce;
-
-        struct
-        {
-            iobuf_index_t head; /* when = 0, could be written by user for a new start */
-            iobuf_index_t tail, free; /* by user */
-        } ctl;
-    };
-};
 typedef struct io_call_entry_s  io_call_entry_s;
 typedef struct io_call_entry_s *io_call_entry_t;
 
@@ -42,7 +28,6 @@ typedef struct io_call_entry_s *io_call_entry_t;
 /* refer to doc/io.txt */
 
 /* BASE */
-#define IO_SET_CALLBACK     0x000
 #define IO_CREATE_PROC      0x010
 #define   IO_PROC_CREATE_FLAG_SHARE  0x1
 #define   IO_PROC_CREATE_FLAG_MNODE  0x2
@@ -51,9 +36,9 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_PAGE_HOLE_SET    0x021
 #define IO_PAGE_HOLE_CLEAR  0x022
 #define IO_SLEEP            0x030
-#define IO_MBOX_RECV        0x040
-#define IO_MBOX_SEND        0x041
-#define IO_MBOX_IO_END      0x042
+#define IO_MBOX_ATTACH      0x040
+#define IO_MBOX_DETACH      0x041
+#define IO_MBOX_IO          0x042
 /* DEBUG */
 #define IO_DEBUG_PUTCHAR    0x100
 #define IO_DEBUG_GETCHAR    0x101

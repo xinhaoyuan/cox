@@ -3,26 +3,9 @@
 
 #include <runtime/local.h>
 
-void __iocb(void *ret);
-
-inline static int __io_save(void) __attribute__((always_inline));
-inline static void __io_restore(int status) __attribute__((always_inline));
-
-inline static int
-__io_save(void)
-{ int r = __io_ubusy; __io_ubusy_set(1); return r; }
-
-inline static void
-__io_restore(int status)
-{
-    if (status == 0)
-    {
-        __io_ubusy_set(0);
-        if (__iocb_busy)
-            __iocb(NULL);
-    }
-    else __io_ubusy_set(1);
-}
+/* used for free call entry */
+#define IO_ARG_FREE_PREV 0
+#define IO_ARG_FREE_NEXT 1
 
 #define IO_DATA_PTR(iod)           ((void *)((iod)->data & ~(uintptr_t)3))
 #define IO_DATA_PTR_SET(iod, ptr)  ((iod)->data = ((iod)->data & 3) | ((uintptr_t)(ptr) & ~(uintptr_t)3))
@@ -61,9 +44,9 @@ int  io(io_data_t iod, int mode);
 uintptr_t get_tick(void);
 #define TICK get_tick()
 
-void mbox_io_begin(io_data_t iod);
-void mbox_io_end(io_data_t iod);
-void mbox_io_recv(io_data_t iod, int mode, int mbox, uintptr_t ack_hint_a, uintptr_t ack_hint_b);
-void mbox_io_send(io_data_t iod, int mode, int mbox, uintptr_t hint_a, uintptr_t hint_b);
+io_call_entry_t mbox_io_begin(io_data_t iod);
+void *mbox_io_attach(io_data_t iod, int mbox, int to_send, size_t buf_size);
+void  mbox_io_end(io_data_t iod);
+void  mbox_do_io(io_data_t iod, int mode);
 
 #endif

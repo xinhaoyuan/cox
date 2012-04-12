@@ -56,7 +56,7 @@ __proc_entry(void *arg)
 }
 
 int
-proc_init(proc_t proc, const char *name, int class, void (*entry)(void *arg), void *arg, uintptr_t stack_top)
+proc_init(proc_t proc, const char *name, int class, void (*entry)(void *arg), void *arg, void *stack_base, size_t stack_size)
 {
     if (class == SCHED_CLASS_IDLE) return -E_INVAL;
     
@@ -68,7 +68,8 @@ proc_init(proc_t proc, const char *name, int class, void (*entry)(void *arg), vo
     proc->status = PROC_STATUS_WAITING;
     proc->entry  = entry;
     proc->type   = PROC_TYPE_KERN;
-    context_fill(&proc->ctx, __proc_entry, arg, stack_top);
+    context_fill(&proc->ctx, __proc_entry, arg,
+                 (uintptr_t)ARCH_STACKTOP(stack_base, stack_size));
 
     return 0;
 }
@@ -146,7 +147,7 @@ proc_switch(proc_t proc)
              prev->status != PROC_STATUS_RUNNABLE_STRONG)
     {
         /* prev no longer in current rq, save the user context*/
-        user_save_context(prev);
+        user_thread_save_context(prev);
         proc->sched_prev_usr = NULL;
     }
     else proc->sched_prev_usr = prev;

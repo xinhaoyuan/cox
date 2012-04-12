@@ -6,7 +6,7 @@
 
 struct sched_node_s
 {
-	struct sched_node_s *prev, *next;
+    struct sched_node_s *prev, *next;
 };
 
 typedef struct sched_node_s sched_node_s;
@@ -16,11 +16,10 @@ typedef void (*fiber_entry_f) (void *args);
 
 struct fiber_s
 {
-	context_s    ctx;
-	fiber_entry_f entry;
-	sched_node_s sched_node;
-	int io;
-	int status;
+    context_s    ctx;
+    fiber_entry_f entry;
+    sched_node_s sched_node;
+    int status;
 };
 
 #define FIBER_STATUS_RUNNABLE_IDLE   0
@@ -34,17 +33,24 @@ typedef fiber_s *fiber_t;
 
 struct upriv_s
 {
-	fiber_s      idle_fiber;
-	sched_node_s sched_node;
-	semaphore_s  io_sem;
+    fiber_s      idle_fiber;
+    fiber_s      init_fiber;
+    sched_node_s sched_node;
+    
+    semaphore_s        io_sem;
+    struct io_data_s **io_shadow;
 };
 
 typedef struct upriv_s upriv_s;
 typedef upriv_s *upriv_t;
 
+void fiber_sys_init(void);
+
 void fiber_init(fiber_t fiber, fiber_entry_f entry, void *arg, void *stack, size_t stack_size);
 void fiber_schedule(void);
 void fiber_wait_try(void);
 void fiber_notify(fiber_t f);
+
+void do_idle(void);
 
 #endif

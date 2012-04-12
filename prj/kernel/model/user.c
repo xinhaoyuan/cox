@@ -14,21 +14,24 @@ static void do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 static int  user_proc_init(user_proc_t mm, uintptr_t *start, uintptr_t *end);
 static int  user_thread_init(proc_t proc, uintptr_t entry);
 static void print_tls(proc_t proc)
-{       
-    cprintf("tls        = 0x%016lx tls_u        = 0x%016lx\n",
-            proc->user_thread->tls, proc->user_thread->tls_u);
-    cprintf("iocb_busy  = 0x%016lx iocb_cap     = %d\n"
-            "iocb_head  = 0x%016lx iocb_tail    = 0x%016lx\n",
-            proc->user_thread->iocb.busy, proc->user_thread->iocb.cap,
-            proc->user_thread->iocb.head, proc->user_thread->iocb.tail);
-    cprintf("iocb_entry = 0x%016lx ioce_head    = 0x%016lx\n",
-            proc->user_thread->iocb.entry, proc->user_thread->ioce.head);
-    cprintf("iocb_stack = 0x%016lx iocb_stack_u = 0x%016lx\n",
-            proc->user_thread->iocb.stack, proc->user_thread->iocb.stack_u);
+{
+    user_thread_t thread = &USER_THREAD(proc);
+    cprintf("tls          = 0x%016lx tls_u        = 0x%016lx\n",
+            thread->tls, thread->tls_u);
+    cprintf("io_cap       = 0x%016lx ioce         = 0x%016lx\n",
+            thread->io_cap, thread->ioce);
+    cprintf("iocr         = 0x%016lx\n",
+            thread->iocr);
+    cprintf("iocr_khead   = 0x%016lx iocr_utail   = 0x%016lx\n",
+            thread->iocr_ctl.khead, thread->iocr_ctl.utail);
+    cprintf("iocb         = 0x%016lx\n"
+            "iocb_uhead   = 0x%016lx iocb_ktail   = 0x%016lx\n",
+            thread->iocb, 
+            thread->iocb_ctl.uhead, thread->iocb_ctl.ktail);
 }
 
 int
-user_proc_load(void *bin, size_t bin_size)
+user_thread_init_exec(proc_t proc, void *bin, size_t bin_size)
 {
     uintptr_t *ptr = (uintptr_t *)bin;  
     uintptr_t start = *(ptr ++);
@@ -36,19 +39,21 @@ user_proc_load(void *bin, size_t bin_size)
     uintptr_t edata = *(ptr ++);
     uintptr_t end   = *(ptr ++);
 
+    if (proc->type != PROC_TYPE_KERN) return -E_INVAL;
     if (PGOFF(start) || PGOFF(edata) || PGOFF(end)) return -E_INVAL;
-
-    proc_t proc = current;
-
-    if ((proc->user_proc   = kmalloc(sizeof(user_proc_s))) == NULL) return -E_NO_MEM;
-    if ((proc->user_thread = kmalloc(sizeof(user_thread_s))) == NULL) return -E_NO_MEM;
+    
+    user_thread_t thread = &USER_THREAD(proc);
+    user_proc_t   user_proc;
+    if (thread->user_proc != NULL) return -E_INVAL;
+    if ((user_proc = kmalloc(sizeof(user_proc_s))) == NULL) return -E_NO_MEM;
+    thread->user_proc = user_proc;
 
     uintptr_t __start = start;
     /* 3 pages for initial tls */
     uintptr_t __end   = end + 3 * PGSIZE;
 
     int ret;
-    if ((ret = user_proc_init(proc->user_proc, &__start, &__end)) != 0) return ret;
+    if ((ret = user_proc_init(user_proc, &__start, &__end)) != 0) return ret;
     if ((ret = user_thread_init(proc, entry + __start - start)) != 0) return ret;
 
     uintptr_t now = start;
@@ -56,19 +61,20 @@ user_proc_load(void *bin, size_t bin_size)
     {
         if (now < edata)
         {
-            if ((ret = user_proc_copy_page(proc->user_proc, now + __start - start, 0, 0))) return ret;
+            if ((ret = user_proc_copy_page(user_proc, now + __start - start, 0, 0))) return ret;
         }
         else
         {
             /* XXX: on demand */
-            if ((ret = user_proc_copy_page(proc->user_proc, now + __start - start, 0, 0))) return ret;
+            if ((ret = user_proc_copy_page(user_proc, now + __start - start, 0, 0))) return ret;
         }
         now += PGSIZE;
     }
     
     /* copy the binary */
-    user_proc_copy(proc->user_proc, __start, bin, bin_size);
-    // print_tls(proc);
+    user_proc_copy(user_proc, __start, bin, bin_size);
+    proc->type = PROC_TYPE_USER;
+    print_tls(proc);
     return 0;
 }
 
@@ -87,30 +93,26 @@ user_proc_init(user_proc_t mm, uintptr_t *start, uintptr_t *end)
 int
 user_thread_init(proc_t proc, uintptr_t entry)
 {
-    user_thread_t t = proc->user_thread;
-    spinlock_init(&proc->user_thread->iocb.push_lock);
+    user_thread_t thread = &USER_THREAD(proc);
+    spinlock_init(&thread->iocb_ctl.push_lock);
 
-    proc->user_thread->mbox_ex = -1;
+    thread->mbox_manage = -1;
     
-    t->user_size = PGSIZE;
-    t->iobuf_size = PGSIZE;
-    t->iocb_stack_size = PGSIZE;
-    t->tls_u = proc->user_proc->end - 3 * PGSIZE;
+    thread->data_size  = PGSIZE;
+    thread->iobuf_size = PGSIZE;
+    thread->tls_u = thread->user_proc->end - 2 * PGSIZE;
 
     /* touch the memory */
-    user_proc_arch_copy_page(proc->user_proc, t->tls_u, 0, 0);
-    user_proc_arch_copy_page(proc->user_proc, t->tls_u + PGSIZE, 0, 0);
-    user_proc_arch_copy_page(proc->user_proc, t->tls_u + PGSIZE * 2, 0, 0);
+    int i;
+    for (i = 0; i < 2; ++ i)
+        user_proc_arch_copy_page(thread->user_proc, thread->tls_u + (i << PGSHIFT), 0, 0);
     
-    t->iocb.stack_u = t->tls_u + t->user_size;
-    proc->user_thread->iocb.callback_u = 0;
-
-    size_t cap = t->iobuf_size / (sizeof(io_call_entry_s) + sizeof(iobuf_index_t));
+    size_t cap = thread->iobuf_size / (sizeof(io_call_entry_s) + sizeof(iobuf_index_t) * 2);
     
-    proc->user_thread->iocb.cap = cap;
-    proc->user_thread->ioce.cap = cap;
-    proc->user_thread->ioce.shadows = kmalloc(sizeof(io_ce_shadow_s) * cap);
-    memset(proc->user_thread->ioce.shadows, 0, sizeof(io_ce_shadow_s) * cap);
+    thread->io_cap      = cap;
+    /* XXX no mem ? */
+    thread->ioce_shadow = kmalloc(sizeof(io_ce_shadow_s) * cap);
+    memset(thread->ioce_shadow, 0, sizeof(io_ce_shadow_s) * cap);
 
     return user_thread_arch_init(proc, entry);
 }
@@ -144,93 +146,71 @@ void
 user_thread_jump(void)
 {
     __irq_disable();
-    
-    proc_t proc = current;
-    proc->type = PROC_TYPE_USER;
-    user_before_return(proc);
+    user_thread_before_return(current);
     user_thread_arch_jump();
 }
 
 void
 user_process_io(proc_t proc)
 {
-    io_call_entry_t head = proc->user_thread->ioce.head;
-    head->ctl.head %= proc->user_thread->ioce.cap;
-    while (head->ctl.head != 0)
+    io_call_entry_t ce = USER_THREAD(proc).ioce;
+    iobuf_index_t  cap = USER_THREAD(proc).io_cap;
+    iobuf_index_t head = *USER_THREAD(proc).iocr_ctl.khead % cap;
+    iobuf_index_t tail = *USER_THREAD(proc).iocr_ctl.utail % cap;
+    while (head != tail)
     {
-        iobuf_index_t idx = head->ctl.head;
-        head->ctl.head = head[head->ctl.head].ce.next % proc->user_thread->ioce.cap;
+        iobuf_index_t idx = USER_THREAD(proc).iocr[head];
+        if (++ head == cap) head = 0;
         
-        if (head[idx].ce.status == IO_CALL_STATUS_PROC)
-        {
-            head->ctl.head = 0;
-            break;
-        }
+        if (ce[idx].status == IO_CALL_STATUS_PROC)
+            continue;
         
-        head[idx].ce.status = IO_CALL_STATUS_PROC;
-        do_io_process(proc, head + idx, idx);
+        ce[idx].status = IO_CALL_STATUS_PROC;
+        do_io_process(proc, ce + idx, idx);
     }
+
+    *USER_THREAD(proc).iocr_ctl.khead = head;
 }
 
 void
-user_before_return(proc_t proc)
+user_thread_before_return(proc_t proc)
 {
     /* assume the irq is disabled, ensuring no switch */
     
     if (proc->sched_prev_usr != proc)
     {
         if (proc->sched_prev_usr != NULL)
-            user_save_context(proc->sched_prev_usr);
-        user_restore_context(proc);
+            user_thread_save_context(proc->sched_prev_usr);
+        user_thread_restore_context(proc);
     }
-    
-    /* Now the address base should be of current */
-
-    int busy = *proc->user_thread->iocb.busy;
-    
-    if (busy == 2 && !user_thread_arch_in_cb_stack())
-        busy = 0;
-    
-    if (busy == 0)
-    {
-        spinlock_acquire(&proc->user_thread->iocb.push_lock);
-        iobuf_index_t head = *proc->user_thread->iocb.head;
-        iobuf_index_t tail = *proc->user_thread->iocb.tail;
-        spinlock_release(&proc->user_thread->iocb.push_lock);
-
-        if (head != tail)
-        {
-            busy = 1;
-            user_thread_arch_iocb_call();
-        }
-    }
-    
-    *proc->user_thread->iocb.busy = busy;
 }
 
 int 
 user_thread_iocb_push(proc_t proc, iobuf_index_t index)
 {
     int irq = irq_save();
-    spinlock_acquire(&proc->user_thread->iocb.push_lock);
-    
-    *proc->user_thread->iocb.tail %= proc->user_thread->iocb.cap;
-    proc->user_thread->iocb.entry[*proc->user_thread->iocb.tail] = index;
-    (*proc->user_thread->iocb.tail) = ((*proc->user_thread->iocb.tail) + 1) % proc->user_thread->iocb.cap;
+    spinlock_acquire(&USER_THREAD(proc).iocb_ctl.push_lock);
 
-    spinlock_release(&proc->user_thread->iocb.push_lock);
+    iobuf_index_t tail = *USER_THREAD(proc).iocb_ctl.ktail;
+    tail %= USER_THREAD(proc).io_cap;
+    USER_THREAD(proc).iocb[tail] = index;
+    if (++ tail == USER_THREAD(proc).io_cap)
+        *USER_THREAD(proc).iocb_ctl.ktail = 0;
+    else *USER_THREAD(proc).iocb_ctl.ktail = tail;
+
+    spinlock_release(&USER_THREAD(proc).iocb_ctl.push_lock);
     irq_restore(irq);
 
     return 0;
 }
 
 void
-user_save_context(proc_t proc)
-{ user_arch_save_context(proc); }
+user_thread_save_context(proc_t proc)
+{ user_thread_arch_save_context(proc); }
 
 void
-user_restore_context(proc_t proc)
-{ user_arch_restore_context(proc); }
+user_thread_restore_context(proc_t proc)
+{ user_thread_arch_restore_context(proc); }
 
 /* USER IO PROCESS ============================================ */
 
@@ -243,31 +223,23 @@ static inline int do_io_mmio_close(proc_t proc, uintptr_t addr) __attribute__((a
 static inline int do_io_brk(proc_t proc, uintptr_t end) __attribute__((always_inline));
 static inline int do_io_sleep(proc_t proc, iobuf_index_t idx, uintptr_t until) __attribute__((always_inline));
 static inline int do_io_mbox_open(proc_t proc) __attribute__((always_inline));
-static inline int do_io_mbox_io_end(proc_t proc, iobuf_index_t idx) __attribute__((always_inline));
 static inline int do_io_irq_listen(proc_t proc, int irq_no, int mbox_id) __attribute__((always_inline));
-
-static inline void do_io_mbox_recv(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b) __attribute__((always_inline));
-static inline void do_io_mbox_send(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t hint_a, uintptr_t hint_b) __attribute__((always_inline));
-
+static inline int do_io_mbox_attach(proc_t proc, iobuf_index_t idx, int mbox_id, int to_send, size_t buf_size) __attribute__((always_inline));
+static inline int do_io_mbox_detach(proc_t proc, iobuf_index_t idx) __attribute__((always_inline));
+static inline void do_io_mbox_io(proc_t proc, iobuf_index_t idx) __attribute__((always_inline));
 
 static void
 do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 {
-    switch (entry->ce.data[0])
+    switch (entry->data[0])
     {
-    case IO_SET_CALLBACK:
-        entry->ce.data[0] = 0;
-        proc->user_thread->iocb.callback_u = entry->ce.data[1];
-        user_thread_iocb_push(proc, idx);
-        break;
-
     case IO_BRK:
-        entry->ce.data[0] = do_io_brk(proc, entry->ce.data[1]);
+        entry->data[0] = do_io_brk(proc, entry->data[1]);
         user_thread_iocb_push(proc, idx);
         break;
 
     case IO_SLEEP:
-        entry->ce.data[0] = do_io_sleep(proc, idx, entry->ce.data[1]);
+        entry->data[0] = do_io_sleep(proc, idx, entry->data[1]);
         /* IOCB would be pushed when finished */
         break;
 
@@ -277,52 +249,52 @@ do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
         break;
 
     case IO_PAGE_HOLE_SET:
-        entry->ce.data[0] = do_io_page_hole_set(proc, entry->ce.data[1], entry->ce.data[2]);
+        entry->data[0] = do_io_page_hole_set(proc, entry->data[1], entry->data[2]);
         user_thread_iocb_push(proc, idx);
         break;
 
     case IO_PAGE_HOLE_CLEAR:
-        entry->ce.data[0] = do_io_page_hole_clear(proc, entry->ce.data[1], entry->ce.data[2]);
+        entry->data[0] = do_io_page_hole_clear(proc, entry->data[1], entry->data[2]);
         user_thread_iocb_push(proc, idx);
         break;
 
     case IO_DEBUG_PUTCHAR:
-        cputchar(entry->ce.data[1]);
+        cputchar(entry->data[1]);
         user_thread_iocb_push(proc, idx);
         break;
 
     case IO_DEBUG_GETCHAR:
-        entry->ce.data[1] = cgetchar();
+        entry->data[1] = cgetchar();
         user_thread_iocb_push(proc, idx);
         break;
 
     case IO_IRQ_LISTEN:
-        entry->ce.data[0] = do_io_irq_listen(proc, entry->ce.data[1], entry->ce.data[2]);
+        entry->data[0] = do_io_irq_listen(proc, entry->data[1], entry->data[2]);
         user_thread_iocb_push(proc, idx);
         break;
 
     case IO_PHYS_ALLOC:
-        entry->ce.data[0] = do_io_phys_alloc(proc, entry->ce.data[1], entry->ce.data[2], &entry->ce.data[1]);
+        entry->data[0] = do_io_phys_alloc(proc, entry->data[1], entry->data[2], &entry->data[1]);
         user_thread_iocb_push(proc, idx);
         break;
         
     case IO_PHYS_FREE:
-        entry->ce.data[0] = do_io_phys_free(proc, entry->ce.data[1]);
+        entry->data[0] = do_io_phys_free(proc, entry->data[1]);
         user_thread_iocb_push(proc, idx);
         break;
         
     case IO_MMIO_OPEN:
-        entry->ce.data[0] = do_io_mmio_open(proc, entry->ce.data[1], entry->ce.data[2], &entry->ce.data[1]);
+        entry->data[0] = do_io_mmio_open(proc, entry->data[1], entry->data[2], &entry->data[1]);
         user_thread_iocb_push(proc, idx);
         break;
 
     case IO_MMIO_CLOSE:
-        entry->ce.data[0] = do_io_mmio_close(proc, entry->ce.data[1]);
+        entry->data[0] = do_io_mmio_close(proc, entry->data[1]);
         user_thread_iocb_push(proc, idx);
         break;
 
     case IO_MBOX_OPEN:
-        entry->ce.data[0] = do_io_mbox_open(proc);
+        entry->data[0] = do_io_mbox_open(proc);
         user_thread_iocb_push(proc, idx);
         break;
 
@@ -331,17 +303,18 @@ do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
         user_thread_iocb_push(proc, idx);
         break;
 
-    case IO_MBOX_IO_END:
-        entry->ce.data[0] = do_io_mbox_io_end(proc, idx);
+    case IO_MBOX_ATTACH:
+        entry->data[0] = do_io_mbox_attach(proc, idx, entry->data[1], entry->data[2], entry->data[3]);
         user_thread_iocb_push(proc, idx);
         break;
 
-    case IO_MBOX_RECV:
-        do_io_mbox_recv(proc, idx, entry->ce.data[1], entry->ce.data[2], entry->ce.data[3]);
+    case IO_MBOX_DETACH:
+        entry->data[0] = do_io_mbox_detach(proc, idx);
+        user_thread_iocb_push(proc, idx);
         break;
 
-    case IO_MBOX_SEND:
-        do_io_mbox_send(proc, idx, entry->ce.data[1], entry->ce.data[2], entry->ce.data[3]);
+    case IO_MBOX_IO:
+        do_io_mbox_io(proc, idx);
         break;
 
     default: break;
@@ -388,26 +361,26 @@ do_io_phys_free(proc_t proc, uintptr_t physaddr)
 static inline int
 do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result)
 {
-    int r = user_proc_arch_mmio_open(proc->user_proc, physaddr, size, result);
+    int r = user_proc_arch_mmio_open(USER_THREAD(proc).user_proc, physaddr, size, result);
     return r;
 }
 
 static inline int
 do_io_mmio_close(proc_t proc, uintptr_t addr)
 {
-    return user_proc_arch_mmio_close(proc->user_proc, addr);
+    return user_proc_arch_mmio_close(USER_THREAD(proc).user_proc, addr);
 }
 
 static inline int
 do_io_brk(proc_t proc, uintptr_t end)
 {
-    return user_proc_brk(proc->user_proc, end);
+    return user_proc_brk(USER_THREAD(proc).user_proc, end);
 }
 
 static inline
 int do_io_sleep(proc_t proc, iobuf_index_t idx, uintptr_t until)
 {
-    io_ce_shadow_t shd = &proc->user_thread->ioce.shadows[idx];
+    io_ce_shadow_t shd = &USER_THREAD(proc).ioce_shadow[idx];
     shd->type  = IO_CE_SHADOW_TYPE_TIMER;
     shd->proc  = proc;
     shd->index = idx;
@@ -423,43 +396,55 @@ int do_io_sleep(proc_t proc, iobuf_index_t idx, uintptr_t until)
 static inline int
 do_io_mbox_open(proc_t proc)
 {
-    return mbox_alloc(proc->user_proc);
+    return mbox_alloc(USER_THREAD(proc).user_proc);
 }
 
-static inline int
-do_io_mbox_io_end(proc_t proc, iobuf_index_t idx)
-{
-    return mbox_user_io_end(proc, idx);
-}
-
-static inline void
-do_io_mbox_recv(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t ack_hint_a, uintptr_t ack_hint_b)
+static inline
+int do_io_mbox_attach(proc_t proc, iobuf_index_t idx, int mbox_id, int to_send, size_t buf_size)
 {
     mbox_t mbox = mbox_get(mbox_id);
-    if (mbox != NULL && mbox->proc != proc->user_proc)
+    if (mbox == NULL) return -E_INVAL;
+    if (to_send == 0 && mbox->proc != USER_THREAD(proc).user_proc)
     {
         mbox_put(mbox);
-        proc->user_thread->ioce.head[idx].ce.data[0] = -E_INVAL;
-        user_thread_iocb_push(proc, idx);
+        return -E_PERM;
     }
-    else
-    {
-        if (mbox_user_recv(mbox, proc, idx, ack_hint_a, ack_hint_b) == 0)
-            user_thread_iocb_push(proc, idx);
-        if (mbox) mbox_put(mbox);        
-    }
+    
+    int r;
+    if (to_send)
+        r = mbox_user_io_attach(proc, idx, mbox, IO_CE_SHADOW_TYPE_MBOX_SEND_IO, buf_size);
+    else r = mbox_user_io_attach(proc, idx, mbox, IO_CE_SHADOW_TYPE_MBOX_RECV_IO, buf_size);
+
+    mbox_put(mbox);
+    return r;
 }
 
-static inline void
-do_io_mbox_send(proc_t proc, iobuf_index_t idx, int mbox_id, uintptr_t hint_a, uintptr_t hint_b)
+static inline
+int do_io_mbox_detach(proc_t proc, iobuf_index_t idx)
 {
-    mbox_t mbox = mbox_get(mbox_id);
-    /* XXX: PERM CHECK? */
-    if (mbox_user_send(mbox, proc, idx, hint_a, hint_b) == 0)
+    return mbox_user_io_detach(proc, idx);
+}
+
+static inline
+void do_io_mbox_io(proc_t proc, iobuf_index_t idx)
+{
+    switch (USER_THREAD(proc).ioce_shadow[idx].type)
     {
+    case IO_CE_SHADOW_TYPE_MBOX_SEND_IO:
+        if (mbox_user_send(proc, idx) == 0)
+            user_thread_iocb_push(proc, idx);
+        break;
+
+    case IO_CE_SHADOW_TYPE_MBOX_RECV_IO:
+        if (mbox_user_recv(proc, idx) == 0)
+            user_thread_iocb_push(proc, idx);
+        break;
+
+    default:
+        USER_THREAD(proc).ioce[idx].data[0] = -E_INVAL;
         user_thread_iocb_push(proc, idx);
+        break;
     }
-    if (mbox) mbox_put(mbox);
 }
 
 static inline int
@@ -467,7 +452,7 @@ do_io_irq_listen(proc_t proc, int irq_no, int mbox_id)
 {
     mbox_t mbox = mbox_get(mbox_id);
     if (mbox == NULL) return -E_INVAL;
-    if (mbox->proc != proc->user_proc)
+    if (mbox->proc != USER_THREAD(proc).user_proc)
     {
         mbox_put(mbox);
         return -E_PERM;

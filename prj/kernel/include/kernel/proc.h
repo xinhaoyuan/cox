@@ -80,10 +80,6 @@ typedef struct proc_s
 
     timer_s timer;
 
-    /* USER DATA */
-
-    struct user_thread_s  *user_thread;
-    struct user_proc_s      *user_proc;
 } proc_s;
 
 #define PROC_TYPE_KERN 0
@@ -97,7 +93,7 @@ typedef struct proc_s
 PLS_PTR_DECLARE(proc_s, __current);
 #define current (PLS(__current))
 
-int  proc_init(proc_t proc, const char *name, int class, void (*entry)(void *arg), void *arg, uintptr_t stack_top);
+int  proc_init(proc_t proc, const char *name, int class, void (*entry)(void *arg), void *arg, void *stack_base, size_t stack_size);
 void proc_wait_pretend(void);
 void proc_wait_try(void);
 void proc_notify(proc_t proc);

@@ -4,6 +4,7 @@
 #include <lib/low_io.h>
 #include <error.h>
 #include <spinlock.h>
+#include <user.h>
 
 static struct mbox_irq_data_s
 {
@@ -61,11 +62,11 @@ mbox_irq_listen(int irq_no, mbox_t mbox)
 }
 
 static void
-mbox_irq_send(void *__data, void *buf, uintptr_t *hint_a, uintptr_t *hint_b)
+mbox_irq_send(mbox_send_io_t send_io, io_ce_shadow_t recv_shd, io_call_entry_t recv_ce)
 { }
 
 static void
-mbox_irq_ack(void *__data, void *buf, uintptr_t hint_a, uintptr_t hint_b)
+mbox_irq_ack(mbox_send_io_t send_io, io_ce_shadow_t recv_shd, io_call_entry_t recv_ce)
 { }
 
 int
@@ -89,11 +90,10 @@ mbox_irq_handler(int irq_no, uint64_t acc)
             mbox_send_io_t io = mbox_send_io_acquire(1);
             if (io)
             {
-                io->mbox = mbox;
+                io->mbox    = mbox;
                 io->send_cb = mbox_irq_send;
-                io->send_data = &mbox_irq_data[irq_no];
-                io->ack_cb = mbox_irq_ack;
-                io->ack_data = &mbox_irq_data[irq_no];                
+                io->ack_cb  = mbox_irq_ack;
+                io->priv    = &mbox_irq_data[irq_no];                
                 mbox_kern_send(io);
             }
         }

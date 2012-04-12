@@ -9,72 +9,79 @@ inline static void ioce_advance_unsafe(iobuf_index_t idx);
 inline static void ioce_free_unsafe(iobuf_index_t idx);
 
 void
-__iocb(void *ret)
+do_idle(void)
 {
-    if (!__io_ubusy)
-    {
-        __io_ubusy_set(1);
-        io_data_t iod;
-        fiber_t fiber;
-        io_call_entry_t entry = __ioce_head;
-        iobuf_index_t i = __iocb_head, tail = __iocb_tail;
-        iobuf_index_t ce;
-        upriv_t p = __upriv;
-        while (i != tail)
-        {
-            ce    = __iocb_entry[i];
-            iod   = (io_data_t)entry[ce].ce.data[IO_ARGS_COUNT - 1];
-            
-            if (iod)
-            {
-                fiber = (fiber_t)IO_DATA_PTR(iod);
-                memmove(iod->io, entry[ce].ce.data, sizeof(uintptr_t) * iod->retc);
-                
-                IO_DATA_WAIT_CLEAR(iod);
-                if (fiber != NULL) fiber_notify(fiber);
+    io_data_t iod;
+    fiber_t fiber;
+    io_call_entry_t  ce = __ioce;
+    iobuf_index_t   idx;
+    iobuf_index_t *iocb = __iocb;
+    iobuf_index_t  head = __iocb_uhead;
+    iobuf_index_t   cap = __io_cap;
+    upriv_t           p = __upriv;
 
-                if (iod->io[0] != IO_MBOX_RECV && iod->io[0] != IO_MBOX_SEND)
+    while (1)
+    {
+        iobuf_index_t tail = __iocb_ktail;
+
+        if (head != tail)
+        {
+            while (head != tail)
+            {
+                idx = iocb[head];
+                iod = (io_data_t)p->io_shadow[idx];
+
+                if (iod)
                 {
-                    ioce_free_unsafe(ce);
+                    if (iod->io[0] == IO_MBOX_IO)
+                        ce[idx].status = IO_CALL_STATUS_USED;
+                    else memmove(iod->io, ce[idx].data, sizeof(uintptr_t) * iod->retc);
+                    
+                    fiber = (fiber_t)IO_DATA_PTR(iod);
+                    IO_DATA_WAIT_CLEAR(iod);
+                    if (fiber != NULL) fiber_notify(fiber);
+                }
+                
+                if (ce[idx].status != IO_CALL_STATUS_USED)
+                {
+                    ioce_free_unsafe(idx);
                     semaphore_release(&p->io_sem);
                 }
-                else entry[ce].ce.status = IO_CALL_STATUS_USED;
+                
+                if (++head == cap) head = 0;
             }
-            else
-            {
-                ioce_free_unsafe(ce);
-                semaphore_release(&p->io_sem);
-            }
-
-            i = (i + 1) % __iocb_cap;
-        }
-
-        __iocb_head_set(tail);
         
-        __io_ubusy_set(0);
-
-        if (ret != NULL) __iocb_busy_set(2);
-        else __iocb_busy_set(0);
+            __iocb_uhead_set(head);
+        }
+        else fiber_schedule();
     }
-    
-    if (ret != NULL)
-        iocb_return(ret);
+}
+
+inline static void
+io_spin_wait(void)
+{
+    while (__iocb_uhead == __iocb_ktail)
+    {
+        // __tick_into_kernel;
+    }
 }
 
 inline static iobuf_index_t
 ioce_alloc_unsafe(void)
 {
-    io_call_entry_t entry = __ioce_head;
-    iobuf_index_t idx = entry->ctl.free;
+    io_call_entry_t ce = __ioce;
+    iobuf_index_t  idx = __ioce_free;
 
     if (idx != 0)
-    {           
+    {
+        iobuf_index_t next = ce[idx].data[IO_ARG_FREE_NEXT];
+        iobuf_index_t prev = ce[idx].data[IO_ARG_FREE_PREV];
         /* cycle dlist remove */
-        entry[entry[idx].ce.next].ce.prev = entry[idx].ce.prev;
-        entry[entry[idx].ce.prev].ce.next = entry[idx].ce.next;
+        ce[next].data[IO_ARG_FREE_PREV] = prev;
+        ce[prev].data[IO_ARG_FREE_NEXT] = next;
 
-        entry->ctl.free = entry[idx].ce.next == idx ? 0 : entry[idx].ce.next;
-        entry[idx].ce.status = IO_CALL_STATUS_USED;
+        __ioce_free_set(next == idx ? 0 : next);
+        ce[idx].status = IO_CALL_STATUS_USED;
     }
     
     return idx;
@@ -83,100 +90,78 @@ ioce_alloc_unsafe(void)
 inline static void
 ioce_advance_unsafe(iobuf_index_t idx)
 {
-    io_call_entry_t entry = __ioce_head;
-
-    entry[idx].ce.next   = 0;
+    __ioce[idx].status = IO_CALL_STATUS_WAIT;
     
-    if (entry[entry->ctl.tail].ce.status == IO_CALL_STATUS_WAIT)
-        entry[entry->ctl.tail].ce.next = idx;
-    
-    entry[idx].ce.status = IO_CALL_STATUS_WAIT;
-    
-    if (entry->ctl.head == 0)
-        entry->ctl.head = idx;
-    
-    entry->ctl.tail = idx;
+    iobuf_index_t tail = __iocr_utail;
+    __iocr[tail ++] = idx;
+    __iocr_utail_set(tail == __io_cap ? 0 : tail);
 }
 
 inline static void
 ioce_free_unsafe(iobuf_index_t idx)
 {
-    io_call_entry_t entry = __ioce_head;
-    entry[idx].ce.status = IO_CALL_STATUS_FREE;
+    io_call_entry_t ce = __ioce;
+    ce[idx].status = IO_CALL_STATUS_FREE;
     
-    if (entry->ctl.free == 0)
+    if (__ioce_free == 0)
     {
-        entry[idx].ce.next = entry[idx].ce.prev = idx;
-        entry->ctl.free = idx;
+        ce[idx].data[IO_ARG_FREE_NEXT] =
+            ce[idx].data[IO_ARG_FREE_PREV] = idx;
+        __ioce_free_set(idx);
     }
     else
     {
+        iobuf_index_t prev = __ioce_free;
+        iobuf_index_t next = ce[prev].data[IO_ARG_FREE_NEXT];
+        
         /* cycle dlist insert */
-        entry[idx].ce.next = entry->ctl.free;
-        entry[idx].ce.prev = entry[entry->ctl.free].ce.prev;
-        entry[entry[idx].ce.next].ce.prev = idx;
-        entry[entry[idx].ce.prev].ce.next = idx;
+        ce[idx].data[IO_ARG_FREE_NEXT] = next;
+        ce[idx].data[IO_ARG_FREE_PREV] = prev;
+        ce[prev].data[IO_ARG_FREE_NEXT] = idx;
+        ce[next].data[IO_ARG_FREE_PREV] = idx;
     }
-
-    if (idx == entry->ctl.tail)
-        entry->ctl.tail = 0;
 }
 
 void
 io_init(void)
 {
-    io_call_entry_t entry = __ioce_head;
-    int cap = __ioce_cap;
+    io_call_entry_t ce = __ioce;
+    int cap = __io_cap;
     iobuf_index_t i;
-    for (i = 1; i < cap; ++ i)
+    for (i = 0; i < cap; ++ i)
     {
-        entry[i].ce.status = IO_CALL_STATUS_FREE;
-        entry[i].ce.next = i + 1;
-        entry[i].ce.prev = i - 1;
+        ce[i].status = IO_CALL_STATUS_FREE;
+        ce[i].data[IO_ARG_FREE_PREV] = (i + cap - 1) % cap;
+        ce[i].data[IO_ARG_FREE_NEXT] = (i + 1) % cap;
     }
 
-    entry[cap - 1].ce.next = 1;
-    entry[1].ce.prev = cap - 1;
-
-    entry->ctl.tail = 1;
-    entry->ctl.free = 1;
-
-    /* first one for ctl */
-    semaphore_init(&__upriv->io_sem, __ioce_cap - 1);
-    __io_ubusy_set(0);
-
-    io_data_s iocb_set = IO_DATA_INITIALIZER(0, IO_SET_CALLBACK, (uintptr_t)__iocb);
-    io(&iocb_set, IO_MODE_SYNC);
+    __ioce_free_set(0);
+    
+    semaphore_init(&__upriv->io_sem, cap);
 }
 
 int
 io(io_data_t iod, int mode)
 {
-    int io = __io_save();
     ips_node_s __node;
     upriv_t p = __upriv;
     if (semaphore_acquire(&p->io_sem, &__node))
     {
-        __io_ubusy_set(0);
         ips_wait(&__node);
-        __io_ubusy_set(1);
     }
     
-    io_call_entry_t entry = __ioce_head;
-    iobuf_index_t idx = ioce_alloc_unsafe();
-    io_call_entry_t ce = entry + idx;
+    iobuf_index_t  idx = ioce_alloc_unsafe();
+    io_call_entry_t ce = __ioce + idx;
 
-    memmove(ce->ce.data, iod->io, sizeof(uintptr_t) * iod->argc);
+    memmove(ce->data, iod->io, sizeof(uintptr_t) * iod->argc);
     if (mode != IO_MODE_NO_RET)
     {
-        ce->ce.data[IO_ARG_UD] = (uintptr_t)iod;
+        p->io_shadow[idx] = iod;
         IO_DATA_WAIT_SET(iod);
         IO_DATA_PTR_SET(iod, __current_fiber);
     }
-    else ce->ce.data[IO_ARG_UD] = 0;
+    else p->io_shadow[idx] = NULL;
     ioce_advance_unsafe(idx);
-
-    __io_restore(io);
 
     if (mode == IO_MODE_SYNC)
     {
@@ -187,97 +172,70 @@ io(io_data_t iod, int mode)
     return 0;
 }
 
-void
+io_call_entry_t
 mbox_io_begin(io_data_t iod)
 {
-    int io = __io_save();
     ips_node_s __node;
     upriv_t p = __upriv;
     if (semaphore_acquire(&p->io_sem, &__node))
     {
-        __io_ubusy_set(0);
         ips_wait(&__node);
-        __io_ubusy_set(1);
     }
     iod->index = ioce_alloc_unsafe();
-    __io_restore(io);
+    iod->io[0] = IO_MBOX_IO;
+    iod->io[1] = (uintptr_t)(__ioce + iod->index);
+    p->io_shadow[iod->index] = iod;
+    return __ioce + iod->index;
 }
 
+void *
+mbox_io_attach(io_data_t iod, int mbox, int to_send, size_t buf_size)
+{
+    io_call_entry_t ce = (io_call_entry_t)(iod->io[1]);
+    ce->data[0] = IO_MBOX_ATTACH;
+    ce->data[1] = mbox;
+    ce->data[2] = to_send;
+    ce->data[3] = buf_size;
+
+    IO_DATA_WAIT_SET(iod);
+    IO_DATA_PTR_SET(iod, __current_fiber);
+    
+    ioce_advance_unsafe(iod->index);
+
+    while (IO_DATA_WAIT(iod))
+        fiber_wait_try();
+
+    if (ce->data[0]) return NULL;
+    return (void *)ce->data[1];
+}
+
+void
+mbox_do_io(io_data_t iod, int mode)
+{
+    ((io_call_entry_t)(iod->io[1]))->data[0] = IO_MBOX_IO;
+    IO_DATA_WAIT_SET(iod);
+    IO_DATA_PTR_SET(iod, __current_fiber);
+    
+    ioce_advance_unsafe(iod->index);
+
+    if (mode == IO_MODE_SYNC)
+    {
+        while (IO_DATA_WAIT(iod))
+            fiber_wait_try();
+    }
+}
 
 void
 mbox_io_end(io_data_t iod)
 {
-    int io = __io_save();
-    io_call_entry_t entry = __ioce_head;
-    io_call_entry_t ce = entry + iod->index;
+    io_call_entry_t ce = ((io_call_entry_t)(iod->io[1]));
 
     /* fill the ioce data */
-    iod->retc = 0;
-    ce->ce.data[0] = IO_MBOX_IO_END;
-    ce->ce.status  = IO_CALL_STATUS_WAIT;
-    ce->ce.data[IO_ARG_UD] = 0;
+    ce->data[0] = IO_MBOX_DETACH;
+    ce->status  = IO_CALL_STATUS_WAIT;
+    __upriv->io_shadow[iod->index] = 0;
     
     ioce_advance_unsafe(iod->index);
-}
-
-void
-mbox_io_recv(io_data_t iod, int mode, int mbox, uintptr_t ack_hint_a, uintptr_t ack_hint_b)
-{
-    int io = __io_save();
-    io_call_entry_t entry = __ioce_head;
-    io_call_entry_t ce = entry + iod->index;
-
-    /* fill the ioce data */
-    iod->retc = 4;
-    ce->ce.data[0] = IO_MBOX_RECV;
-    ce->ce.data[1] = mbox;
-    ce->ce.data[2] = ack_hint_a;
-    ce->ce.data[3] = ack_hint_b;
-    ce->ce.status = IO_CALL_STATUS_WAIT;
-    
-    ce->ce.data[IO_ARG_UD] = (uintptr_t)iod;
-    IO_DATA_WAIT_SET(iod);
-    IO_DATA_PTR_SET(iod, __current_fiber);
-
-    ioce_advance_unsafe(iod->index);
-
-    __io_restore(io);
-
-    if (mode == IO_MODE_SYNC)
-    {
-        while (IO_DATA_WAIT(iod))
-            fiber_wait_try();
-    }
-}
-
-void
-mbox_io_send(io_data_t iod, int mode, int mbox, uintptr_t hint_a, uintptr_t hint_b)
-{
-    int io = __io_save();
-    io_call_entry_t entry = __ioce_head;
-    io_call_entry_t ce = entry + iod->index;
-
-    /* fill the ioce data */
-    iod->retc = 2;
-    ce->ce.data[0] = IO_MBOX_SEND;
-    ce->ce.data[1] = mbox;
-    ce->ce.data[2] = hint_a;
-    ce->ce.data[3] = hint_b;
-    ce->ce.status = IO_CALL_STATUS_WAIT;
-    
-    ce->ce.data[IO_ARG_UD] = (uintptr_t)iod;
-    IO_DATA_WAIT_SET(iod);
-    IO_DATA_PTR_SET(iod, __current_fiber);
-
-    ioce_advance_unsafe(iod->index);
-
-    __io_restore(io);
-
-    if (mode == IO_MODE_SYNC)
-    {
-        while (IO_DATA_WAIT(iod))
-            fiber_wait_try();
-    }
 }
 
 uintptr_t

@@ -1,4 +1,4 @@
-.PHONY: layout clean force run all
+.PHONY: layout clean force all
 
 export V        ?= @
 export T_BASE   ?= ${PWD}
@@ -44,6 +44,8 @@ ${T_OBJ}/__ts_%: force
 # }}}
 
 # User defined actions
+
+.PHONY: stat run run-gdb run-3w
 
 stat: all
 	${V}./loc.sh

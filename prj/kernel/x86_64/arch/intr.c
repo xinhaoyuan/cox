@@ -128,7 +128,7 @@ trap_dispatch(struct trapframe *tf)
     bool from_user = !trap_in_kernel(tf);
     if (from_user)
     {
-        current->user_thread->arch.tf = tf;
+        USER_THREAD(current).arch.tf = tf;
     }
 
     if (tf->tf_trapno < EXCEPTION_COUNT) {
@@ -172,7 +172,7 @@ trap_dispatch(struct trapframe *tf)
         user_process_io(current);
         __irq_disable();
         if (PLS(__local_irq_save) != 0) cprintf("PANIC: return to user with irq saved\n");
-        user_before_return(current);
+        user_thread_before_return(current);
     }
 }
 

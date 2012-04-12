@@ -105,7 +105,7 @@ __kern_cpu_init(void)
     {
         /* create the init proc */
         proc_init(&init_proc, ".init", SCHED_CLASS_RR, (void(*)(void *))kernel_start, NULL,
-                  (uintptr_t)ARCH_STACKTOP(init_proc_stack, INIT_PROC_STACK_SIZE));
+                  init_proc_stack, INIT_PROC_STACK_SIZE);
         proc_notify(&init_proc);
     }
 
