@@ -7,6 +7,10 @@
 #include <spinlock.h>
 #include <lib/buddy.h>
 #include <lib/low_io.h>
+#include <proc.h>
+#include <user.h>
+#include <mbox.h>
+#include <ips.h>
 
 #include "memmap.h"
 #include "e820.h"
@@ -444,6 +448,32 @@ get_pte(pgd_t *pgdir, uintptr_t la, bool create) {
     return &((pte_t *)VADDR_DIRECT(PMD_ADDR(*pmdp)))[PTX(la)];
 }
 
+struct msg_pgflt_data_s
+{
+    uintptr_t  proc;
+    uintptr_t  la;
+    uintptr_t  err;
+    ips_node_s ips;
+};
+    
+static void
+msg_pgflt_send(mbox_send_io_t send_io, io_ce_shadow_t recv_shd, io_call_entry_t recv_ce)
+{
+    struct msg_pgflt_data_s *data = send_io->priv;
+    recv_ce->data[2] = data->proc;
+    recv_ce->data[3] = data->la;
+    recv_ce->data[4] = data->err;
+}
+
+static void
+msg_pgflt_ack(mbox_send_io_t ack_io, io_ce_shadow_t recv_shd, io_call_entry_t recv_ce)
+{
+    struct msg_pgflt_data_s *data = ack_io->priv;
+    IPS_NODE_WAIT_CLEAR(&data->ips);
+    proc_notify(IPS_NODE_PTR(&data->ips));
+}
+
+
 void
 pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
 {
@@ -470,10 +500,73 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
                 *pmd = PADDR_DIRECT(la) | PTE_PS | PTE_W | PTE_P;
         }
     }
-    else
+    /* in user area ? */
+    else if (la < UTOP)
     {
-        cprintf("page fault(%08x) at %016lx by %016lx\n", err, la, pc);
-        while (1) ;
+        if (current->type != PROC_TYPE_USER)
+        {
+            cprintf("PANIC: user area page fault by non-user thread\n");
+            while (1) ;
+        }
+
+        user_thread_t user_thread = &USER_THREAD(current);
+        user_proc_t user_proc = user_thread->user_proc;
+        if (user_proc->start > la || user_proc->end <= la)
+        {
+            /* volatile acces */
+            cprintf("PANIC: access out of user area\n");
+            while (1) ;
+        }
+
+        /* XXX to be impl */
+        
+        pte_t *pte;
+        page_t pg;
+        pte = get_pte(user_proc->arch.pgdir, la, 1);
+        if ((*pte & PTE_P) == 0)
+        {
+            if (*pte == 0)
+            {
+                pg = page_alloc_atomic(1);
+            }
+            else pg = PHYS_TO_PAGE(PTE_ADDR(*pte));
+        } else pg = PHYS_TO_PAGE(PTE_ADDR(*pte));
+
+        if (user_proc->mbox_manage == -1)
+        {
+            /* XXX: carefully look for the cause */
+            *pte = PAGE_TO_PHYS(pg) | PTE_W | PTE_U | PTE_P;
+        }
+        else
+        {
+            mbox_t          mbox = mbox_get(user_proc->mbox_manage);
+            mbox_send_io_t ex_io = mbox_send_io_acquire(1);
+            ex_io->mbox          = mbox;
+            ex_io->iobuf_policy  = MBOX_IOBUF_POLICY_DO_MAP;
+            while (user_proc_arch_mmio_open(mbox->proc, PAGE_TO_PHYS(pg),
+                                            PGSIZE, &ex_io->iobuf_target_u))
+            {
+                cprintf("MAP TARGET FAILED\n");
+            }
+
+            struct msg_pgflt_data_s data;
+            
+            ex_io->send_cb = msg_pgflt_send;
+            ex_io->ack_cb  = msg_pgflt_ack;
+            ex_io->priv    = &data;
+
+            data.la   = la & ~(uintptr_t)(PGSIZE - 1);
+            data.proc = (uintptr_t)user_proc;
+            data.err  = err;
+            
+            IPS_NODE_WAIT_SET(&data.ips);
+            IPS_NODE_AC_WAIT_SET(&data.ips);
+            IPS_NODE_PTR_SET(&data.ips, current);
+
+            mbox_kern_send(ex_io);
+
+            ips_wait(&data.ips);
+        }
     }
 }
 

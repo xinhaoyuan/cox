@@ -77,6 +77,7 @@
 #define UMMIO_BASE          0x0000000010000000
 #define UMMIO_SIZE          0x0000000030000000
 #define USTART              0x0000000040000000
+#define UTOP                0x0000010000000000
 
 #ifndef __ASSEMBLER__
 

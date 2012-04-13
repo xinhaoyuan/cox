@@ -11,6 +11,9 @@
 
 struct user_proc_s
 {
+    /* mbox for managing this user process */
+    int mbox_manage;
+
     /* address range */
     uintptr_t start;
     uintptr_t end;
@@ -22,17 +25,17 @@ struct user_proc_s
 typedef struct user_proc_s  user_proc_s;
 typedef struct user_proc_s *user_proc_t;
 
-int user_proc_copy_page(user_proc_t mm, uintptr_t addr, uintptr_t phys, int flag);
-int user_proc_copy(user_proc_t mm, uintptr_t addr, void *src, size_t size);
-int user_proc_brk(user_proc_t mm, uintptr_t end);
+int user_proc_copy_page(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, int flag);
+int user_proc_copy(user_proc_t user_proc, uintptr_t addr, void *src, size_t size);
+int user_proc_brk(user_proc_t user_proc, uintptr_t end);
 
 /* filled by arch */
-int user_proc_arch_init(user_proc_t mm, uintptr_t *start, uintptr_t *end);
-int user_proc_arch_copy_page(user_proc_t mm, uintptr_t addr, uintptr_t phys, int flag);
-int user_proc_arch_copy(user_proc_t mm, uintptr_t addr, void *src, size_t size);
-int user_proc_arch_mmio_open(user_proc_t mm, uintptr_t addr, size_t size, uintptr_t *result);
-int user_proc_arch_mmio_close(user_proc_t mm, uintptr_t addr);
-int user_proc_arch_brk(user_proc_t mm, uintptr_t end);
+int user_proc_arch_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end);
+int user_proc_arch_copy_page(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, int flag);
+int user_proc_arch_copy(user_proc_t user_proc, uintptr_t addr, void *src, size_t size);
+int user_proc_arch_mmio_open(user_proc_t user_proc, uintptr_t addr, size_t size, uintptr_t *result);
+int user_proc_arch_mmio_close(user_proc_t user_proc, uintptr_t addr);
+int user_proc_arch_brk(user_proc_t user_proc, uintptr_t end);
 
 /* private kernel data associated with each io call entries */
 struct io_ce_shadow_s
@@ -64,8 +67,6 @@ struct user_thread_s
     uintptr_t    tls_u;         /* user access */
     size_t       data_size;     /* size of tls data area */
     size_t       iobuf_size;    /* size for I/O buffer, including ioce, iocr, iocb */
-
-    int mbox_manage;            /* mbox for managing this thread */
 
     iobuf_index_t   io_cap;     /* io concurrency */
     io_call_entry_t ioce;       /* io call entries */

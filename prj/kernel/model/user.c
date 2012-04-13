@@ -9,9 +9,10 @@
 #include <mbox_irq.h>
 #include <arch/irq.h>
 #include <lib/low_io.h>
+#include <debug.h>
 
 static void do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx);
-static int  user_proc_init(user_proc_t mm, uintptr_t *start, uintptr_t *end);
+static int  user_proc_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end);
 static int  user_thread_init(proc_t proc, uintptr_t entry);
 static void print_tls(proc_t proc)
 {
@@ -79,13 +80,15 @@ user_thread_init_exec(proc_t proc, void *bin, size_t bin_size)
 }
 
 int
-user_proc_init(user_proc_t mm, uintptr_t *start, uintptr_t *end)
+user_proc_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end)
 {
     int ret;
-    if ((ret = user_proc_arch_init(mm, start, end))) return ret;
-
-    mm->start = *start;
-    mm->end =   *end;
+    if ((ret = user_proc_arch_init(user_proc, start, end))) return ret;
+    
+    user_proc->mbox_manage = -1;
+        
+    user_proc->start = *start;
+    user_proc->end =   *end;
 
     return 0;
 }
@@ -96,8 +99,6 @@ user_thread_init(proc_t proc, uintptr_t entry)
     user_thread_t thread = &USER_THREAD(proc);
     spinlock_init(&thread->iocb_ctl.push_lock);
 
-    thread->mbox_manage = -1;
-    
     thread->data_size  = PGSIZE;
     thread->iobuf_size = PGSIZE;
     thread->tls_u = thread->user_proc->end - 2 * PGSIZE;
@@ -118,27 +119,27 @@ user_thread_init(proc_t proc, uintptr_t entry)
 }
 
 int
-user_proc_copy_page(user_proc_t mm, uintptr_t addr, uintptr_t phys, int flag)
+user_proc_copy_page(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, int flag)
 {
-    return user_proc_arch_copy_page(mm, addr, phys, flag);
+    return user_proc_arch_copy_page(user_proc, addr, phys, flag);
 }
 
 int
-user_proc_copy(user_proc_t mm, uintptr_t addr, void *src, size_t size)
+user_proc_copy(user_proc_t user_proc, uintptr_t addr, void *src, size_t size)
 {
-    return user_proc_arch_copy(mm, addr, src, size);
+    return user_proc_arch_copy(user_proc, addr, src, size);
 }
 
 int
-user_proc_brk(user_proc_t mm, uintptr_t end)
+user_proc_brk(user_proc_t user_proc, uintptr_t end)
 {
-    cprintf("BRK: %016lx\n", end);
+    DEBUG(DBG_IO, ("BRK: %016lx\n", end));
     
-    if (end <= mm->start) return -E_INVAL;
+    if (end <= user_proc->start) return -E_INVAL;
     if (end & (PGSIZE - 1)) return -E_INVAL;
-    int ret = user_proc_arch_brk(mm, end);
+    int ret = user_proc_arch_brk(user_proc, end);
     if (ret == 0)
-        mm->end = end;
+        user_proc->end = end;
     return ret;
 }
 
