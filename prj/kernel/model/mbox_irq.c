@@ -90,10 +90,11 @@ mbox_irq_handler(int irq_no, uint64_t acc)
             mbox_send_io_t io = mbox_send_io_acquire(1);
             if (io)
             {
-                io->mbox    = mbox;
-                io->send_cb = mbox_irq_send;
-                io->ack_cb  = mbox_irq_ack;
-                io->priv    = &mbox_irq_data[irq_no];                
+                io->mbox         = mbox;
+                io->send_cb      = mbox_irq_send;
+                io->ack_cb       = mbox_irq_ack;
+                io->iobuf_policy = 0;
+                io->priv         = &mbox_irq_data[irq_no];                
                 mbox_kern_send(io);
             }
         }

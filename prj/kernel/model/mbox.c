@@ -352,23 +352,23 @@ mbox_user_recv(proc_t io_proc, iobuf_index_t io_index)
         spinlock_release(&mbox->io_lock);
         irq_restore(irq);
 
+        if (send_io->iobuf_policy)
+        {
+            /* XXX: indicate the page was mapped */
+            recv_io->iobuf_u = send_io->iobuf_target_u;
+            recv_ce->data[0] = 0;
+            recv_ce->data[1] = recv_io->iobuf_u;
+        }
+        else
+        {
+            recv_ce->data[0] = 0;
+            recv_ce->data[1] = 0;
+        }
+
         if (send_io->type == MBOX_SEND_IO_TYPE_USER_SHADOW)
         {
             io_ce_shadow_t send_shd = CONTAINER_OF(send_io, io_ce_shadow_s, mbox_send_io);
-            io_call_entry_t send_ce = &USER_THREAD(send_shd->proc).ioce[send_shd->index];
-
-            if (send_io->iobuf_policy)
-            {
-                /* XXX: indicate the page was mapped */
-                recv_io->iobuf_u = send_io->iobuf_target_u;
-                recv_ce->data[0] = 0;
-                recv_ce->data[1] = recv_io->iobuf_u;
-            }
-            else
-            {
-                recv_ce->data[0] = 0;
-                recv_ce->data[1] = 0;
-            }
+            io_call_entry_t send_ce = &USER_THREAD(send_shd->proc).ioce[send_shd->index];            
 
             memmove(&recv_ce->data[2], &send_ce->data[2], sizeof(uintptr_t) * (IO_ARGS_COUNT - 2));
         }
