@@ -51,9 +51,11 @@ struct mbox_send_io_s
         list_entry_s  free_list;
     };
 
-    short  type;
-    short  status;
-    mbox_t mbox;
+    mbox_t    mbox;
+    short     type;
+    short     status;
+    int       iobuf_policy;
+    uintptr_t iobuf_target_u;
 
     union
     {
@@ -69,8 +71,6 @@ struct mbox_send_io_s
             page_t    iobuf_p;
             size_t    iobuf_size;
             uintptr_t iobuf_u;
-            uintptr_t iobuf_target_u;
-            uintptr_t iobuf_policy;
         };
     };
 };

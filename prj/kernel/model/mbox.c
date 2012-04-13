@@ -270,7 +270,7 @@ mbox_ack_io(mbox_send_io_t ack_io, io_ce_shadow_t recv_shd, io_call_entry_t recv
         !(ack_io->iobuf_policy & MBOX_IOBUF_POLICY_PERSISTENT))
     {
         user_proc_arch_mmio_close(USER_THREAD(recv_shd->proc).user_proc, recv_io->iobuf_u);
-        ack_io->iobuf_target_u = 0;
+        ack_io->iobuf_target_u = recv_io->iobuf_u = 0;
     }
     
     switch (ack_io->type)
