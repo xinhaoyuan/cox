@@ -17,6 +17,7 @@ user_proc_arch_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end)
     if (pgdir_page == NULL) return -E_NO_MEM;
     uintptr_t pgdir_phys = PAGE_TO_PHYS(pgdir_page);
 
+    mutex_init(&user_proc->arch.pgflt_lock);
     user_proc->arch.cr3   = pgdir_phys;
     user_proc->arch.pgdir = VADDR_DIRECT(pgdir_phys);
     /* copy from the scratch */

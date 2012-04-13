@@ -519,6 +519,9 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
         }
 
         /* XXX to be impl */
+        /* XXX page lock? */
+
+        mutex_acquire(&user_proc->arch.pgflt_lock, NULL);
         
         pte_t *pte;
         page_t pg;
@@ -566,7 +569,10 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
             mbox_kern_send(ex_io);
 
             ips_wait(&data.ips);
+            *pte = PAGE_TO_PHYS(pg) | PTE_U | PTE_W | PTE_P;
         }
+
+        mutex_release(&user_proc->arch.pgflt_lock);
     }
 }
 
