@@ -12,7 +12,7 @@
 struct user_proc_s
 {
     /* mbox for managing this user process */
-    int mbox_manage;
+    mbox_t mbox_manage;
 
     /* address range */
     uintptr_t start;
@@ -110,7 +110,7 @@ int  user_thread_iocb_push(proc_t proc, iobuf_index_t index);
 
 /* filled by arch */
 int  user_thread_arch_iocb_call(void);
-int  user_thread_arch_init(proc_t proc, uintptr_t entry);
+int  user_thread_arch_init(proc_t proc, uintptr_t entry, uintptr_t arg0, uintptr_t arg1);
 int  user_thread_arch_in_cb_stack(void);
 void user_thread_arch_jump(void) __attribute__((noreturn));
 void user_thread_arch_save_context(proc_t proc);
@@ -120,6 +120,7 @@ void user_thread_before_return(proc_t proc);
 void user_thread_save_context(proc_t proc);
 void user_thread_restore_context(proc_t proc);
 int  user_thread_init_exec(proc_t proc, void *bin, size_t bin_size);
+int  user_thread_exec(proc_t proc, uintptr_t entry, uintptr_t start, uintptr_t end, uintptr_t arg, proc_t manager);
 
 void user_process_io(proc_t proc);
 

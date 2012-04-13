@@ -13,7 +13,7 @@
 
 static void do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx);
 static int  user_proc_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end);
-static int  user_thread_init(proc_t proc, uintptr_t entry);
+static int  user_thread_init(proc_t proc, uintptr_t entry, uintptr_t tls_u, uintptr_t tls_size, uintptr_t arg0, uintptr_t arg1);
 static void print_tls(proc_t proc)
 {
     user_thread_t thread = &USER_THREAD(proc);
@@ -50,12 +50,14 @@ user_thread_init_exec(proc_t proc, void *bin, size_t bin_size)
     thread->user_proc = user_proc;
 
     uintptr_t __start = start;
-    /* 3 pages for initial tls */
-    uintptr_t __end   = end + 3 * PGSIZE;
+    /* 2 pages for initial tls */
+    uintptr_t __end   = end + 2 * PGSIZE;
 
     int ret;
     if ((ret = user_proc_init(user_proc, &__start, &__end)) != 0) return ret;
-    if ((ret = user_thread_init(proc, entry + __start - start)) != 0) return ret;
+    if ((ret = user_thread_init(proc, entry + __start - start,
+                                __end - 2 * PGSIZE, 2 * PGSIZE,
+                                1, 0)) != 0) return ret;
 
     uintptr_t now = start;
     while (now < end)
@@ -74,10 +76,59 @@ user_thread_init_exec(proc_t proc, void *bin, size_t bin_size)
     
     /* copy the binary */
     user_proc_copy(user_proc, __start, bin, bin_size);
-    proc->type = PROC_TYPE_USER;
     print_tls(proc);
     return 0;
 }
+
+int
+user_thread_exec(proc_t proc, uintptr_t entry, uintptr_t start, uintptr_t end, uintptr_t arg, proc_t manager)
+{
+    if (proc->type != PROC_TYPE_KERN) return -E_INVAL;
+    if (manager->type != PROC_TYPE_USER) return -E_INVAL;
+    if (PGOFF(start) || PGOFF(end)) return -E_INVAL;
+    
+    user_thread_t thread = &USER_THREAD(proc);
+    user_proc_t   user_proc;
+    
+    if (thread->user_proc != NULL) return -E_INVAL;
+    if ((user_proc = kmalloc(sizeof(user_proc_s))) == NULL) return -E_NO_MEM;
+    thread->user_proc = user_proc;
+
+    uintptr_t __start = start;
+    /* 2 pages for initial tls */
+    uintptr_t __end   = end + 2 * PGSIZE;
+
+    int ret;
+    if ((ret = user_proc_init(user_proc, &__start, &__end)) != 0) return ret;
+    if ((ret = user_thread_init(proc, entry + __start - start,
+                                __end - 2 * PGSIZE, 2 * PGSIZE,
+                                1, arg)) != 0) return ret;
+
+    user_proc->mbox_manage = mbox_get(mbox_alloc(USER_THREAD(manager).user_proc));
+
+    print_tls(proc);
+
+    return 0;
+}
+
+int
+user_thread_create(proc_t proc, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t arg, proc_t from)
+{
+    if (proc->type != PROC_TYPE_KERN) return -E_INVAL;
+    if (from->type != PROC_TYPE_USER) return -E_INVAL;
+    if (PGOFF(tls_u) || PGOFF(tls_size) || tls_size < 2 * PGSIZE) return -E_INVAL;
+
+    int ret;
+    
+    user_thread_t thread = &USER_THREAD(proc);
+    thread->user_proc = USER_THREAD(from).user_proc;
+    
+    if ((ret = user_thread_init(proc, entry, tls_u, tls_size, 0, arg)) != 0) return ret;
+
+    print_tls(proc);
+    return 0;
+}
+
 
 int
 user_proc_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end)
@@ -85,7 +136,7 @@ user_proc_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end)
     int ret;
     if ((ret = user_proc_arch_init(user_proc, start, end))) return ret;
     
-    user_proc->mbox_manage = -1;
+    user_proc->mbox_manage = NULL;
         
     user_proc->start = *start;
     user_proc->end =   *end;
@@ -94,18 +145,18 @@ user_proc_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end)
 }
 
 int
-user_thread_init(proc_t proc, uintptr_t entry)
+user_thread_init(proc_t proc, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t arg0, uintptr_t arg1)
 {
     user_thread_t thread = &USER_THREAD(proc);
     spinlock_init(&thread->iocb_ctl.push_lock);
 
     thread->data_size  = PGSIZE;
-    thread->iobuf_size = PGSIZE;
-    thread->tls_u = thread->user_proc->end - 2 * PGSIZE;
+    thread->iobuf_size = tls_size - PGSIZE;
+    thread->tls_u      = tls_u;
 
     /* touch the memory */
     int i;
-    for (i = 0; i < 2; ++ i)
+    for (i = 0; i < (tls_size >> PGSHIFT); ++ i)
         user_proc_arch_copy_page(thread->user_proc, thread->tls_u + (i << PGSHIFT), 0, 0);
     
     size_t cap = thread->iobuf_size / (sizeof(io_call_entry_s) + sizeof(iobuf_index_t) * 2);
@@ -115,7 +166,7 @@ user_thread_init(proc_t proc, uintptr_t entry)
     thread->ioce_shadow = kmalloc(sizeof(io_ce_shadow_s) * cap);
     memset(thread->ioce_shadow, 0, sizeof(io_ce_shadow_s) * cap);
 
-    return user_thread_arch_init(proc, entry);
+    return user_thread_arch_init(proc, entry, arg0, arg1);
 }
 
 int
@@ -133,8 +184,6 @@ user_proc_copy(user_proc_t user_proc, uintptr_t addr, void *src, size_t size)
 int
 user_proc_brk(user_proc_t user_proc, uintptr_t end)
 {
-    DEBUG(DBG_IO, ("BRK: %016lx\n", end));
-    
     if (end <= user_proc->start) return -E_INVAL;
     if (end & (PGSIZE - 1)) return -E_INVAL;
     int ret = user_proc_arch_brk(user_proc, end);
@@ -147,6 +196,7 @@ void
 user_thread_jump(void)
 {
     __irq_disable();
+    current->type = PROC_TYPE_USER;
     user_thread_before_return(current);
     user_thread_arch_jump();
 }

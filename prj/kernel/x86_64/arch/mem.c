@@ -450,7 +450,6 @@ get_pte(pgd_t *pgdir, uintptr_t la, bool create) {
 
 struct msg_pgflt_data_s
 {
-    uintptr_t  proc;
     uintptr_t  la;
     uintptr_t  err;
     ips_node_s ips;
@@ -460,9 +459,8 @@ static void
 msg_pgflt_send(mbox_send_io_t send_io, io_ce_shadow_t recv_shd, io_call_entry_t recv_ce)
 {
     struct msg_pgflt_data_s *data = send_io->priv;
-    recv_ce->data[2] = data->proc;
-    recv_ce->data[3] = data->la;
-    recv_ce->data[4] = data->err;
+    recv_ce->data[2] = data->la;
+    recv_ce->data[3] = data->err;
 }
 
 static void
@@ -535,14 +533,14 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
             else pg = PHYS_TO_PAGE(PTE_ADDR(*pte));
         } else pg = PHYS_TO_PAGE(PTE_ADDR(*pte));
 
-        if (user_proc->mbox_manage == -1)
+        if (user_proc->mbox_manage == NULL)
         {
             /* XXX: carefully look for the cause */
             *pte = PAGE_TO_PHYS(pg) | PTE_W | PTE_U | PTE_P;
         }
         else
         {
-            mbox_t          mbox = mbox_get(user_proc->mbox_manage);
+            mbox_t          mbox = user_proc->mbox_manage;
             mbox_send_io_t ex_io = mbox_send_io_acquire(1);
             ex_io->mbox          = mbox;
             ex_io->iobuf_policy  = MBOX_IOBUF_POLICY_DO_MAP;
@@ -559,7 +557,6 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
             ex_io->priv    = &data;
 
             data.la   = la & ~(uintptr_t)(PGSIZE - 1);
-            data.proc = (uintptr_t)user_proc;
             data.err  = err;
             
             IPS_NODE_WAIT_SET(&data.ips);

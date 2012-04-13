@@ -11,25 +11,20 @@
 #include "mem.h"
 
 int
-user_thread_arch_init(proc_t proc, uintptr_t entry)
+user_thread_arch_init(proc_t proc, uintptr_t entry, uintptr_t arg0, uintptr_t arg1)
 {
     user_thread_t thread = &USER_THREAD(proc);
     
     memset(&thread->arch, 0, sizeof(thread->arch));
     thread->arch.init_entry = entry;
-    
-    if (thread->data_size +
-        thread->iobuf_size != PGSIZE * 2)
-    {
-        cprintf("PANIC: tls size != PGSIZE * 2");
-        return -E_INVAL;
-    }
+
+    size_t tls_pages = (thread->data_size + thread->iobuf_size) >> PGSHIFT;
 
     /* XXX to cleanup */
     /* map tls to kernel */
-    thread->tls = valloc(2);
+    thread->tls = valloc(tls_pages);
     int i;
-    for (i = 0; i < 2; ++ i)
+    for (i = 0; i < tls_pages; ++ i)
     {
         *get_pte(pgdir_scratch, (uintptr_t)thread->tls + (i << PGSHIFT), 1) =
             *get_pte(thread->user_proc->arch.pgdir, thread->tls_u + (i << PGSHIFT), 0);
@@ -52,8 +47,8 @@ user_thread_arch_init(proc_t proc, uintptr_t entry)
     
     tls_s tls;
     /* XXX: fill the proc arg and thread arg */
-    tls.proc_arg        = 0;
-    tls.thread_arg      = 0;
+    tls.arg0            = arg0;
+    tls.arg1            = arg1;
     tls.info.io_cap     = thread->io_cap;
     tls.info.ioce       = (void *)(thread->tls_u + ((char *)thread->ioce - (char *)thread->tls));
     tls.info.iocr       = (void *)(thread->tls_u + ((char *)thread->iocr - (char *)thread->tls));

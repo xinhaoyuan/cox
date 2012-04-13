@@ -5,8 +5,8 @@
 
 struct tls_s
 {
-    uintptr_t proc_arg;
-    uintptr_t thread_arg;
+    uintptr_t arg0;
+    uintptr_t arg1;
 
     struct
     {
@@ -36,9 +36,12 @@ struct tls_s
 typedef struct tls_s  tls_s;
 typedef struct tls_s *tls_t;
 
+#include <mach.h>
+static char tls_data_size_assert[sizeof(tls_s) > __PGSIZE ? -1 : 0] __attribute__((unused));
+
 /* The flat position of each variable in tls */
-#define TLS_PROC_ARG   0
-#define TLS_THREAD_ARG 1
+#define TLS_ARG0       0
+#define TLS_ARG1       1
 #define TLS_IOCR_KHEAD 2
 #define TLS_IOCR_UTAIL 3
 #define TLS_IOCB_UHEAD 4

@@ -37,7 +37,7 @@ __init(tls_t tls, uintptr_t start, uintptr_t end)
     __iocr_set(__tls.info.iocr);
     __iocb_set(__tls.info.iocb);
 
-    if (__thread_arg == 0)
+    if (__arg0)
     {
         /* Init thread of a process */
         page_init((void *)(start + (__bin_end - __bin_start)), (void *)end);
