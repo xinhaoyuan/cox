@@ -28,9 +28,7 @@ typedef struct io_call_entry_s *io_call_entry_t;
 /* refer to doc/io.txt */
 
 /* BASE */
-#define IO_CREATE_PROC      0x010
-#define   IO_PROC_CREATE_FLAG_SHARE  0x1
-#define   IO_PROC_CREATE_FLAG_MNODE  0x2
+#define IO_THREAD_CREATE    0x010
 #define IO_EXIT             0x011
 #define IO_BRK              0x020
 #define IO_PAGE_HOLE_SET    0x021
@@ -50,6 +48,7 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define IO_PHYS_FREE        0x204
 #define IO_MBOX_OPEN        0x210
 #define IO_MBOX_CLOSE       0x211
+#define IO_PROC_CREATE      0x220
 
 #define MBOX_IOBUF_POLICY_DO_MAP     0x1
 #define MBOX_IOBUF_POLICY_PERSISTENT 0x2
