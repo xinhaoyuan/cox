@@ -145,7 +145,7 @@ io(io_data_t iod, int mode)
 {
     ips_node_s __node;
     upriv_t p = __upriv;
-    if (semaphore_acquire(&p->io_sem, &__node))
+    if (semaphore_acquire(&p->io_sem, &__node) == 0)
     {
         ips_wait(&__node);
     }
@@ -177,7 +177,7 @@ mbox_io_begin(io_data_t iod)
 {
     ips_node_s __node;
     upriv_t p = __upriv;
-    if (semaphore_acquire(&p->io_sem, &__node))
+    if (semaphore_acquire(&p->io_sem, &__node) == 0)
     {
         ips_wait(&__node);
     }
