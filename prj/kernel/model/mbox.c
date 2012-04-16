@@ -20,6 +20,8 @@ mbox_s mboxs[MBOXS_MAX_COUNT];
 #define MBOX_SEND_IOS_MAX_COUNT 4096
 static mbox_send_io_s mbox_send_ios[MBOX_SEND_IOS_MAX_COUNT];
 
+static void mbox_free(mbox_t mbox);
+
 mbox_t
 mbox_get(int mbox_id)
 {
@@ -96,10 +98,22 @@ mbox_alloc(user_proc_t proc)
     else return -1;
 }
 
-void
-mbox_free(int mbox_id)
+static void
+mbox_free(mbox_t mbox)
 {
-    mbox_put(mboxs + mbox_id);
+    if (mbox == NULL ||
+        mbox->status == MBOX_STATUS_FREE)
+        return;
+
+    mbox->status = MBOX_STATUS_FREE;
+    
+    int irq = irq_save();
+    spinlock_acquire(&mbox_alloc_lock);
+
+    list_add(&mbox_free_list, &mbox->free_list);
+    
+    spinlock_release(&mbox_alloc_lock);
+    irq_restore(irq);
 }
 
 mbox_send_io_t
@@ -171,7 +185,7 @@ mbox_kern_send(mbox_send_io_t io)
             io->status    = MBOX_SEND_IO_STATUS_PROCESSING;
             r->send_io    = io;
             
-            io_call_entry_t ce = &USER_THREAD(shd->proc).ioce[shd->index];
+            io_call_entry_t ce = &USER_THREAD(shd->proc)->ioce[shd->index];
             /* WRITE MESSAGE */
             ce->data[0] = 0;
             io->send_cb(io, shd, ce);
@@ -190,8 +204,8 @@ int
 mbox_user_send(proc_t io_proc, iobuf_index_t io_index)
 {
     int irq;
-    io_ce_shadow_t send_shd = &USER_THREAD(io_proc).ioce_shadow[io_index];
-    io_call_entry_t send_ce = &USER_THREAD(io_proc).ioce[io_index];
+    io_ce_shadow_t send_shd = &USER_THREAD(io_proc)->ioce_shadow[io_index];
+    io_call_entry_t send_ce = &USER_THREAD(io_proc)->ioce[io_index];
     mbox_send_io_t  send_io = &send_shd->mbox_send_io;
     mbox_t             mbox = send_io->mbox;
 
@@ -236,7 +250,7 @@ mbox_user_send(proc_t io_proc, iobuf_index_t io_index)
 
         mbox_recv_io_t  recv_io = CONTAINER_OF(rl, mbox_recv_io_s, io_list);
         io_ce_shadow_t recv_shd = CONTAINER_OF(recv_io, io_ce_shadow_s, mbox_recv_io);
-        io_call_entry_t recv_ce = &USER_THREAD(recv_shd->proc).ioce[recv_shd->index];
+        io_call_entry_t recv_ce = &USER_THREAD(recv_shd->proc)->ioce[recv_shd->index];
         
         send_io->status  = MBOX_SEND_IO_STATUS_PROCESSING;
         recv_io->send_io = send_io;
@@ -269,7 +283,7 @@ mbox_ack_io(mbox_send_io_t ack_io, io_ce_shadow_t recv_shd, io_call_entry_t recv
     if ((ack_io->iobuf_policy & MBOX_IOBUF_POLICY_DO_MAP) &&
         !(ack_io->iobuf_policy & MBOX_IOBUF_POLICY_PERSISTENT))
     {
-        user_proc_arch_mmio_close(USER_THREAD(recv_shd->proc).user_proc, recv_io->iobuf_u);
+        user_proc_arch_mmio_close(USER_THREAD(recv_shd->proc)->user_proc, recv_io->iobuf_u);
         ack_io->iobuf_target_u = recv_io->iobuf_u = 0;
     }
     
@@ -297,7 +311,7 @@ mbox_ack_io(mbox_send_io_t ack_io, io_ce_shadow_t recv_shd, io_call_entry_t recv
         ack_io->status = MBOX_SEND_IO_STATUS_FINISHED;
         
         io_ce_shadow_t  ack_shd = CONTAINER_OF(ack_io, io_ce_shadow_s, mbox_send_io);
-        io_call_entry_t ack_ce  = &USER_THREAD(ack_shd->proc).ioce[ack_shd->index];
+        io_call_entry_t ack_ce  = &USER_THREAD(ack_shd->proc)->ioce[ack_shd->index];
         
         ack_ce->data[0] = 0;
         ack_ce->data[1] = ack_io->iobuf_u;
@@ -315,8 +329,8 @@ mbox_user_recv(proc_t io_proc, iobuf_index_t io_index)
 {
     int irq;
 
-    io_ce_shadow_t recv_shd = &USER_THREAD(io_proc).ioce_shadow[io_index];
-    io_call_entry_t recv_ce = &USER_THREAD(io_proc).ioce[io_index];
+    io_ce_shadow_t recv_shd = &USER_THREAD(io_proc)->ioce_shadow[io_index];
+    io_call_entry_t recv_ce = &USER_THREAD(io_proc)->ioce[io_index];
     mbox_recv_io_t  recv_io = &recv_shd->mbox_recv_io;
     mbox_t             mbox = recv_io->mbox;
     
@@ -368,7 +382,7 @@ mbox_user_recv(proc_t io_proc, iobuf_index_t io_index)
         if (send_io->type == MBOX_SEND_IO_TYPE_USER_SHADOW)
         {
             io_ce_shadow_t send_shd = CONTAINER_OF(send_io, io_ce_shadow_s, mbox_send_io);
-            io_call_entry_t send_ce = &USER_THREAD(send_shd->proc).ioce[send_shd->index];            
+            io_call_entry_t send_ce = &USER_THREAD(send_shd->proc)->ioce[send_shd->index];            
 
             memmove(&recv_ce->data[2], &send_ce->data[2], sizeof(uintptr_t) * (IO_ARGS_COUNT - 2));
         }
@@ -388,8 +402,8 @@ int
 mbox_user_io_attach(proc_t io_proc, iobuf_index_t io_index, mbox_t mbox, int type, size_t buf_size)
 {
     int err;
-    io_ce_shadow_t shd = &USER_THREAD(io_proc).ioce_shadow[io_index];
-    io_call_entry_t ce = &USER_THREAD(io_proc).ioce[io_index];
+    io_ce_shadow_t shd = &USER_THREAD(io_proc)->ioce_shadow[io_index];
+    io_call_entry_t ce = &USER_THREAD(io_proc)->ioce[io_index];
     
     buf_size = (buf_size + __PGSIZE - 1) & ~(__PGSIZE - 1);
     
@@ -423,7 +437,7 @@ mbox_user_io_attach(proc_t io_proc, iobuf_index_t io_index, mbox_t mbox, int typ
         {
             if (send_io->iobuf_target_u)
                 user_proc_arch_mmio_close(send_io->mbox->proc, send_io->iobuf_target_u);
-            user_proc_arch_mmio_close(USER_THREAD(io_proc).user_proc, send_io->iobuf_u);
+            user_proc_arch_mmio_close(USER_THREAD(io_proc)->user_proc, send_io->iobuf_u);
             page_free_atomic(send_io->iobuf_p);
         }
         else
@@ -439,7 +453,7 @@ mbox_user_io_attach(proc_t io_proc, iobuf_index_t io_index, mbox_t mbox, int typ
             goto error;
         }
         
-        if (user_proc_arch_mmio_open(USER_THREAD(io_proc).user_proc, PAGE_TO_PHYS(send_io->iobuf_p),
+        if (user_proc_arch_mmio_open(USER_THREAD(io_proc)->user_proc, PAGE_TO_PHYS(send_io->iobuf_p),
                                      buf_size, &send_io->iobuf_u))
         {
             page_free_atomic(send_io->iobuf_p);
@@ -469,16 +483,16 @@ mbox_user_io_attach(proc_t io_proc, iobuf_index_t io_index, mbox_t mbox, int typ
 int
 mbox_user_io_detach(proc_t io_proc, iobuf_index_t io_index)
 {
-    io_ce_shadow_t shd = &USER_THREAD(io_proc).ioce_shadow[io_index];
+    io_ce_shadow_t shd = &USER_THREAD(io_proc)->ioce_shadow[io_index];
     if (shd->type == IO_CE_SHADOW_TYPE_MBOX_RECV_IO)
     {
         mbox_recv_io_t recv_io = &shd->mbox_recv_io;
-        if (recv_io->send_io) mbox_ack_io(recv_io->send_io, shd, USER_THREAD(io_proc).ioce + io_index);
+        if (recv_io->send_io) mbox_ack_io(recv_io->send_io, shd, USER_THREAD(io_proc)->ioce + io_index);
     }
     else if (shd->type == IO_CE_SHADOW_TYPE_MBOX_SEND_IO)
     {
         mbox_send_io_t send_io = &shd->mbox_send_io;
-        user_proc_arch_mmio_close(USER_THREAD(io_proc).user_proc, send_io->iobuf_u);
+        user_proc_arch_mmio_close(USER_THREAD(io_proc)->user_proc, send_io->iobuf_u);
         page_free_atomic(send_io->iobuf_p);
         /* XXX kernel map of iobuf? */
     }

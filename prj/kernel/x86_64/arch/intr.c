@@ -128,7 +128,7 @@ trap_dispatch(struct trapframe *tf)
     bool from_user = !trap_in_kernel(tf);
     if (from_user)
     {
-        USER_THREAD(current).arch.tf = tf;
+        USER_THREAD(current)->arch.tf = tf;
     }
 
     if (tf->tf_trapno < EXCEPTION_COUNT) {

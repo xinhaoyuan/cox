@@ -82,9 +82,10 @@ typedef struct proc_s
 
 } proc_s;
 
-#define PROC_TYPE_KERN 0
-#define PROC_TYPE_USER 1
-#define PROC_TYPE_LWIP 2
+#define PROC_TYPE_FREE      0
+#define PROC_TYPE_KERN      1
+#define PROC_TYPE_USER_INIT 2
+#define PROC_TYPE_USER      3
 
 #define PROC_STATUS_RUNNABLE_WEAK   0
 #define PROC_STATUS_RUNNABLE_STRONG 1

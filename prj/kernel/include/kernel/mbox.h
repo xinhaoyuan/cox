@@ -96,7 +96,8 @@ struct mbox_recv_io_s
 
 #define MBOX_STATUS_FREE       0
 #define MBOX_STATUS_NORMAL     1
-#define MBOX_STATUS_IRQ_LISTEN 2
+#define MBOX_STATUS_MANAGE     2
+#define MBOX_STATUS_IRQ_LISTEN 3
 
 #define MBOX_SEND_IO_TYPE_FREE 0
 #define MBOX_SEND_IO_TYPE_KERN_ALLOC  1
@@ -117,10 +118,8 @@ typedef mbox_recv_io_s *mbox_recv_io_t;
 #define MBOXS_MAX_COUNT 256
 extern mbox_s mboxs[MBOXS_MAX_COUNT];
 
-int  mbox_sys_init(void);
-int  mbox_alloc(struct user_proc_s *proc);
-void mbox_free(int mbox_id);
-
+int    mbox_sys_init(void);
+int    mbox_alloc(struct user_proc_s *proc);
 mbox_t mbox_get(int mbox_id);
 void   mbox_put(mbox_t mbox);
 

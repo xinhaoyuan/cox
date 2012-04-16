@@ -62,6 +62,14 @@ typedef io_ce_shadow_s *io_ce_shadow_t;
 
 struct user_thread_s
 {
+    union
+    {
+        list_entry_s free_list;
+        list_entry_s user_thread_list;
+    };
+
+    proc_s       proc;
+    int          pid;
     user_proc_t  user_proc;
     void        *tls;           /* kernel access of TLS area */
     uintptr_t    tls_u;         /* user access */
@@ -95,15 +103,12 @@ struct user_thread_s
 typedef struct user_thread_s  user_thread_s;
 typedef struct user_thread_s *user_thread_t;
 
-struct user_thread_wrapper_s
-{
-    proc_s        proc;
-    user_thread_s user_thread;
-};
+#define USER_THREAD(__proc) (CONTAINER_OF(__proc, user_thread_s, proc))
 
-typedef struct user_thread_wrapper_s user_thread_wrapper_s;
-
-#define USER_THREAD(proc) (((user_thread_wrapper_s *)(proc))->user_thread)
+int           user_thread_sys_init(void);
+int           user_thread_alloc(const char *name, int class, void *stack_base, size_t stack_size);
+user_thread_t user_thread_get(int pid);
+void          user_thread_put(user_thread_t ut);
 
 void user_thread_jump(void) __attribute__((noreturn));
 int  user_thread_iocb_push(proc_t proc, iobuf_index_t index);

@@ -13,7 +13,7 @@
 int
 user_thread_arch_init(proc_t proc, uintptr_t entry, uintptr_t arg0, uintptr_t arg1)
 {
-    user_thread_t thread = &USER_THREAD(proc);
+    user_thread_t thread = USER_THREAD(proc);
     
     memset(&thread->arch, 0, sizeof(thread->arch));
     thread->arch.init_entry = entry;
@@ -68,9 +68,9 @@ void
 user_thread_arch_jump(void)
 {
     proc_t proc = current;
-    if (USER_THREAD(proc).arch.tf != NULL)
+    if (USER_THREAD(proc)->arch.tf != NULL)
     {
-        __user_jump(USER_THREAD(proc).arch.tf);
+        __user_jump(USER_THREAD(proc)->arch.tf);
     }
     else
     {
@@ -83,11 +83,11 @@ user_thread_arch_jump(void)
         tf.tf_rflags = FL_IF ;
         /* XXX: for test driver node */
         tf.tf_rflags |= FL_IOPL_3;
-        tf.tf_rip = USER_THREAD(proc).arch.init_entry;
+        tf.tf_rip = USER_THREAD(proc)->arch.init_entry;
         /* pass tls, start, end to user init */
-        tf.tf_regs.reg_rdi = USER_THREAD(proc).tls_u;
-        tf.tf_regs.reg_rsi = USER_THREAD(proc).user_proc->start;
-        tf.tf_regs.reg_rdx = USER_THREAD(proc).user_proc->end;
+        tf.tf_regs.reg_rdi = USER_THREAD(proc)->tls_u;
+        tf.tf_regs.reg_rsi = USER_THREAD(proc)->user_proc->start;
+        tf.tf_regs.reg_rdx = USER_THREAD(proc)->user_proc->end;
         __user_jump(&tf);
     }
 }
@@ -100,6 +100,6 @@ void
 user_thread_arch_restore_context(proc_t proc)
 {
     /* change the gs base for TLS */
-    __write_msr(0xC0000101, USER_THREAD(proc).tls_u);
-    __lcr3(USER_THREAD(proc).user_proc->arch.cr3);
+    __write_msr(0xC0000101, USER_THREAD(proc)->tls_u);
+    __lcr3(USER_THREAD(proc)->user_proc->arch.cr3);
 }

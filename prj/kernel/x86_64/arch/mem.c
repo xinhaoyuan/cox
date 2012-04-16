@@ -503,11 +503,12 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
     {
         if (current->type != PROC_TYPE_USER)
         {
-            cprintf("PANIC: user area page fault by non-user thread\n");
+            cprintf("PANIC: user area page fault by non-user thread %p\n", current);
+            cprintf("LA: %p, PC %p\n", la, pc);
             while (1) ;
         }
 
-        user_thread_t user_thread = &USER_THREAD(current);
+        user_thread_t user_thread = USER_THREAD(current);
         user_proc_t user_proc = user_thread->user_proc;
         if (user_proc->start > la || user_proc->end <= la)
         {
