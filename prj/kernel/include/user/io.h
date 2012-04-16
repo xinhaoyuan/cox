@@ -28,6 +28,7 @@ typedef struct io_call_entry_s *io_call_entry_t;
 /* refer to doc/io.txt */
 
 /* BASE */
+#define IO_THREAD_NOTIFY    0x000
 #define IO_THREAD_CREATE    0x010
 #define IO_EXIT             0x011
 #define IO_BRK              0x020

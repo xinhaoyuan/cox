@@ -348,6 +348,7 @@ user_thread_restore_context(proc_t proc)
 
 /* USER IO PROCESS ============================================ */
 
+static inline int do_io_thread_notify(proc_t proc, int pid) __attribute__((always_inline));
 static inline int do_io_page_hole_set(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
 static inline int do_io_page_hole_clear(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
 static inline int do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result) __attribute__((always_inline));
@@ -367,6 +368,11 @@ do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 {
     switch (entry->data[0])
     {
+    case IO_THREAD_NOTIFY:
+        entry->data[0] = do_io_thread_notify(proc, entry->data[1]);
+        user_thread_iocb_push(proc, idx);
+        break;
+        
     case IO_BRK:
         entry->data[0] = do_io_brk(proc, entry->data[1]);
         user_thread_iocb_push(proc, idx);
@@ -453,6 +459,21 @@ do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
 
     default: break;
     }
+}
+
+static inline int
+do_io_thread_notify(proc_t proc, int pid)
+{
+    user_thread_t thread = user_thread_get(pid);
+    if (thread == NULL) return -E_INVAL;
+    if (thread->user_proc != USER_THREAD(proc)->user_proc)
+    {
+        user_thread_put(thread);
+        return -E_PERM;
+    }
+    proc_notify(&thread->proc);
+    user_thread_put(thread);
+    return 0;
 }
 
 static inline int
