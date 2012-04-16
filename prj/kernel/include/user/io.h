@@ -54,7 +54,6 @@ typedef struct io_call_entry_s *io_call_entry_t;
 #define MBOX_IOBUF_POLICY_DO_MAP     0x1
 #define MBOX_IOBUF_POLICY_PERSISTENT 0x2
 
-
 typedef void (*io_callback_handler_f)(void *ret);
 
 #endif

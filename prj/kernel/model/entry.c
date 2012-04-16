@@ -10,7 +10,7 @@
 #include <mbox.h>
 #include <mbox_irq.h>
 
-char          user_init_stack[8192] __attribute__((aligned(PGSIZE)));
+char user_init_stack[8192] __attribute__((aligned(PGSIZE)));
 
 void
 kernel_start(void)
