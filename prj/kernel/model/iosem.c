@@ -20,7 +20,7 @@ iosem_hash_init(iosem_hash_t hash, size_t size, iosem_hash_head_t head_entry)
 }
 
 static inline __attribute__((always_inline)) int
-iosem_hash_node_get_locked(iosem_hash_t hash, uintptr_t key, int *irq_slot, iosem_hash_head_t *head_slot, iosem_hash_node_t *node_slot)
+iosem_hash_node_get_locked(iosem_hash_t hash, uintptr_t key, int touch, int *irq_slot, iosem_hash_head_t *head_slot, iosem_hash_node_t *node_slot)
 {
     uintptr_t h = hash_ptr(key) % hash->size;
     int irq = irq_save();
@@ -50,7 +50,7 @@ iosem_hash_node_get_locked(iosem_hash_t hash, uintptr_t key, int *irq_slot, iose
         }
     }
 
-    if (node == NULL)
+    if (node == NULL && touch)
     {
         node = kmalloc(sizeof(iosem_hash_node_s));
 
@@ -62,7 +62,6 @@ iosem_hash_node_get_locked(iosem_hash_t hash, uintptr_t key, int *irq_slot, iose
             return -E_NO_MEM;
         }
 
-        node->to_del = 0;
         node->key = key;
         node->up_count = 0;
         list_init(&node->down_queue);
@@ -77,24 +76,49 @@ iosem_hash_node_get_locked(iosem_hash_t hash, uintptr_t key, int *irq_slot, iose
 }
 
 int
+iosem_del(iosem_hash_t hash, uintptr_t key)
+{
+    iosem_hash_head_t head;
+    iosem_hash_node_t node;
+    int irq;
+    int result = iosem_hash_node_get_locked(hash, key, 0, &irq, &head, &node);
+    if (result < 0) return result;
+
+    if (node != NULL)
+    {
+        while (!list_empty(&node->down_queue))
+        {
+            list_entry_t cur = list_next(&node->down_queue);
+            list_del(cur);
+
+            io_ce_shadow_t shd = CONTAINER_OF(cur, io_ce_shadow_s, iosem_down_node);
+            shd->type = IO_CE_SHADOW_TYPE_INIT;
+            user_thread_iocb_push(shd->proc, shd->index);
+        }
+
+        list_del(&node->hash_node);
+        kfree(node);
+    }
+
+    spinlock_release(&head->lock);
+    irq_restore(irq);
+
+    return 0;
+}
+
+int
 iosem_down(iosem_hash_t hash, uintptr_t key, list_entry_t queue_node)
 {
     iosem_hash_head_t head;
     iosem_hash_node_t node;
     int irq;
-    int result = iosem_hash_node_get_locked(hash, key, &irq, &head, &node);
+    int result = iosem_hash_node_get_locked(hash, key, 1, &irq, &head, &node);
     if (result < 0) return result;
     
     result = node->up_count;
     
     if (result > 0)
-    {
-        if (-- node->up_count == 0 && node->to_del)
-        {
-            list_del(&node->hash_node);
-            kfree(node);
-        }
-    }
+        -- node->up_count;
     else
         list_add_before(&node->down_queue, queue_node);
 
@@ -110,7 +134,7 @@ iosem_up(iosem_hash_t hash, uintptr_t key, size_t num)
     iosem_hash_head_t head;
     iosem_hash_node_t node;
     int irq;
-    int result = iosem_hash_node_get_locked(hash, key, &irq, &head, &node);
+    int result = iosem_hash_node_get_locked(hash, key, 1, &irq, &head, &node);
     if (result < 0) return result;
 
     result = num;
@@ -129,14 +153,6 @@ iosem_up(iosem_hash_t hash, uintptr_t key, size_t num)
     result         -= num;
     node->up_count += num;
     
-    if (node->to_del &&
-        node->up_count == 0 &&
-        list_empty(&node->down_queue))
-    {
-        list_del(&node->hash_node);
-        kfree(node);
-    }
-
     spinlock_release(&head->lock);
     irq_restore(irq);
 

@@ -4,6 +4,7 @@
 #include <mbox_irq.h>
 #include <page.h>
 #include <proc.h>
+#include <iosem.h>
 
 static void do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx);
 
@@ -31,19 +32,22 @@ user_process_io(proc_t proc)
 
 /* USER IO PROCESS ============================================ */
 
-static inline int do_io_thread_notify(proc_t proc, int pid) __attribute__((always_inline));
-static inline int do_io_page_hole_set(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
-static inline int do_io_page_hole_clear(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
-static inline int do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result) __attribute__((always_inline));
-static inline int do_io_phys_free(proc_t proc, uintptr_t physaddr) __attribute__((always_inline));
-static inline int do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result) __attribute__((always_inline));
-static inline int do_io_mmio_close(proc_t proc, uintptr_t addr) __attribute__((always_inline));
-static inline int do_io_brk(proc_t proc, uintptr_t end) __attribute__((always_inline));
-static inline int do_io_sleep(proc_t proc, iobuf_index_t idx, uintptr_t until) __attribute__((always_inline));
-static inline int do_io_mbox_open(proc_t proc) __attribute__((always_inline));
-static inline int do_io_irq_listen(proc_t proc, int irq_no, int mbox_id) __attribute__((always_inline));
-static inline int do_io_mbox_attach(proc_t proc, iobuf_index_t idx, int mbox_id, int to_send, size_t buf_size) __attribute__((always_inline));
-static inline int do_io_mbox_detach(proc_t proc, iobuf_index_t idx) __attribute__((always_inline));
+static inline int  do_io_thread_notify(proc_t proc, int pid) __attribute__((always_inline));
+static inline int  do_io_sem_up(proc_t proc, uintptr_t key, size_t num) __attribute__((always_inline));
+static inline void do_io_sem_down(proc_t proc, iobuf_index_t idx, uintptr_t key) __attribute__((always_inline));
+static inline int  do_io_sem_del(proc_t proc, uintptr_t key) __attribute__((always_inline));
+static inline int  do_io_page_hole_set(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
+static inline int  do_io_page_hole_clear(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
+static inline int  do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result) __attribute__((always_inline));
+static inline int  do_io_phys_free(proc_t proc, uintptr_t physaddr) __attribute__((always_inline));
+static inline int  do_io_mmio_open(proc_t proc, uintptr_t physaddr, size_t size, uintptr_t *result) __attribute__((always_inline));
+static inline int  do_io_mmio_close(proc_t proc, uintptr_t addr) __attribute__((always_inline));
+static inline int  do_io_brk(proc_t proc, uintptr_t end) __attribute__((always_inline));
+static inline int  do_io_sleep(proc_t proc, iobuf_index_t idx, uintptr_t until) __attribute__((always_inline));
+static inline int  do_io_mbox_open(proc_t proc) __attribute__((always_inline));
+static inline int  do_io_irq_listen(proc_t proc, int irq_no, int mbox_id) __attribute__((always_inline));
+static inline int  do_io_mbox_attach(proc_t proc, iobuf_index_t idx, int mbox_id, int to_send, size_t buf_size) __attribute__((always_inline));
+static inline int  do_io_mbox_detach(proc_t proc, iobuf_index_t idx) __attribute__((always_inline));
 static inline void do_io_mbox_io(proc_t proc, iobuf_index_t idx) __attribute__((always_inline));
 
 static void
@@ -55,7 +59,21 @@ do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
         entry->data[0] = do_io_thread_notify(proc, entry->data[1]);
         user_thread_iocb_push(proc, idx);
         break;
+
+    case IO_SEM_UP:
+        entry->data[0] = do_io_sem_up(proc, entry->data[1], entry->data[2]);
+        user_thread_iocb_push(proc, idx);
+        break;
+
+    case IO_SEM_DOWN:
+        do_io_sem_down(proc, idx, entry->data[1]);
+        break;
         
+    case IO_SEM_DEL:
+        entry->data[0] = do_io_sem_del(proc, entry->data[1]);
+        user_thread_iocb_push(proc, idx);
+        break;
+
     case IO_BRK:
         entry->data[0] = do_io_brk(proc, entry->data[1]);
         user_thread_iocb_push(proc, idx);
@@ -158,6 +176,36 @@ do_io_thread_notify(proc_t proc, int pid)
     user_thread_put(thread);
     return 0;
 }
+
+static inline int
+do_io_sem_up(proc_t proc, uintptr_t key, size_t num)
+{
+    return iosem_up(&USER_THREAD(proc)->user_proc->iosem_hash, key, num);
+}
+
+static inline void
+do_io_sem_down(proc_t proc, iobuf_index_t idx, uintptr_t key)
+{
+    io_ce_shadow_t shd = &USER_THREAD(proc)->ioce_shadow[idx];
+    io_call_entry_t ce = &USER_THREAD(proc)->ioce[idx];
+
+    shd->type = IO_CE_SHADOW_TYPE_IOSEM_DOWN;
+    int result = iosem_down(&USER_THREAD(proc)->user_proc->iosem_hash, key, &shd->iosem_down_node);
+    ce->data[0] = result;
+
+    if (result <= 0)
+    {
+        shd->type = IO_CE_SHADOW_TYPE_INIT;
+        user_thread_iocb_push(proc, idx);
+    }
+}
+
+static inline int
+do_io_sem_del(proc_t proc, uintptr_t key)
+{
+    return iosem_del(&USER_THREAD(proc)->user_proc->iosem_hash, key);
+}
+
 
 static inline int
 do_io_page_hole_set(proc_t proc, uintptr_t base, uintptr_t size)
