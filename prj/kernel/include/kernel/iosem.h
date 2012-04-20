@@ -17,6 +17,7 @@ typedef iosem_hash_head_s       *iosem_hash_head_t;
 struct iosem_hash_node_s
 {
     list_entry_s hash_node;
+    int          to_del;
     uintptr_t    key;
     uintptr_t    up_count;
     list_entry_s down_queue;
