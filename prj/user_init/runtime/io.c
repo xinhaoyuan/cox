@@ -3,6 +3,7 @@
 #include <user/arch/syscall.h>
 #include <runtime/io.h>
 #include <runtime/fiber.h>
+#include <runtime/nsync.h>
 
 inline static iobuf_index_t ioce_alloc_unsafe(void);
 inline static void ioce_advance_unsafe(iobuf_index_t idx);
@@ -45,7 +46,7 @@ do_idle(void)
                 if (ce[idx].status != IO_CALL_STATUS_USED)
                 {
                     ioce_free_unsafe(idx);
-                    semaphore_release(&p->io_sem);
+                    native_sem_release(&p->io_sem);
                 }
                 
                 if (++head == cap) head = 0;
@@ -137,7 +138,7 @@ io_init(void)
 
     __ioce_free_set(0);
     
-    semaphore_init(&__upriv->io_sem, cap);
+    native_sem_init(&__upriv->io_sem, cap);
 }
 
 int
@@ -145,7 +146,7 @@ io(io_data_t iod, int mode)
 {
     ips_node_s __node;
     upriv_t p = __upriv;
-    if (semaphore_acquire(&p->io_sem, &__node) == 0)
+    if (native_sem_acquire(&p->io_sem, &__node) == 0)
     {
         ips_wait(&__node);
     }
@@ -177,7 +178,7 @@ mbox_io_begin(io_data_t iod)
 {
     ips_node_s __node;
     upriv_t p = __upriv;
-    if (semaphore_acquire(&p->io_sem, &__node) == 0)
+    if (native_sem_acquire(&p->io_sem, &__node) == 0)
     {
         ips_wait(&__node);
     }

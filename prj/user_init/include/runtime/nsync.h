@@ -1,5 +1,5 @@
-#ifndef __SYNC_H__
-#define __SYNC_H__
+#ifndef __NSYNC_H__
+#define __NSYNC_H__
 
 #include <types.h>
 #include <spinlock.h>
@@ -45,40 +45,33 @@ struct mutex_s
 typedef volatile struct mutex_s mutex_s;
 typedef mutex_s *mutex_t;
 
-#define SEMAPHORE_WAIT(sem) ((sem)->data & 2)
-#define SEMAPHORE_PTR(sem)  ((void *)((sem)->data & ~(uintptr_t)3))
+#define NATIVE_SEM_WAIT(sem) ((sem)->data & 2)
+#define NATIVE_SEM_PTR(sem)  ((void *)((sem)->data & ~(uintptr_t)3))
 
-#define SEMAPHORE_WAIT_SET(sem)     ((sem)->data |= 2)
-#define SEMAPHORE_WAIT_CLEAR(sem)   ((sem)->data &= ~(uintptr_t)2)
-#define SEMAPHORE_PTR_SET(sem, ptr) ((sem)->data = ((sem)->data & 3) | ((uintptr_t)(ptr) & ~(uintptr_t)3))
+#define NATIVE_SEM_WAIT_SET(sem)     ((sem)->data |= 2)
+#define NATIVE_SEM_WAIT_CLEAR(sem)   ((sem)->data &= ~(uintptr_t)2)
+#define NATIVE_SEM_PTR_SET(sem, ptr) ((sem)->data = ((sem)->data & 3) | ((uintptr_t)(ptr) & ~(uintptr_t)3))
 
-struct semaphore_s
+struct native_sem_s
 {
     spinlock_s lock;
     uintptr_t  count;
     uintptr_t  data;
 };
 
-typedef volatile struct semaphore_s semaphore_s;
-typedef semaphore_s *semaphore_t;
+typedef volatile struct native_sem_s native_sem_s;
+typedef native_sem_s *native_sem_t;
 
 int  ips_is_finish(ips_node_t node);
 void ips_wait(ips_node_t node);
 /* 1 for break/success, 0 for wait(again) */
 int  ips_wait_try(ips_node_t node);
 
-void mutex_init(mutex_t mutex);
-/* 1 for succ, 0 for failed/wait */
-int  mutex_try_acquire(mutex_t mutex);
-int  mutex_acquire(mutex_t mutex, ips_node_t node);
-void mutex_ac_break(mutex_t mutex, ips_node_t node);
-void mutex_release(mutex_t mutex);
-
-void semaphore_init(semaphore_t sem, uintptr_t count);
+void native_sem_init(native_sem_t sem, uintptr_t count);
 /* returns count before acquire */
-uintptr_t semaphore_try_acquire(semaphore_t sem);
-uintptr_t semaphore_acquire(semaphore_t sem, ips_node_t node);
-void semaphore_ac_break(semaphore_t sem, ips_node_t node);
-int  semaphore_release(semaphore_t sem);
+uintptr_t native_sem_try_acquire(native_sem_t sem);
+uintptr_t native_sem_acquire(native_sem_t sem, ips_node_t node);
+void native_sem_ac_break(native_sem_t sem, ips_node_t node);
+int  native_sem_release(native_sem_t sem);
 
 #endif

@@ -2,7 +2,7 @@
 #define __FIBER_H__
 
 #include <arch/context.h>
-#include <runtime/sync.h>
+#include <runtime/nsync.h>
 
 struct sched_node_s
 {
@@ -37,7 +37,7 @@ struct upriv_s
     fiber_s      init_fiber;
     sched_node_s sched_node;
     
-    semaphore_s        io_sem;
+    native_sem_s       io_sem;
     struct io_data_s **io_shadow;
 };
 

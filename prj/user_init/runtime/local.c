@@ -1,7 +1,7 @@
 #include <runtime/local.h>
 #include <runtime/io.h>
 #include <runtime/fiber.h>
-#include <runtime/sync.h>
+#include <runtime/nsync.h>
 #include <runtime/page.h>
 #include <runtime/malloc.h>
 #include <lib/low_io.h>
