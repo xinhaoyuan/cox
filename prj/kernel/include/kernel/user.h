@@ -7,12 +7,15 @@
 #include <user/io.h>
 #include <arch/user.h>
 #include <spinlock.h>
+#include <iosem.h>
 #include <mbox.h>
 
 struct user_proc_s
 {
     /* mbox for managing this user process */
     mbox_t mbox_manage;
+    
+    iosem_hash_s iosem_hash;
 
     /* address range */
     uintptr_t start;
@@ -49,6 +52,7 @@ struct io_ce_shadow_s
         mbox_send_io_s mbox_send_io;
         mbox_recv_io_s mbox_recv_io;
         timer_s        timer;
+        list_entry_s   iosem_down_node;
     };
 };
 
@@ -56,6 +60,7 @@ struct io_ce_shadow_s
 #define IO_CE_SHADOW_TYPE_MBOX_RECV_IO 1
 #define IO_CE_SHADOW_TYPE_MBOX_SEND_IO 2
 #define IO_CE_SHADOW_TYPE_TIMER        3
+#define IO_CE_SHADOW_TYPE_IOSEM_DOWN   4
 
 typedef struct io_ce_shadow_s io_ce_shadow_s;
 typedef io_ce_shadow_s *io_ce_shadow_t;

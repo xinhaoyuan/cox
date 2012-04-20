@@ -510,6 +510,8 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
 
         user_thread_t user_thread = USER_THREAD(current);
         user_proc_t user_proc = user_thread->user_proc;
+        
+        /* XXX: Lock the user_proc ? */
         if (user_proc->start > la || user_proc->end <= la)
         {
             /* volatile acces */
@@ -529,6 +531,7 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
         {
             if (*pte == 0)
             {
+                /* XXX: Should I put this allocation outside? */
                 pg = page_alloc_atomic(1);
             }
             else pg = PHYS_TO_PAGE(PTE_ADDR(*pte));

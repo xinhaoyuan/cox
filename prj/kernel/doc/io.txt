@@ -1,22 +1,16 @@
 For the introduction of user model, refer to user.txt.
 
-- (succ)IO_SET_CALLBACK(handler_func)
+- IO_KSEM_DOWN(addr)
 
-Set the userspace entry of I/O callback. Returns 0 with success.
+Use ``addr'' as a hash key, try to wait ``up'' operation on the kernel semaphore.
 
-- (succ)IO_SET_TLS(io_buf_size, user_size)
+- IO_KSEM_UP(addr, num)
 
-Realloc the TLS storage, must be called with no I/O in buffer. The
-user storage would be copy if successed. Returns 0 with success.
-
-- (succ)IO_CREATE_PROC(bin, bin_size, flags)
-
-Create a new process(thread) with specified binary image. Returns 0
-with success.
+Use ``addr'' as a hash key, try to wait ``down'' operation on the kernel semaphore.
 
 - IO_EXIT()
 
-Exit current process(thread)
+Exit current thread
 
 - (succ)IO_BRK(end)
 

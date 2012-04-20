@@ -29,6 +29,7 @@ kernel_start(void)
     int ret = user_thread_init_exec(&user_init->proc,
                                     (void *)_binary_user_init_image_start,
                                     _binary_user_init_image_end - _binary_user_init_image_start);
+    
     if (ret == 0)
         proc_notify(&user_init->proc);
     else

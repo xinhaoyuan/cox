@@ -147,7 +147,6 @@ mbox_kern_send(mbox_send_io_t io)
     if (io->type == MBOX_SEND_IO_TYPE_USER_SHADOW)
         return -E_INVAL;
     
-    
     int irq = irq_save();
     spinlock_acquire(&mbox->io_lock);
 
