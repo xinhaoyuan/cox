@@ -93,7 +93,7 @@ user_thread_put(user_thread_t ut)
 }
 
 static int  user_proc_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end);
-static int  user_thread_init(proc_t proc, uintptr_t entry, uintptr_t tls_u, uintptr_t tls_size, uintptr_t arg0, uintptr_t arg1);
+static int  user_thread_init(proc_t proc, uintptr_t entry, uintptr_t tls_u, uintptr_t tls_size, uintptr_t arg0, uintptr_t arg1, uintptr_t stack_ptr);
 static void print_tls(proc_t proc)
 {
     user_thread_t thread = USER_THREAD(proc);
@@ -137,7 +137,7 @@ user_thread_init_exec(proc_t proc, void *bin, size_t bin_size)
     if ((ret = user_proc_init(user_proc, &__start, &__end)) != 0) return ret;
     if ((ret = user_thread_init(proc, entry + __start - start,
                                 __end - 2 * PGSIZE, 2 * PGSIZE,
-                                1, 0)) != 0) return ret;
+                                1, 0, 0)) != 0) return ret;
 
     uintptr_t now = start;
     while (now < end)
@@ -182,7 +182,7 @@ user_thread_exec(proc_t proc, uintptr_t entry, uintptr_t start, uintptr_t end, u
     if ((ret = user_proc_init(user_proc, &__start, &__end)) != 0) return ret;
     if ((ret = user_thread_init(proc, entry + __start - start,
                                 __end - 2 * PGSIZE, 2 * PGSIZE,
-                                1, arg)) != 0) return ret;
+                                1, arg, 0)) != 0) return ret;
 
     user_proc->mbox_manage = mbox_get(mbox_alloc(USER_THREAD(manager)->user_proc));
     user_proc->mbox_manage->status = MBOX_STATUS_MANAGE;
@@ -193,7 +193,7 @@ user_thread_exec(proc_t proc, uintptr_t entry, uintptr_t start, uintptr_t end, u
 }
 
 int
-user_thread_create(proc_t proc, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t arg, proc_t from)
+user_thread_create(proc_t proc, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t arg, uintptr_t stack_ptr, proc_t from)
 {
     if (proc->type != PROC_TYPE_USER_INIT) return -E_INVAL;
     if (from->type != PROC_TYPE_USER) return -E_INVAL;
@@ -204,7 +204,7 @@ user_thread_create(proc_t proc, uintptr_t entry, uintptr_t tls_u, size_t tls_siz
     user_thread_t thread = USER_THREAD(proc);
     thread->user_proc = USER_THREAD(from)->user_proc;
     
-    if ((ret = user_thread_init(proc, entry, tls_u, tls_size, 0, arg)) != 0) return ret;
+    if ((ret = user_thread_init(proc, entry, tls_u, tls_size, 0, arg, stack_ptr)) != 0) return ret;
 
     print_tls(proc);
     return 0;
@@ -237,7 +237,7 @@ user_proc_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end)
 }
 
 int
-user_thread_init(proc_t proc, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t arg0, uintptr_t arg1)
+user_thread_init(proc_t proc, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t arg0, uintptr_t arg1, uintptr_t stack_ptr)
 {
     user_thread_t thread = USER_THREAD(proc);
     spinlock_init(&thread->iocb_ctl.push_lock);
@@ -258,7 +258,7 @@ user_thread_init(proc_t proc, uintptr_t entry, uintptr_t tls_u, size_t tls_size,
     thread->ioce_shadow = kmalloc(sizeof(io_ce_shadow_s) * cap);
     memset(thread->ioce_shadow, 0, sizeof(io_ce_shadow_s) * cap);
 
-    return user_thread_arch_init(proc, entry, arg0, arg1);
+    return user_thread_arch_init(proc, entry, arg0, arg1, stack_ptr);
 }
 
 int

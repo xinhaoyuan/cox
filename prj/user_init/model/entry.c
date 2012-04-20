@@ -14,7 +14,7 @@
 static char f1stack[4096] __attribute__((aligned(__PGSIZE)));
 static fiber_s f1;
 
-#if 1
+#if 0
 
 static char f2stack[4096] __attribute__((aligned(__PGSIZE)));
 static fiber_s f2;
@@ -122,7 +122,7 @@ fiber1(void *arg)
 
 #endif
 
-#if 1
+#if 0
     {
         io_data_s mbox_open = IO_DATA_INITIALIZER(1, IO_MBOX_OPEN);
         io(&mbox_open, IO_MODE_SYNC);
@@ -143,7 +143,7 @@ fiber1(void *arg)
 
     
 #endif
-    
+
     while (1) fiber_schedule();
 }
 

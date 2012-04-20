@@ -16,8 +16,6 @@ struct upriv_s;
 #define TLS_CURRENT_FIBER    (TLS_USTART + 5)
 #define TLS_UPRIV            (TLS_USTART + 6)
 
-#define __arg0               (TLS(TLS_ARG0))
-#define __arg1               (TLS(TLS_ARG1))
 #define __iocr_khead         ((iobuf_index_t)TLS(TLS_IOCR_KHEAD))
 #define __iocr_utail         ((iobuf_index_t)TLS(TLS_IOCR_UTAIL))
 #define __iocb_uhead         ((iobuf_index_t)TLS(TLS_IOCB_UHEAD))

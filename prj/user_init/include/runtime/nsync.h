@@ -1,6 +1,9 @@
 #ifndef __NSYNC_H__
 #define __NSYNC_H__
 
+/* NATIVE SYNC - SYNC FOR FIBERS IN SAME THREAD. */
+/* Different threads should use ``io_sem'' to sync */
+
 #include <types.h>
 #include <spinlock.h>
 

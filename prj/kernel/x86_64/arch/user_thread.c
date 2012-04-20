@@ -11,7 +11,7 @@
 #include "mem.h"
 
 int
-user_thread_arch_init(proc_t proc, uintptr_t entry, uintptr_t arg0, uintptr_t arg1)
+user_thread_arch_init(proc_t proc, uintptr_t entry, uintptr_t arg0, uintptr_t arg1, uintptr_t stack_ptr)
 {
     user_thread_t thread = USER_THREAD(proc);
     
@@ -31,24 +31,24 @@ user_thread_arch_init(proc_t proc, uintptr_t entry, uintptr_t arg0, uintptr_t ar
     }
 
     /* refer to user/tls.h */
-    thread->iocr_ctl.khead = thread->tls + OFFSET_OF(tls_s, iocr_ctl.khead);
-    thread->iocr_ctl.utail = thread->tls + OFFSET_OF(tls_s, iocr_ctl.utail);
-    thread->iocb_ctl.uhead = thread->tls + OFFSET_OF(tls_s, iocb_ctl.uhead);
-    thread->iocb_ctl.ktail = thread->tls + OFFSET_OF(tls_s, iocb_ctl.ktail);
+    thread->iocr_ctl.khead = (void *)thread->tls + OFFSET_OF(tls_s, iocr_ctl.khead);
+    thread->iocr_ctl.utail = (void *)thread->tls + OFFSET_OF(tls_s, iocr_ctl.utail);
+    thread->iocb_ctl.uhead = (void *)thread->tls + OFFSET_OF(tls_s, iocb_ctl.uhead);
+    thread->iocb_ctl.ktail = (void *)thread->tls + OFFSET_OF(tls_s, iocb_ctl.ktail);
     
-    thread->ioce = thread->tls + thread->data_size;
-    thread->iocr = thread->tls + thread->data_size + thread->iobuf_size
+    thread->ioce = (void *)thread->tls + thread->data_size;
+    thread->iocr = (void *)thread->tls + thread->data_size + thread->iobuf_size
         - thread->io_cap * sizeof(iobuf_index_t) * 2;
-    thread->iocb = thread->tls + thread->data_size + thread->iobuf_size
+    thread->iocb = (void *)thread->tls + thread->data_size + thread->iobuf_size
         - thread->io_cap * sizeof(iobuf_index_t);
 
     /* flush the page map */
     __lcr3(__rcr3());
     
     tls_s tls;
-    /* XXX: fill the proc arg and thread arg */
-    tls.arg0            = arg0;
-    tls.arg1            = arg1;
+    tls.info.arg0       = arg0;
+    tls.info.arg1       = arg1;
+    tls.info.stack_ptr  = stack_ptr;
     tls.info.io_cap     = thread->io_cap;
     tls.info.ioce       = (void *)(thread->tls_u + ((char *)thread->ioce - (char *)thread->tls));
     tls.info.iocr       = (void *)(thread->tls_u + ((char *)thread->iocr - (char *)thread->tls));
@@ -86,6 +86,7 @@ user_thread_arch_jump(void)
         tf.tf_rip = USER_THREAD(proc)->arch.init_entry;
         /* pass tls, start, end to user init */
         tf.tf_regs.reg_rdi = USER_THREAD(proc)->tls_u;
+        tf.tf_rsp = USER_THREAD(proc)->tls->info.stack_ptr;
         tf.tf_regs.reg_rsi = USER_THREAD(proc)->user_proc->start;
         tf.tf_regs.reg_rdx = USER_THREAD(proc)->user_proc->end;
         __user_jump(&tf);

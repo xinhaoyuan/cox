@@ -75,13 +75,13 @@ struct user_thread_s
         list_entry_s user_thread_list;
     };
 
-    proc_s       proc;
-    int          pid;
-    user_proc_t  user_proc;
-    void        *tls;           /* kernel access of TLS area */
-    uintptr_t    tls_u;         /* user access */
-    size_t       data_size;     /* size of tls data area */
-    size_t       iobuf_size;    /* size for I/O buffer, including ioce, iocr, iocb */
+    proc_s        proc;
+    int           pid;
+    user_proc_t   user_proc;
+    struct tls_s *tls;          /* kernel access of TLS area */
+    uintptr_t     tls_u;        /* user access */
+    size_t        data_size;    /* size of tls data area */
+    size_t        iobuf_size;   /* size for I/O buffer, including ioce, iocr, iocb */
 
     iobuf_index_t   io_cap;     /* io concurrency */
     io_call_entry_t ioce;       /* io call entries */
@@ -116,13 +116,14 @@ int           user_thread_sys_init(void);
 int           user_thread_alloc(const char *name, int class, void *stack_base, size_t stack_size);
 user_thread_t user_thread_get(int pid);
 void          user_thread_put(user_thread_t ut);
+int           user_thread_create(proc_t proc, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t arg, uintptr_t stack_ptr, proc_t from);
 
 void user_thread_jump(void) __attribute__((noreturn));
 int  user_thread_iocb_push(proc_t proc, iobuf_index_t index);
 
 /* filled by arch */
 int  user_thread_arch_iocb_call(void);
-int  user_thread_arch_init(proc_t proc, uintptr_t entry, uintptr_t arg0, uintptr_t arg1);
+int  user_thread_arch_init(proc_t proc, uintptr_t entry, uintptr_t arg0, uintptr_t arg1, uintptr_t stack_ptr);
 int  user_thread_arch_in_cb_stack(void);
 void user_thread_arch_jump(void) __attribute__((noreturn));
 void user_thread_arch_save_context(proc_t proc);

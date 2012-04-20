@@ -37,12 +37,12 @@ __init(tls_t tls, uintptr_t start, uintptr_t end)
     __iocr_set(__tls.info.iocr);
     __iocb_set(__tls.info.iocb);
 
-    if (__arg0)
+    if (tls->info.arg0)
     {
         /* Init thread of a process */
         page_init((void *)(start + (__bin_end - __bin_start)), (void *)end);
         size_t tls_pages = (end - (start + (__bin_end - __bin_start))) >> __PGSHIFT;
-        /* XXX: use a dummy palloc to occupy the tls space in heap */
+        /* use a dummy palloc to occupy the tls space in heap. XXX: improve? */
         (void)palloc(tls_pages);
         /* init the slab system */
         (void)malloc_init();

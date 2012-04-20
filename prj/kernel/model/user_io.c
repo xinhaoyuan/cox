@@ -5,6 +5,7 @@
 #include <page.h>
 #include <proc.h>
 #include <iosem.h>
+#include <malloc.h>
 
 static void do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx);
 
@@ -36,6 +37,7 @@ static inline int  do_io_thread_notify(proc_t proc, int pid) __attribute__((alwa
 static inline int  do_io_sem_up(proc_t proc, uintptr_t key, size_t num) __attribute__((always_inline));
 static inline void do_io_sem_down(proc_t proc, iobuf_index_t idx, uintptr_t key) __attribute__((always_inline));
 static inline int  do_io_sem_del(proc_t proc, uintptr_t key) __attribute__((always_inline));
+static inline int  do_io_thread_create(proc_t proc, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t arg, uintptr_t stack_ptr, uintptr_t *thread_id_slot) __attribute__((always_inline));
 static inline int  do_io_page_hole_set(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
 static inline int  do_io_page_hole_clear(proc_t proc, uintptr_t base, uintptr_t size) __attribute__((always_inline));
 static inline int  do_io_phys_alloc(proc_t proc, size_t size, int flags, uintptr_t *result) __attribute__((always_inline));
@@ -74,6 +76,11 @@ do_io_process(proc_t proc, io_call_entry_t entry, iobuf_index_t idx)
         user_thread_iocb_push(proc, idx);
         break;
 
+    case IO_THREAD_CREATE:
+        entry->data[0] = do_io_thread_create(proc, entry->data[1], entry->data[2], entry->data[3], entry->data[4], entry->data[5], &entry->data[1]);
+        user_thread_iocb_push(proc, idx);
+        break;
+        
     case IO_BRK:
         entry->data[0] = do_io_brk(proc, entry->data[1]);
         user_thread_iocb_push(proc, idx);
@@ -206,6 +213,31 @@ do_io_sem_del(proc_t proc, uintptr_t key)
     return iosem_del(&USER_THREAD(proc)->user_proc->iosem_hash, key);
 }
 
+static inline int
+do_io_thread_create(proc_t proc, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t arg, uintptr_t stack_ptr, uintptr_t *thread_id_slot)
+{
+    void *stack = kmalloc(__PGSIZE * 4);
+    if (stack == NULL) return -E_NO_MEM;
+    
+    int thread_id = user_thread_alloc(proc->name, SCHED_CLASS_RR, stack, __PGSIZE * 4);
+    if (thread_id == -1)
+    {
+        kfree(stack);
+        return -E_NO_MEM;
+    }
+    
+    user_thread_t thread = user_thread_get(thread_id);
+    int result = user_thread_create(&thread->proc, entry, tls_u, tls_size, arg, stack_ptr, proc);
+    
+    if (result)
+    {
+        user_thread_put(thread);
+        kfree(stack);
+    }
+    else *thread_id_slot = thread_id;
+
+    return result;
+}
 
 static inline int
 do_io_page_hole_set(proc_t proc, uintptr_t base, uintptr_t size)
@@ -263,8 +295,8 @@ do_io_brk(proc_t proc, uintptr_t end)
     return user_proc_brk(USER_THREAD(proc)->user_proc, end);
 }
 
-static inline
-int do_io_sleep(proc_t proc, iobuf_index_t idx, uintptr_t until)
+static inline int
+do_io_sleep(proc_t proc, iobuf_index_t idx, uintptr_t until)
 {
     io_ce_shadow_t shd = &USER_THREAD(proc)->ioce_shadow[idx];
     shd->type  = IO_CE_SHADOW_TYPE_TIMER;
@@ -285,8 +317,8 @@ do_io_mbox_open(proc_t proc)
     return mbox_alloc(USER_THREAD(proc)->user_proc);
 }
 
-static inline
-int do_io_mbox_attach(proc_t proc, iobuf_index_t idx, int mbox_id, int to_send, size_t buf_size)
+static inline int
+do_io_mbox_attach(proc_t proc, iobuf_index_t idx, int mbox_id, int to_send, size_t buf_size)
 {
     mbox_t mbox = mbox_get(mbox_id);
     if (mbox == NULL) return -E_INVAL;
