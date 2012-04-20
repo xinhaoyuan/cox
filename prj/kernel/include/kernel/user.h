@@ -10,6 +10,8 @@
 #include <iosem.h>
 #include <mbox.h>
 
+#define USER_IOSEM_HASH_SIZE 4096
+
 struct user_proc_s
 {
     /* mbox for managing this user process */

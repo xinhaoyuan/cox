@@ -4,6 +4,7 @@
 #include <malloc.h>
 #include <error.h>
 #include <user.h>
+#include <debug.h>
 
 void
 iosem_hash_init(iosem_hash_t hash, size_t size, iosem_hash_head_t head_entry)
@@ -22,6 +23,7 @@ iosem_hash_init(iosem_hash_t hash, size_t size, iosem_hash_head_t head_entry)
 static inline __attribute__((always_inline)) int
 iosem_hash_node_get_locked(iosem_hash_t hash, uintptr_t key, int touch, int *irq_slot, iosem_hash_head_t *head_slot, iosem_hash_node_t *node_slot)
 {
+    DEBUG(DBG_IOSEM, ("try to get iosem hash node with key %p on %p\n", key, hash));
     uintptr_t h = hash_ptr(key) % hash->size;
     int irq = irq_save();
     spinlock_acquire(&hash->head[h].lock);
@@ -52,6 +54,7 @@ iosem_hash_node_get_locked(iosem_hash_t hash, uintptr_t key, int touch, int *irq
 
     if (node == NULL && touch)
     {
+        DEBUG(DBG_IOSEM, ("create hash node key %p on %p\n", key, hash));
         node = kmalloc(sizeof(iosem_hash_node_s));
 
         if (node == NULL)
@@ -71,6 +74,8 @@ iosem_hash_node_get_locked(iosem_hash_t hash, uintptr_t key, int touch, int *irq
     *irq_slot  = irq;
     *node_slot = node;
     *head_slot = &hash->head[h];
+
+    DEBUG(DBG_IOSEM, ("hash node key %p on %p = %p\n", key, hash, node));
 
     return 0;
 }

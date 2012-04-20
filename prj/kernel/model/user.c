@@ -215,9 +215,20 @@ int
 user_proc_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end)
 {
     int ret;
-    if ((ret = user_proc_arch_init(user_proc, start, end))) return ret;
+    iosem_hash_head_t heads = kmalloc(sizeof(iosem_hash_head_s) * USER_IOSEM_HASH_SIZE);
+    if (heads == NULL)
+    {
+        return -E_NO_MEM;
+    }
     
+    if ((ret = user_proc_arch_init(user_proc, start, end)))
+    {
+        kfree(heads);
+        return ret;
+    }
+
     user_proc->mbox_manage = NULL;
+    iosem_hash_init(&user_proc->iosem_hash, USER_IOSEM_HASH_SIZE, heads);
         
     user_proc->start = *start;
     user_proc->end =   *end;
