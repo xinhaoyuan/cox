@@ -3,11 +3,11 @@
 #include <string.h>
 #include "printfmt.h"
 
-#define do_div(n, base) ({								\
-            uint64_t __mod, __base = (uint64_t)base;	\
-            __mod = ((uint64_t)(n)) % __base;			\
-            (n) = ((uint64_t)(n)) / __base;				\
-            __mod;										\
+#define do_div(n, base) ({                              \
+            uint64_t __mod, __base = (uint64_t)base;    \
+            __mod = ((uint64_t)(n)) % __base;           \
+            (n) = ((uint64_t)(n)) / __base;             \
+            __mod;                                      \
         })
 
 /* *
@@ -23,12 +23,11 @@
 static const char * const error_string[MAXERROR + 1] = {
     [0]                     NULL,
     [E_UNSPECIFIED]         "unspecified error",
-    [E_BAD_PROC]            "bad process",
     [E_INVAL]               "invalid parameter",
     [E_NO_MEM]              "out of memory",
-    [E_NO_FREE_PROC]        "out of processes",
     [E_FAULT]               "segmentation fault",
-	[E_PERM]                "permission error",
+    [E_PERM]                "permission violated",
+    [E_BUSY]                "Resources are busy",
 };
 
 /* *

@@ -146,17 +146,17 @@ struct segdesc {
 #define SEG(type, dpl)                                      \
     (struct segdesc) {                                      \
         0, 0, 0, type, 1, dpl, 1,                           \
-		0, 0, 1, 0, 1, 0, 0, 0							    \
-	}
+        0, 0, 1, 0, 1, 0, 0, 0                              \
+    }
 
 
-#define SEG_BASE(type, base, dpl)									\
-	(struct segdesc) {												\
-		0, (base) & 0xffff, ((base) >> 16) & 0xff,					\
-		type, 1, dpl, 1, 0, 0, 1, 0, 1,								\
-		((base) >> 24) & 0xff,										\
-		((base) >> 32) & 0xffffffff, 0								\
-	}
+#define SEG_BASE(type, base, dpl)                                   \
+    (struct segdesc) {                                              \
+        0, (base) & 0xffff, ((base) >> 16) & 0xff,                  \
+        type, 1, dpl, 1, 0, 0, 1, 0, 1,                             \
+        ((base) >> 24) & 0xff,                                      \
+        ((base) >> 32) & 0xffffffff, 0                              \
+    }
 
 #define SEGTSS(type, base, lim, dpl)                        \
     (struct segdesc) {                                      \
@@ -233,8 +233,8 @@ struct taskstate {
 /* page directory and page table constants */
 #define NPGENTRY        512                             // #entries per page directory
 
-#define PGSIZE          __PGSIZE                        // bytes mapped by a page
-#define PGSHIFT         __PGSHIFT                       // log2(PGSIZE)
+#define PGSIZE          _MACH_PAGE_SIZE                 // bytes mapped by a page
+#define PGSHIFT         _MACH_PAGE_SHIFT                // log2(PGSIZE)
 
 #define PTSIZE         (1LLU * NPGENTRY * PGSIZE)       // bytes mapped by a pmd entry
 #define PMSIZE         (1LLU * NPGENTRY * PTSIZE)       // bytes mapped by a pud entry

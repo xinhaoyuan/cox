@@ -11,17 +11,17 @@ typedef void(*intr_handler_f)(struct trapframe *tf);
 
 typedef struct cpu_info_s
 {
-	int      lapic_id;
-	int      idx;
-	uint64_t freq;
+    int      lapic_id;
+    int      idx;
+    uint64_t freq;
 } cpu_info_s;
 
 typedef struct cpu_static_s
 {
-	pgd_t *init_pgdir;
-	intr_handler_f intr_handler[256];
+    pgd_t *init_pgdir;
+    intr_handler_f intr_handler[256];
 
-	cpu_info_s public;
+    cpu_info_s public;
 } cpu_static_s;
 
 typedef struct cpu_dynamic_s
@@ -30,7 +30,7 @@ typedef struct cpu_dynamic_s
 
 typedef struct irq_control_s
 {
-	int cpu_apic_id;
+    int cpu_apic_id;
 } irq_control_s;
 
 extern irq_control_s irq_control[IRQ_COUNT];

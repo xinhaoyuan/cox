@@ -12,6 +12,8 @@
 
 char user_init_stack[8192] __attribute__((aligned(PGSIZE)));
 
+#define KERN_TEST 1
+
 void
 kernel_start(void)
 {
@@ -20,6 +22,12 @@ kernel_start(void)
     mbox_irq_init();
     user_thread_sys_init();
 
+#if KERN_TEST
+
+    cprintf("Hello world!\n");
+
+#else
+    
     /* Load the user init image */
     user_thread_t user_init = user_thread_get(
         user_thread_alloc(".uinit", SCHED_CLASS_RR, user_init_stack, 8192));
@@ -36,6 +44,8 @@ kernel_start(void)
     {
         cprintf("Panic, cannot load user init\n");
     }
+
+#endif
 
     while (1) __cpu_relax();
 }

@@ -5,6 +5,8 @@
 #include <mmu.h>
 #include <arch/memlayout.h>
 
+#include "seg.h"
+
 extern struct pseudodesc gdt_pd;
 extern struct segdesc gdt[SEG_COUNT + 1];
 extern pgd_t *pgdir_scratch;

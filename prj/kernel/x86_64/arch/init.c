@@ -24,7 +24,7 @@
 
 #define INIT_PROC_STACK_SIZE 10240
 
-static char   init_proc_stack[INIT_PROC_STACK_SIZE] __attribute__((aligned(__PGSIZE)));
+static char   init_proc_stack[INIT_PROC_STACK_SIZE] __attribute__((aligned(_MACH_PAGE_SIZE)));
 static proc_s init_proc;
 
 /* GRUB info filled by entry32.S */

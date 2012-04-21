@@ -216,10 +216,10 @@ do_io_sem_del(proc_t proc, uintptr_t key)
 static inline int
 do_io_thread_create(proc_t proc, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t arg, uintptr_t stack_ptr, uintptr_t *thread_id_slot)
 {
-    void *stack = kmalloc(__PGSIZE * 4);
+    void *stack = kmalloc(_MACH_PAGE_SIZE * 4);
     if (stack == NULL) return -E_NO_MEM;
     
-    int thread_id = user_thread_alloc(proc->name, SCHED_CLASS_RR, stack, __PGSIZE * 4);
+    int thread_id = user_thread_alloc(proc->name, SCHED_CLASS_RR, stack, _MACH_PAGE_SIZE * 4);
     if (thread_id == -1)
     {
         kfree(stack);

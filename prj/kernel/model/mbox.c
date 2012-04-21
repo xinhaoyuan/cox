@@ -404,7 +404,7 @@ mbox_user_io_attach(proc_t io_proc, iobuf_index_t io_index, mbox_t mbox, int typ
     io_ce_shadow_t shd = &USER_THREAD(io_proc)->ioce_shadow[io_index];
     io_call_entry_t ce = &USER_THREAD(io_proc)->ioce[io_index];
     
-    buf_size = (buf_size + __PGSIZE - 1) & ~(__PGSIZE - 1);
+    buf_size = (buf_size + _MACH_PAGE_SIZE - 1) & ~(_MACH_PAGE_SIZE - 1);
     
     if (type != IO_CE_SHADOW_TYPE_MBOX_RECV_IO &&
         type != IO_CE_SHADOW_TYPE_MBOX_SEND_IO) return -E_INVAL;

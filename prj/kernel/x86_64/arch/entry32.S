@@ -1,5 +1,6 @@
 #include <mmu.h>
 #include <arch/memlayout.h>
+#include "seg.h"   
 
 #define MULTIBOOT_PAGE_ALIGN   (1<<0)
 #define MULTIBOOT_MEMORY_INFO  (1<<1)

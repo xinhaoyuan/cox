@@ -504,7 +504,7 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
         if (current->type != PROC_TYPE_USER)
         {
             cprintf("PANIC: user area page fault by non-user thread %p\n", current);
-            cprintf("LA: %p, PC %p\n", la, pc);
+            cprintf("LA: %p, PC: %p\n", la, pc);
             while (1) ;
         }
 

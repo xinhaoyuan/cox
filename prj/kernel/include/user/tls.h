@@ -38,7 +38,7 @@ typedef struct tls_s  tls_s;
 typedef struct tls_s *tls_t;
 
 #include <mach.h>
-static char tls_data_size_assert[sizeof(tls_s) > __PGSIZE ? -1 : 0] __attribute__((unused));
+static char tls_data_size_assert[sizeof(tls_s) > _MACH_PAGE_SIZE ? -1 : 0] __attribute__((unused));
 
 /* The flat position of each variable in tls */
 #define TLS_IOCR_KHEAD 0
