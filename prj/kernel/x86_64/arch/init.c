@@ -1,12 +1,8 @@
 #include <string.h>
-#include <irq.h>
-#include <timer.h>
-#include <proc.h>
-#include <entry.h>
-#include <page.h>
-#include <malloc.h>
+#include <init.h>
 #include <arch/local.h>
 #include <lib/low_io.h>
+#include <frame.h>
 
 #include "early_cons.h"
 #include "acpi_conf.h"
@@ -18,14 +14,8 @@
 #include "mp.h"
 #include "pic.h"
 #include "intr.h"
-#include "vesa.h"
 #include "hpet.h"
 #include "init.h"
-
-#define INIT_PROC_STACK_SIZE 10240
-
-static char   init_proc_stack[INIT_PROC_STACK_SIZE] __attribute__((aligned(_MACH_PAGE_SIZE)));
-static proc_s init_proc;
 
 /* GRUB info filled by entry32.S */
 /* do not put them in bss section */
@@ -42,7 +32,7 @@ __kern_early_init(void) {
 
     early_cons_init();
     memory_init();
-    acpi_conf_init();
+    sysconf_init();
     idt_init();
     pic_init();
     
@@ -55,7 +45,8 @@ __kern_early_init(void) {
 
     lapic_init();
     ioapic_init();
-
+    
+    /* enable kdb intr for test */
     ioapic_enable(ioapic_id_set[0], IRQ_KBD, sysconf_x86.cpu.boot);
     
     if (sysconf_x86.hpet.enable)
@@ -69,10 +60,14 @@ __kern_early_init(void) {
 
   err:
     cprintf("You should not be here. Spin now.\n");
-    while (1) ;
+    while (1) __cpu_relax();
 }
 
 volatile int __cpu_global_init = 0;
+
+#define TRAP_STACK_SIZE (_MACH_PAGE_SIZE * 4)
+
+PLS_PREALLOC(char, __trap_stack[TRAP_STACK_SIZE]) __attribute__((aligned(_MACH_PAGE_SIZE)));
 
 void
 __kern_cpu_init(void)
@@ -83,39 +78,26 @@ __kern_cpu_init(void)
     /* Stage 0: global */
     if (lapic_id() == sysconf_x86.cpu.boot)
     {
-        malloc_init();
-        irq_init();
-        sched_init();
-        timer_sys_init();
-        timer_master_cpu_set();
-        /* Stage 0 ends */
+        kern_sys_init_global();
         __cpu_global_init = 1;
     }
     else while (__cpu_global_init == 0) __cpu_relax();
 
     /* Stage 1: local */
-    /* irq buffering */
-    irq_init_mp();
-    /* put self into idle proc */
-    sched_init_mp();
-    
-    timer_sys_init_mp();
+    kern_sys_init_local();
 
+    /* SETUP U->K TRAP STACK */
+    cpu_set_trap_stacktop((uintptr_t)ARCH_STACKTOP(PLS_PREALLOC_PTR(__trap_stack), TRAP_STACK_SIZE));
+
+    /* All base systems should be ready */
     if (lapic_id() == sysconf_x86.cpu.boot)
     {
-        /* create the init proc */
-        proc_init(&init_proc, ".init", SCHED_CLASS_RR, (void(*)(void *))kernel_start, NULL,
-                  init_proc_stack, INIT_PROC_STACK_SIZE);
-        proc_notify(&init_proc);
+        kern_init();
     }
 
-    /* XXX: TEMP CODE FOR SETUP U->K TRAP STACK */
-    uintptr_t stacktop = (uintptr_t)ARCH_STACKTOP(PAGE_TO_PHYS(page_alloc_atomic(4)), 4 * PGSIZE);
-    cpu_set_trap_stacktop((uintptr_t)VADDR_DIRECT(stacktop));
-
+    /* Enable the tick clock */
     lapic_timer_set(100);
     __irq_enable();
-    
-    /* do idle */
-    while (1) __cpu_relax();
+
+    do_idle();
 }

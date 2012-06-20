@@ -1,1 +1,1 @@
-${DEP_tools-sign}: ${OBJ_arch}
+${DEP_tools-sign}:

@@ -35,6 +35,8 @@ memmap_process_e820(void)
 
     if (mb_magic == 0x2BADB002)
     {
+        /* e820 from GRUB */
+        
         uint32_t *_mb_info  = (uint32_t *)VADDR_DIRECT(mb_info_phys);
         if ((_mb_info[0] & (1 << 6)) == 0)
         {
@@ -58,6 +60,8 @@ memmap_process_e820(void)
     }
     else
     {
+        /* e820 from native bootloader */
+        
         struct __e820map *memmap = (struct __e820map *)(0x8000 + PHYSBASE);
         uintptr_t maxpa = 0;
         

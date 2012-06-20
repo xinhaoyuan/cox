@@ -1,7 +1,7 @@
 #ifndef __ARCH_ASM_MMU_H__
 #define __ARCH_ASM_MMU_H__
 
-#include <mach.h>
+#include <asm/mach.h>
 
 /* Eflags register */
 #define FL_CF           0x00000001          // Carry Flag
@@ -186,8 +186,6 @@ struct taskstate {
     uint16_t ts_iomb;               // i/o map base address
 } __attribute__((packed));
 
-#endif /* ! __ASSEMBLER__ */
-
 // A linear address 'la' has a three-part structure as follows:
 // PGD : Page Global Directory
 // PUD : Page Upper Directory
@@ -230,6 +228,13 @@ struct taskstate {
 #define PUD_ADDR(pud)   PTE_ADDR(pud)
 #define PGD_ADDR(pgd)   PTE_ADDR(pgd)
 
+typedef uintptr_t pgd_t;
+typedef uintptr_t pmd_t;
+typedef uintptr_t pud_t;
+typedef uintptr_t pte_t;
+
+#endif /* ! __ASSEMBLER__ */
+
 /* page directory and page table constants */
 #define NPGENTRY        512                             // #entries per page directory
 
@@ -256,9 +261,7 @@ struct taskstate {
 #define PTE_PS          0x080                           // Page Size
 #define PTE_MBZ         0x180                           // Bits must be zero
 #define PTE_AVAIL       0xE00                           // Available for software use
-                                                        // The PTE_AVAIL bits aren't used by the kernel or interpreted by the
-                                                        // hardware, so user processes are allowed to set them arbitrarily.
-
+#define PTE_KME         0x800                           // Indicate the end of kernel mapping
 #define PTE_USER        (PTE_U | PTE_W | PTE_P)
 
 /* Control Register flags */

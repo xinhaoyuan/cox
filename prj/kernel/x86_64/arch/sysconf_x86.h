@@ -7,31 +7,33 @@
 
 typedef struct sysconf_x86_s
 {
-	struct {
-		int boot;
-		int count;
-	} cpu;
+    struct {
+        int boot;
+        int count;
+    } cpu;
 
-	struct {
-		bool      enable;
-		uintptr_t phys;
-	} lapic;
+    struct {
+        bool      enable;
+        uintptr_t phys;
+    } lapic;
 
-	struct
-	{
-		bool enable;
-		int  count;
-		bool use_eoi;
-	} ioapic;
+    struct
+    {
+        bool enable;
+        int  count;
+        bool use_eoi;
+    } ioapic;
 
-	struct
-	{
-		bool      enable;
-		uintptr_t phys;
-	} hpet;
-	
+    struct
+    {
+        bool      enable;
+        uintptr_t phys;
+    } hpet;
+
 } sysconf_x86_s;
 
 extern sysconf_x86_s sysconf_x86;
+
+int sysconf_init(void);
 
 #endif

@@ -1,16 +1,14 @@
 #include <types.h>
 #include <string.h>
-#include <cpu.h>
-#include <page.h>
-#include <mmio.h>
+#include <frame.h>
 #include <irq.h>
 #include <spinlock.h>
 #include <lib/buddy.h>
 #include <lib/low_io.h>
 #include <proc.h>
-#include <user.h>
-#include <mbox.h>
 #include <ips.h>
+#include <arch/paging.h>
+#include <asm/cpu.h>
 
 #include "memmap.h"
 #include "e820.h"
@@ -290,7 +288,7 @@ mmu_init(void)
         *pmd = phys | PTE_PS | PTE_W | PTE_P;
     }
 
-    /* and map the first 1MB for the ap booting */
+    /* and map the first 1MB for the application processor booting */
     boot_map_segment(boot_pgdir, 0, 0x100000, 0, PTE_W);
     
     extern char __text[], __end[];
@@ -346,7 +344,7 @@ static spinlock_s mmio_fix_lock;
 static void *
 __boot_page_alloc(size_t size)
 {
-    return boot_alloc(size, PGSIZE, 1);
+    return boot_alloc(size, PGSIZE, 0);
 }
 
 int
@@ -360,7 +358,7 @@ memory_init(void)
     /* Mark the supervisor area and boot alloc area reserved */
     memmap_append(kern_start, kern_end, MEMMAP_FLAG_RESERVED);
 
-    page_alloc_init_struct(nr_pages, __boot_page_alloc);
+    frame_sys_init_struct(nr_pages, __boot_page_alloc);
     kv_buddy.node = boot_alloc(BUDDY_CALC_ARRAY_SIZE(KVSIZE >> PGSHIFT) * sizeof(struct buddy_node_s), PGSIZE, 0);
     buddy_build(&kv_buddy, KVSIZE >> PGSHIFT, kv_config);
     
@@ -372,7 +370,7 @@ memory_init(void)
 
     /* Initialize the page allocator with free areas */
 
-    page_alloc_init_layout(config_by_memmap);
+    frame_sys_init_layout(config_by_memmap);
     spinlock_init(&kv_lock);
     spinlock_init(&mmio_fix_lock);
 
@@ -382,64 +380,88 @@ memory_init(void)
 /* INIT CODE END ================================================== */
 
 static pgd_t *
-get_pgd(pgd_t *pgdir, uintptr_t la, bool create) {
+get_pgd(pgd_t *pgdir, uintptr_t la)
+{
     return &pgdir[PGX(la)];
 }
 
 static pud_t *
-get_pud(pgd_t *pgdir, uintptr_t la, bool create) {
+get_pud(pgd_t *pgdir, uintptr_t la, unsigned int flags)
+{
     pgd_t *pgdp;
-    if ((pgdp = get_pgd(pgdir, la, create)) == NULL) {
+    if ((pgdp = get_pgd(pgdir, la)) == NULL)
+    {
         return NULL;
     }
-    if (!(*pgdp & PTE_P)) {
+    
+    if (!(*pgdp & PTE_P))
+    {
         pud_t *pud;
-        page_t page;
-        if (!create || (page = page_alloc_atomic(1)) == NULL) {
+        frame_t frame;
+        
+        if ((frame = frame_alloc(1, flags)) == NULL)
+        {
             return NULL;
         }
-        uintptr_t pa = PAGE_TO_PHYS(page);
+        
+        uintptr_t pa = FRAME_TO_PHYS(frame);
         pud = VADDR_DIRECT(pa);
         memset(pud, 0, PGSIZE);
         *pgdp = pa | PTE_U | PTE_W | PTE_P;
     }
+    
     return &((pud_t *)VADDR_DIRECT(PGD_ADDR(*pgdp)))[PUX(la)];
 }
 
 static pmd_t *
-get_pmd(pgd_t *pgdir, uintptr_t la, bool create) {
+get_pmd(pgd_t *pgdir, uintptr_t la, unsigned int flags)
+{
     pud_t *pudp;
-    if ((pudp = get_pud(pgdir, la, create)) == NULL) {
+    
+    if ((pudp = get_pud(pgdir, la, flags)) == NULL)
+    {
         return NULL;
     }
-    if (!(*pudp & PTE_P)) {
+    
+    if (!(*pudp & PTE_P))
+    {
         pmd_t *pmd;
-        page_t page;
-        if (!create || (page = page_alloc_atomic(1)) == NULL) {
+        frame_t frame;
+        
+        if ((frame = frame_alloc(1, flags)) == NULL)
+        {
             return NULL;
         }
-        uintptr_t pa = PAGE_TO_PHYS(page);
+        
+        uintptr_t pa = FRAME_TO_PHYS(frame);
         pmd = VADDR_DIRECT(pa);
         memset(pmd, 0, PGSIZE);
         *pudp = pa | PTE_U | PTE_W | PTE_P;
     }
+    
     return &((pmd_t *)VADDR_DIRECT(PUD_ADDR(*pudp)))[PMX(la)];
 }
 
 pte_t *
-get_pte(pgd_t *pgdir, uintptr_t la, bool create) {
+get_pte(pgd_t *pgdir, uintptr_t la, unsigned int flags)
+{
     pmd_t *pmdp;
-    if ((pmdp = get_pmd(pgdir, la, create)) == NULL) {
+    if ((pmdp = get_pmd(pgdir, la, flags)) == NULL)
+    {
         return NULL;
     }
     
-    if (!(*pmdp & PTE_P)) {
+    if (!(*pmdp & PTE_P))
+    {
         pte_t *pte;
-        page_t page;
-        if (!create || (page = page_alloc_atomic(1)) == 0) {
+        frame_t frame;
+        
+        if ((frame = frame_alloc(1, flags)) == 0)
+        {
             return NULL;
         }
-        uintptr_t pa = PAGE_TO_PHYS(page);
+        
+        uintptr_t pa = FRAME_TO_PHYS(frame);
         pte = VADDR_DIRECT(pa);
         memset(pte, 0, PGSIZE);
         *pmdp = pa | PTE_U | PTE_W | PTE_P;
@@ -447,30 +469,6 @@ get_pte(pgd_t *pgdir, uintptr_t la, bool create) {
 
     return &((pte_t *)VADDR_DIRECT(PMD_ADDR(*pmdp)))[PTX(la)];
 }
-
-struct msg_pgflt_data_s
-{
-    uintptr_t  la;
-    uintptr_t  err;
-    ips_node_s ips;
-};
-    
-static void
-msg_pgflt_send(mbox_send_io_t send_io, io_ce_shadow_t recv_shd, io_call_entry_t recv_ce)
-{
-    struct msg_pgflt_data_s *data = send_io->priv;
-    recv_ce->data[2] = data->la;
-    recv_ce->data[3] = data->err;
-}
-
-static void
-msg_pgflt_ack(mbox_send_io_t ack_io, io_ce_shadow_t recv_shd, io_call_entry_t recv_ce)
-{
-    struct msg_pgflt_data_s *data = ack_io->priv;
-    IPS_NODE_WAIT_CLEAR(&data->ips);
-    proc_notify(IPS_NODE_PTR(&data->ips));
-}
-
 
 void
 pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
@@ -487,15 +485,19 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
         {
             /* KERNEL MMIO PG FAULT, fix it */
             la = la & ~(uintptr_t)0x1fffff;
-            
+           
             spinlock_acquire(&mmio_fix_lock);
-            pmd_t *pmd = get_pmd(boot_pgdir, la, 1);
+            pmd_t *pmd = get_pmd(boot_pgdir, la, FA_ATOMIC);
             spinlock_release(&mmio_fix_lock);
 
             /* All mmio mappings are the same across all page tables, so just
              * modify it for one place */
             if (pmd)
                 *pmd = PADDR_DIRECT(la) | PTE_PS | PTE_W | PTE_P;
+            else
+            {
+                PANIC("Cannot alloc frames for kernel MMIO mapping\n");
+            }
         }
     }
     /* in user area ? */
@@ -507,86 +509,13 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
             cprintf("LA: %p, PC: %p\n", la, pc);
             while (1) ;
         }
-
-        user_thread_t user_thread = USER_THREAD(current);
-        user_proc_t user_proc = user_thread->user_proc;
-        
-        /* XXX: Lock the user_proc ? */
-        if (user_proc->start > la || user_proc->end <= la)
-        {
-            /* volatile acces */
-            cprintf("PANIC: access out of user area\n");
-            while (1) ;
-        }
-
-        /* XXX to be impl */
-        /* XXX page lock? */
-
-        mutex_acquire(&user_proc->arch.pgflt_lock, NULL);
-        
-        pte_t *pte;
-        page_t pg;
-        pte = get_pte(user_proc->arch.pgdir, la, 1);
-        if ((*pte & PTE_P) == 0)
-        {
-            if (*pte == 0)
-            {
-                /* XXX: Should I put this allocation outside? */
-                pg = page_alloc_atomic(1);
-            }
-            else pg = PHYS_TO_PAGE(PTE_ADDR(*pte));
-        } else pg = PHYS_TO_PAGE(PTE_ADDR(*pte));
-
-        if (user_proc->mbox_manage == NULL)
-        {
-            /* XXX: carefully look for the cause */
-            *pte = PAGE_TO_PHYS(pg) | PTE_W | PTE_U | PTE_P;
-        }
         else
         {
-            mbox_t          mbox = user_proc->mbox_manage;
-            mbox_send_io_t ex_io = mbox_send_io_acquire(1);
-            ex_io->mbox          = mbox;
-            ex_io->iobuf_policy  = MBOX_IOBUF_POLICY_DO_MAP;
-            while (user_proc_arch_mmio_open(mbox->proc, PAGE_TO_PHYS(pg),
-                                            PGSIZE, &ex_io->iobuf_target_u))
-            {
-                cprintf("MAP TARGET FAILED\n");
-            }
-
-            struct msg_pgflt_data_s data;
-            
-            ex_io->send_cb = msg_pgflt_send;
-            ex_io->ack_cb  = msg_pgflt_ack;
-            ex_io->priv    = &data;
-
-            data.la   = la & ~(uintptr_t)(PGSIZE - 1);
-            data.err  = err;
-            
-            IPS_NODE_WAIT_SET(&data.ips);
-            IPS_NODE_AC_WAIT_SET(&data.ips);
-            IPS_NODE_PTR_SET(&data.ips, current);
-
-            mbox_kern_send(ex_io);
-
-            ips_wait(&data.ips);
-            *pte = PAGE_TO_PHYS(pg) | PTE_U | PTE_W | PTE_P;
+            PANIC("PGFLT IN USERSPACE");
+            // user_thread_pgflt_handler(current, err, la, pc);
         }
-
-        mutex_release(&user_proc->arch.pgflt_lock);
     }
 }
-
-volatile void *
-mmio_open(uintptr_t addr, size_t size)
-{
-    return VADDR_DIRECT(addr);
-}
-
-void
-mmio_close(volatile void *addr)
-{ }
-
 
 void *
 valloc(size_t num)

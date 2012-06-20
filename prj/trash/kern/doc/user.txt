@@ -1,0 +1,65 @@
+[USER MODEL INTRO]
+
+COX is designed to provide minimalistic user model. In COX
+environment, user code is deployed on a segment of address space. The
+interval could be suggested by user, which would be finally decided by
+kernel. There is no page sharing semantic in user model (unless
+between different thread in a process). But the page aligned transfers
+would be accelerated by hardware mechanism.
+
+[MEMORY MODEL]
+
+No kernel mmap and fork (only MMIO maps for driver node). No memory
+sharing between processes. While user space mmap could be implemented
+using page hole trapping(if supported by hardware).
+
+[SYSCALL and IO]
+
+COX user I/O is based on buffered request mechanism, which does not
+depend on syscalls anymore. When issue an I/O, user app just writes a
+I/O request in the I/O buffer. Notification would come when request
+finished. User can also poll the request status by customized
+scheduling. The only active syscall is called when the user is blocked
+by I/O requests. Thus yield the cpu clock and wait for replies.
+
+[SOCKETS]
+
+I/Os are mainly the socket operations. All IPCs are through the
+sockets, local IPCs would be optimized by hardware and
+kernel. Currently the network software stack are built in kernel,
+leaving drivers in userspace.
+
+[USER BINARY FORMAT]
+
+For a specified arch, the binary of user process should be started by
+4 unsigned, ptr-width integer with native byte order, where the
+meanings are:
+
+[0] - start, the suggested start address of the binary image.
+
+[1] - entry, indicate the entry code address, where the start
+unchanged (same for [2], [3]).
+
+[2] - edata, indicate the end of data address that should be copied
+from the binary.
+
+[3] - end, indicate the end address of user process, containing the
+uninitialized data.
+
+The kernel would change the start address, while keeping the relative
+position unchanged. After initialized all data needed, kernel would
+pass the control to user process, with a data structure in stack, the
+structure is defined and documented in ``include/user/info.h''.
+
+[USER PROCESS START SAMPLE]
+
+When a new user process starts, it usually executes several steps to
+initialize the environment. (refer to io.txt)
+
+1. Get the initial I/O buffer
+
+2. Initialize the user TLS.
+
+3. Set the I/O callback handler
+
+4. Start the thread level execution

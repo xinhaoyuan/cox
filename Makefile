@@ -7,7 +7,7 @@ export MAKE     := make -s
 
 PRINT := ${T_BASE}/utl/myecho "${MAKELEVEL}"
 
-include ${T_BASE}/config.mk
+-include ${T_BASE}/config.mk
 
 ifeq (${MAKECMDGOALS},clean)
 
@@ -47,7 +47,7 @@ ${T_OBJ}/__ts_%: force
 
 .PHONY: stat run run-gdb run-3w
 
-stat: all
+stat: 
 	${V}./loc.sh
 
 run: all

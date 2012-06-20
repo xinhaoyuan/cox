@@ -1,5 +1,5 @@
 #include <types.h>
-#include <io.h>
+#include <asm/io.h>
 
 #include "intr.h"
 #include "pic.h"

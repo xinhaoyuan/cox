@@ -1,5 +1,5 @@
 #include <string.h>
-#include <atom.h>
+#include <asm/atom.h>
 #include <lib/low_io.h>
 
 #include "init.h"
@@ -18,6 +18,7 @@ static volatile int cpu_init_count = 0;
 static volatile int cpu_boot_pgtab_clean = 0;
 static struct taskstate ts[LAPIC_COUNT] = {{0}};
 
+/* Every cpu should fall into this entry after initialization */
 void
 cpu_init(void)
 {
@@ -31,12 +32,13 @@ cpu_init(void)
         old = cpu_init_count;
         if (__cmpxchg32(&cpu_init_count, old, old + 1) == old)
             break;
+        __cpu_relax();
     }
 
     if (old == sysconf_x86.cpu.count - 1)
         cprintf("ALL CPU STARTED\n");
 
-    /* A barrier waiting for all cpu ready */
+    /* A barrier that waits for all cpu ready */
     while (cpu_init_count != sysconf_x86.cpu.count) ;
 
     /* clear the boot pgdir */
@@ -45,7 +47,7 @@ cpu_init(void)
         memset(pgdir_scratch, 0, PGX(PHYSBASE) * sizeof(pgd_t));
         cpu_boot_pgtab_clean = 1;
     }
-    else while (cpu_boot_pgtab_clean == 0) ;
+    else while (cpu_boot_pgtab_clean == 0) __cpu_relax();
 
     __lcr3(__rcr3());
     __kern_cpu_init();

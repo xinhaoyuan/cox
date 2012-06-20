@@ -2,10 +2,10 @@
 #define __KERN_ARCH_INTR_H__
 
 #include <types.h>
-#include <cpu.h>
-#include <mmu.h>
+#include <asm/cpu.h>
+#include <asm/mmu.h>
 #include <arch/irq.h>
-#include <user/arch/syscall.h>
+#include <syscall.h>
 
 /* Trap Numbers */
 #define T_IPI                   0x81

@@ -1,7 +1,7 @@
-#include <io.h>
-#include <mmio.h>
+#include <asm/io.h>
 #include <arch/memlayout.h>
 #include <lib/low_io.h>
+#include <frame.h>
 
 #include "intr.h"
 #include "sysconf_x86.h"
@@ -67,7 +67,7 @@ ioapic_init(void)
         ioapic_id = ioapic_id_set[i];
 
         // cprintf("IOAPIC %d phys %016x\n", ioapic_id, ioapic[ioapic_id].phys);
-        ioapic[ioapic_id].mmio = mmio_open(ioapic[ioapic_id].phys, sizeof(struct ioapic_mmio_s));
+        ioapic[ioapic_id].mmio = kmmio_open(ioapic[ioapic_id].phys, sizeof(struct ioapic_mmio_s));
 
         int v = ioapic_read(ioapic[ioapic_id].mmio, REG_VER);
         maxintr = (v >> 16) & 0xFF;

@@ -1,4 +1,4 @@
-#include <mmio.h>
+#include <frame.h>
 #include <lib/low_io.h>
 
 #include "mp.h"
@@ -6,10 +6,7 @@
 #include "mem.h"
 #include "hpet.h"
 
-
-
-volatile uint64_t *hpet_regs;
-
+volatile uint64_t       *hpet_regs;
 volatile const uint64_t *hpet_tick;
 uint64_t                 hpet_tick_freq;
 
@@ -51,7 +48,7 @@ hpet_init(void)
     if (!sysconf_x86.hpet.enable) return 0;
 
     
-    hpet_regs = mmio_open(sysconf_x86.hpet.phys, PGSIZE);
+    hpet_regs = kmmio_open(sysconf_x86.hpet.phys, PGSIZE);
     
     uint32_t id_hi = hpet_regs[HR_GEN_CAP_ID] >> 32;
     uint32_t id_lo = hpet_regs[HR_GEN_CAP_ID];

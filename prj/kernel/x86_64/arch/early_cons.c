@@ -1,6 +1,6 @@
 #include <types.h>
 #include <string.h>
-#include <io.h>
+#include <asm/io.h>
 #include <lib/low_io.h>
 #include <arch/memlayout.h>
 
@@ -413,9 +413,9 @@ kbd_init(void) {
 /* early_cons_putc - print a single character @c to console devices */
 static void
 early_cons_putc(int c) {
-	lpt_putc(c);
-	cga_putc(c);
-	serial_putc(c);
+    lpt_putc(c);
+    cga_putc(c);
+    serial_putc(c);
 }
 
 /* *
@@ -425,19 +425,19 @@ early_cons_putc(int c) {
 static int
 early_cons_getc(void) {
     int c = 0;
-	// poll for any pending input characters,
-	// so that this function works even when interrupts are disabled
-	// (e.g., when called from the kernel monitor).
-	serial_intr();
-	kbd_intr();
-	
-	// grab the next character from the input buffer.
-	if (cons.rpos != cons.wpos) {
-		c = cons.buf[cons.rpos ++];
-		if (cons.rpos == CONSBUFSIZE) {
-			cons.rpos = 0;
-		}
-	}
+    // poll for any pending input characters,
+    // so that this function works even when interrupts are disabled
+    // (e.g., when called from the kernel monitor).
+    serial_intr();
+    kbd_intr();
+    
+    // grab the next character from the input buffer.
+    if (cons.rpos != cons.wpos) {
+        c = cons.buf[cons.rpos ++];
+        if (cons.rpos == CONSBUFSIZE) {
+            cons.rpos = 0;
+        }
+    }
 
     return c;
 }
@@ -445,9 +445,9 @@ early_cons_getc(void) {
 /* early_cons_init - initializes the console devices */
 void
 early_cons_init(void) {
-	low_io_putc = early_cons_putc;
-	low_io_getc = early_cons_getc;
-	
+    low_io_putc = early_cons_putc;
+    low_io_getc = early_cons_getc;
+    
     cga_init();
     serial_init();
     kbd_init();

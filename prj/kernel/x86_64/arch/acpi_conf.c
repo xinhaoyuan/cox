@@ -1,14 +1,10 @@
 #include <string.h>
 #include <error.h>
-#include <types.h>
-#include <cpu.h>
+#include <asm/cpu.h>
+#include <asm/mmu.h>
 #include <lib/low_io.h>
 #include <arch/memlayout.h>
-#include <mmu.h>
 
-#include "sysconf_x86.h"
-#include "ioapic.h"
-#include "cpu.h"
 #include "acpi_conf.h"
 
 struct acpi_rsdp_s
@@ -148,24 +144,14 @@ acpi_rsdp_search(void)
 }
 
 int
-acpi_conf_init(void)
+acpi_conf_init(acpi_conf_callbacks_t cb)
 {
-    uint32_t b;
-    __cpuid(1, NULL, &b, NULL, NULL);
-    int cur_apic_id = (b >> 24) & 0xff;
-    sysconf_x86.cpu.boot = cur_apic_id;
-
     struct acpi_rsdp_s *rsdp = acpi_rsdp_search();
     if (!rsdp)
     {
         cprintf("NO RSDP IN MEMORY\n");
         return -E_UNSPECIFIED;
     }
-
-    sysconf_x86.cpu.count = 0;
-    sysconf_x86.lapic.enable = FALSE;
-    sysconf_x86.ioapic.enable = FALSE;
-    sysconf_x86.hpet.enable = FALSE;
 
     int xsdp = (rsdp->revision != 0) ? 1 : 0;
     struct acpi_sdth_s *sdt = (struct acpi_sdth_s *)VADDR_DIRECT(xsdp ? rsdp->xsdt_phys : rsdp->rsdt_phys);
@@ -187,8 +173,8 @@ acpi_conf_init(void)
         {
             struct acpi_madt_s *madt = (struct acpi_madt_s *)(cur + 1);
 
-            sysconf_x86.lapic.enable = TRUE;
-            sysconf_x86.lapic.phys = madt->lapic_phys;
+            if (cb->detect_lapic)
+                cb->detect_lapic(cb, madt->lapic_phys);
 
             char *apic_cur = (char *)(madt + 1);
             char *apic_end = (char *)cur + cur->length;
@@ -200,30 +186,15 @@ acpi_conf_init(void)
 
                 if (desc->type == 0 && (desc->lapic.flags & 1))
                 {
-                    /* Logical Processor, enabled */
-                    // cprintf("CPU APIC ID = %d\n", desc->lapic.apic_id);
-                    /* if (cur_apic_id == desc->lapic.apic_id) */
-                    /* { */
-                    cprintf("CPU %d APIC ID %d\n", sysconf_x86.cpu.count);
-                    cpu_id_set[sysconf_x86.cpu.count] = desc->lapic.apic_id;
-                    ++ sysconf_x86.cpu.count;
-                    /* } */
-                    /* else kprintf("skiped\n"); */
+                    /* CPU */
+                    if (cb->detect_cpu)
+                        cb->detect_cpu(cb, desc->lapic.apic_id);
                 }
                 else if (desc->type == 1)
                 {
                     /* IO APIC */
-                    if (!sysconf_x86.ioapic.enable)
-                        sysconf_x86.ioapic.count = 0;
-                    sysconf_x86.ioapic.enable = TRUE;
-
-                    cprintf("IOAPIC %d APIC ID %d\n", sysconf_x86.ioapic.count, desc->ioapic.apic_id);
-                    ioapic_id_set[sysconf_x86.ioapic.count] = desc->ioapic.apic_id;
-                    ioapic[desc->ioapic.apic_id].id         = sysconf_x86.ioapic.count;
-                    ioapic[desc->ioapic.apic_id].phys       = desc->ioapic.phys;
-                    ioapic[desc->ioapic.apic_id].intr_base  = desc->ioapic.intr_base;
-                    
-                    ++ sysconf_x86.ioapic.count;
+                    if (cb->detect_ioapic)
+                        cb->detect_ioapic(cb, desc->ioapic.apic_id, desc->ioapic.phys, desc->ioapic.intr_base);
                 }
 
                 apic_cur += desc->length;
@@ -232,8 +203,8 @@ acpi_conf_init(void)
         else if (memcmp(cur->signature, "HPET", 4) == 0)
         {
             struct acpi_hpet_desc_s *hpet = (struct acpi_hpet_desc_s *)(cur + 1);
-            sysconf_x86.hpet.enable = 1;
-            sysconf_x86.hpet.phys = hpet->base_low_addr.addr_64;
+            if (cb->detect_hpet)
+                cb->detect_hpet(cb, hpet->base_low_addr.addr_64);
         }
     }
 

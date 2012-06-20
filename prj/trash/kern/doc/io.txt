@@ -1,0 +1,43 @@
+For the introduction of user model, refer to user.txt.
+
+- IO_KSEM_DOWN(addr)
+
+Use ``addr'' as a hash key, try to wait ``up'' operation on the kernel semaphore.
+
+- IO_KSEM_UP(addr, num)
+
+Use ``addr'' as a hash key, try to wait ``down'' operation on the kernel semaphore.
+
+- IO_EXIT()
+
+Exit current thread
+
+- (succ)IO_BRK(end)
+
+Reset the user end address
+
+- (succ)IO_PAGE_HOLE_SET(base, size)
+
+- (succ)IO_PAGE_HOLE_CLEAR(base, size)
+
+- (succ, base, size) | IO_PAGE_HOLE_GUARD()
+
+- (succ)IO_DEBUG_PUTCHAR(ch)
+
+putchar on debug console
+
+- (succ)IO_DEBUG_GETCHAR()
+
+getchar on debug console
+
+- (mbox)IO_MBOX_OPEN()
+
+alloc a new MBOX
+
+- (succ)IO_MBOX CLOSE(mbox)
+
+free a MBOX
+
+- (succ, buf, hint_a, hint_b) | IO_MBOX_IO(mbox, ack_hint_a, ack_hint_b)
+
+acknowledge previous io and wait for a io on specific MBOX

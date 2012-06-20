@@ -1,5 +1,5 @@
-#include <io.h>
-#include <mmio.h>
+#include <asm/io.h>
+#include <frame.h>
 
 #include "mem.h"
 #include "intr.h"
@@ -44,129 +44,129 @@ static volatile uint32_t *lapic_mmio;
 static uint32_t
 lapicr(int index)
 {
-	return lapic_mmio[index];
+    return lapic_mmio[index];
 }
 
 static uint32_t
 lapicw(int index, uint32_t value)
 {
-	lapic_mmio[index] = value;
-	return lapic_mmio[ID];
+    lapic_mmio[index] = value;
+    return lapic_mmio[ID];
 }
 
 int
 lapic_init_ap(void)
 {
-	 // Enable local APIC; set spurious interrupt vector.
-	 lapicw(SVR, ENABLE | (IRQ_OFFSET + IRQ_SPURIOUS));
+     // Enable local APIC; set spurious interrupt vector.
+     lapicw(SVR, ENABLE | (IRQ_OFFSET + IRQ_SPURIOUS));
 
-	 // Disable timer
-	 lapicw(TIMER, MASKED);
-	 
-	 // Disable logical interrupt lines.
-	 lapicw(LINT0, MASKED);
-	 lapicw(LINT1, MASKED);
+     // Disable timer
+     lapicw(TIMER, MASKED);
+     
+     // Disable logical interrupt lines.
+     lapicw(LINT0, MASKED);
+     lapicw(LINT1, MASKED);
 
-	 /* Disable the TM interrupt */
-	 if(((lapicr(VER) >> 16) & 0xFF) >= 5)
-		  lapicw(TMINT, MASKED);
+     /* Disable the TM interrupt */
+     if(((lapicr(VER) >> 16) & 0xFF) >= 5)
+          lapicw(TMINT, MASKED);
 
-	 // Disable performance counter overflow interrupts
-	 // on machines that provide that interrupt entry.
-	 if(((lapicr(VER) >> 16) & 0xFF) >= 4)
-		  lapicw(PCINT, MASKED);
+     // Disable performance counter overflow interrupts
+     // on machines that provide that interrupt entry.
+     if(((lapicr(VER) >> 16) & 0xFF) >= 4)
+          lapicw(PCINT, MASKED);
 
-	 // Map error interrupt to IRQ_ERROR.
-	 lapicw(ERROR, IRQ_OFFSET + IRQ_ERROR);
+     // Map error interrupt to IRQ_ERROR.
+     lapicw(ERROR, IRQ_OFFSET + IRQ_ERROR);
 
-	 // Clear error status register (requires back-to-back writes).
-	 lapicw(ESR, 0);
-	 lapicw(ESR, 0);
+     // Clear error status register (requires back-to-back writes).
+     lapicw(ESR, 0);
+     lapicw(ESR, 0);
 
-	 // Ack any outstanding interrupts.
-	 lapicw(EOI, 0);
+     // Ack any outstanding interrupts.
+     lapicw(EOI, 0);
 
-	 // Send an Init Level De-Assert to synchronise arbitration ID's.
-	 lapicw(ICRHI, 0);
-	 lapicw(ICRLO, BCAST | INIT | LEVEL);
-	 while(lapicr(ICRLO) & DELIVS)
-	 	  ;
+     // Send an Init Level De-Assert to synchronise arbitration ID's.
+     lapicw(ICRHI, 0);
+     lapicw(ICRLO, BCAST | INIT | LEVEL);
+     while(lapicr(ICRLO) & DELIVS)
+          ;
 
-	 // Enable interrupts on the APIC (but not on the processor).
-	 lapicw(TPR, 0);
+     // Enable interrupts on the APIC (but not on the processor).
+     lapicw(TPR, 0);
 
-	 // Bochs doesn't support IMCR, so this doesn't run on Bochs.
-	 // But it would on real hardware.
-	 /* __outb(0x22, 0x70);   // Select IMCR */
-	 /* __outb(0x23, __inb(0x23) | 1);  // Mask external interrupts. */
+     // Bochs doesn't support IMCR, so this doesn't run on Bochs.
+     // But it would on real hardware.
+     /* __outb(0x22, 0x70);   // Select IMCR */
+     /* __outb(0x23, __inb(0x23) | 1);  // Mask external interrupts. */
 
-	 return 0;
+     return 0;
 }
 
 int
 lapic_id(void)
 {
-	return (lapicr(ID) >> 24) & 0xFF;
+    return (lapicr(ID) >> 24) & 0xFF;
 }
 
 int
 lapic_init(void)
 {
-	if (!sysconf_x86.lapic.enable) return 0;
+    if (!sysconf_x86.lapic.enable) return 0;
 
-	lapic_mmio = mmio_open(sysconf_x86.lapic.phys, PGSIZE);
-	
-	// Enable local APIC; set spurious interrupt vector.
-	lapicw(SVR, ENABLE | (IRQ_OFFSET + IRQ_SPURIOUS));
+    lapic_mmio = kmmio_open(sysconf_x86.lapic.phys, PGSIZE);
+    
+    // Enable local APIC; set spurious interrupt vector.
+    lapicw(SVR, ENABLE | (IRQ_OFFSET + IRQ_SPURIOUS));
 
-	// Disable timer
-	lapicw(TIMER, MASKED);
+    // Disable timer
+    lapicw(TIMER, MASKED);
 
-	// Disable logical interrupt lines.
-	lapicw(LINT0, MASKED);
-	lapicw(LINT1, MASKED);
+    // Disable logical interrupt lines.
+    lapicw(LINT0, MASKED);
+    lapicw(LINT1, MASKED);
 
-	/* Disable the TM interrupt */
-	if(((lapicr(VER) >> 16) & 0xFF) >= 5)
-		lapicw(TMINT, MASKED);
+    /* Disable the TM interrupt */
+    if(((lapicr(VER) >> 16) & 0xFF) >= 5)
+        lapicw(TMINT, MASKED);
 
-	// Disable performance counter overflow interrupts
-	// on machines that provide that interrupt entry.
-	if(((lapicr(VER) >> 16) & 0xFF) >= 4)
-		lapicw(PCINT, MASKED);
+    // Disable performance counter overflow interrupts
+    // on machines that provide that interrupt entry.
+    if(((lapicr(VER) >> 16) & 0xFF) >= 4)
+        lapicw(PCINT, MASKED);
 
-	// Map error interrupt to IRQ_ERROR.
-	lapicw(ERROR, IRQ_OFFSET + IRQ_ERROR);
+    // Map error interrupt to IRQ_ERROR.
+    lapicw(ERROR, IRQ_OFFSET + IRQ_ERROR);
 
-	// Clear error status register (requires back-to-back writes).
-	lapicw(ESR, 0);
-	lapicw(ESR, 0);
+    // Clear error status register (requires back-to-back writes).
+    lapicw(ESR, 0);
+    lapicw(ESR, 0);
 
-	// Ack any outstanding interrupts.
-	lapicw(EOI, 0);
+    // Ack any outstanding interrupts.
+    lapicw(EOI, 0);
 
-	// Send an Init Level De-Assert to synchronise arbitration ID's.
-	lapicw(ICRHI, 0);
-	lapicw(ICRLO, BCAST | INIT | LEVEL);
-	while(lapicr(ICRLO) & DELIVS)
-		;
+    // Send an Init Level De-Assert to synchronise arbitration ID's.
+    lapicw(ICRHI, 0);
+    lapicw(ICRLO, BCAST | INIT | LEVEL);
+    while(lapicr(ICRLO) & DELIVS)
+        ;
 
-	// Enable interrupts on the APIC (but not on the processor).
-	lapicw(TPR, 0);
+    // Enable interrupts on the APIC (but not on the processor).
+    lapicw(TPR, 0);
 
-	// Bochs doesn't support IMCR, so this doesn't run on Bochs.
-	// But it would on real hardware.
-	/* __outb(0x22, 0x70);   // Select IMCR */
-	/* __outb(0x23, __inb(0x23) | 1);  // Mask external interrupts. */
+    // Bochs doesn't support IMCR, so this doesn't run on Bochs.
+    // But it would on real hardware.
+    /* __outb(0x22, 0x70);   // Select IMCR */
+    /* __outb(0x23, __inb(0x23) | 1);  // Mask external interrupts. */
 
-	return 0;
+    return 0;
 }
 
 // Acknowledge interrupt.
 void
 lapic_eoi_send(void)
 {
-	lapicw(EOI, 0);
+    lapicw(EOI, 0);
 }
 
 // Spin for a given number of microseconds.
@@ -174,10 +174,10 @@ lapic_eoi_send(void)
 static void
 microdelay(int us)
 {
-	volatile int j = 0;
+    volatile int j = 0;
   
-	while(us-- > 0)
-		for (j=0; j<10000; j++);
+    while(us-- > 0)
+        for (j=0; j<10000; j++);
 }
 
 /* CODE FROM XV6 {{{ */
@@ -188,76 +188,76 @@ microdelay(int us)
 void
 lapic_ap_start(int apicid, uint32_t addr)
 {
-	int i;
-	uint16_t *wrv;
-	 
-	// "The BSP must initialize CMOS shutdown code to 0AH
-	// and the warm reset vector (DWORD based at 40:67) to point at
-	// the AP startup code prior to the [universal startup algorithm]."
-	__outb(IO_RTC, 0xF);  // offset 0xF is shutdown code
-	__outb(IO_RTC+1, 0x0A);
-	wrv = VADDR_DIRECT(0x40 << 4 | 0x67);
-	wrv[0] = addr & 0xffff;
-	wrv[1] = (addr ^ wrv[0]) >> 4;
+    int i;
+    uint16_t *wrv;
+     
+    // "The BSP must initialize CMOS shutdown code to 0AH
+    // and the warm reset vector (DWORD based at 40:67) to point at
+    // the AP startup code prior to the [universal startup algorithm]."
+    __outb(IO_RTC, 0xF);  // offset 0xF is shutdown code
+    __outb(IO_RTC+1, 0x0A);
+    wrv = VADDR_DIRECT(0x40 << 4 | 0x67);
+    wrv[0] = addr & 0xffff;
+    wrv[1] = (addr ^ wrv[0]) >> 4;
 
-	// "Universal startup algorithm."
-	// Send INIT (level-triggered) interrupt to reset other CPU.
-	lapicw(ICRHI, apicid << 24);
-	lapicw(ICRLO, INIT | LEVEL | ASSERT);
-	microdelay(200);
-	lapicw(ICRLO, INIT | LEVEL);
-	microdelay(100);    // should be 10ms, but too slow in Bochs!
+    // "Universal startup algorithm."
+    // Send INIT (level-triggered) interrupt to reset other CPU.
+    lapicw(ICRHI, apicid << 24);
+    lapicw(ICRLO, INIT | LEVEL | ASSERT);
+    microdelay(200);
+    lapicw(ICRLO, INIT | LEVEL);
+    microdelay(100);    // should be 10ms, but too slow in Bochs!
   
-	// Send startup IPI (twice!) to enter bootstrap code.
-	// Regular hardware is supposed to only accept a STARTUP
-	// when it is in the halted state due to an INIT.  So the second
-	// should be ignored, but it is part of the official Intel algorithm.
-	// Bochs complains about the second one. Too bad for Bochs.
-	for(i = 0; i < 2; i++){
-		lapicw(ICRHI, apicid << 24);
-		lapicw(ICRLO, STARTUP | (addr >> 12));
-		microdelay(200);
-	}
+    // Send startup IPI (twice!) to enter bootstrap code.
+    // Regular hardware is supposed to only accept a STARTUP
+    // when it is in the halted state due to an INIT.  So the second
+    // should be ignored, but it is part of the official Intel algorithm.
+    // Bochs complains about the second one. Too bad for Bochs.
+    for(i = 0; i < 2; i++){
+        lapicw(ICRHI, apicid << 24);
+        lapicw(ICRLO, STARTUP | (addr >> 12));
+        microdelay(200);
+    }
 }
 /* }}} */
 
 void
 lapic_timer_set(uint32_t freq)
 {
-	if (freq == 0)
-	{
-		// Disable timer
-		lapicw(TIMER, MASKED);
-	}
-	else
-	{
-		// The timer repeatedly counts down at bus frequency
-		// from lapic[TICR] and then issues an interrupt.
-		// If you cared more about precise timekeeping,
-		// TICR would be calibrated using an external time source.
-		  
-		lapicw(TDCR, X1);
-		lapicw(TIMER, PERIODIC | (IRQ_OFFSET + IRQ_TIMER));
-		lapicw(TICR, LAPIC_PERIODIC);
-	}
+    if (freq == 0)
+    {
+        // Disable timer
+        lapicw(TIMER, MASKED);
+    }
+    else
+    {
+        // The timer repeatedly counts down at bus frequency
+        // from lapic[TICR] and then issues an interrupt.
+        // If you cared more about precise timekeeping,
+        // TICR would be calibrated using an external time source.
+          
+        lapicw(TDCR, X1);
+        lapicw(TIMER, PERIODIC | (IRQ_OFFSET + IRQ_TIMER));
+        lapicw(TICR, LAPIC_PERIODIC);
+    }
 }
 
 /* XXX */
 int
 lapic_ipi_issue(int lapic_id)
 {
-	return lapic_ipi_issue_spec(lapic_id, T_IPI);
+    return lapic_ipi_issue_spec(lapic_id, T_IPI);
 }
 
 int
 lapic_ipi_issue_spec(int lapic_id, uint8_t vector)
 {
-	if (lapicr(ICRLO) & DELIVS)
-		return -1;
+    if (lapicr(ICRLO) & DELIVS)
+        return -1;
 
-	lapicw(ICRHI, lapic_id << 24);
-	lapicw(ICRLO, ASSERT | vector);
+    lapicw(ICRHI, lapic_id << 24);
+    lapicw(ICRLO, ASSERT | vector);
 
-	while (lapicr(ICRLO) & DELIVS) ;
-	return 0;
+    while (lapicr(ICRLO) & DELIVS) ;
+    return 0;
 }
