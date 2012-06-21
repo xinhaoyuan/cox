@@ -11,6 +11,7 @@ struct user_thread_arch_s
 {
     struct trapframe *tf;
     uintptr_t init_entry;
+    uintptr_t init_stack_ptr;
 };
 
 typedef struct user_thread_arch_s  user_thread_arch_s;

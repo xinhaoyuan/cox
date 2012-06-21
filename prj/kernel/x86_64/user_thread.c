@@ -14,8 +14,10 @@ int
 user_thread_arch_state_init(user_thread_t thread, uintptr_t entry, uintptr_t stack_ptr)
 {
     memset(&thread->arch, 0, sizeof(thread->arch));
+    
     thread->arch.init_entry = entry;
-
+    thread->arch.init_stack_ptr = stack_ptr;
+    
     size_t tls_pages = thread->tls_size >> _MACH_PAGE_SHIFT;
 
     /* XXX to cleanup */
@@ -31,22 +33,6 @@ user_thread_arch_state_init(user_thread_t thread, uintptr_t entry, uintptr_t sta
     /* flush the page map */
     __lcr3(__rcr3());
 
-#if 0
-    tls_s tls;
-    tls.info.arg0       = arg0;
-    tls.info.arg1       = arg1;
-    tls.info.stack_ptr  = stack_ptr;
-    tls.info.io_cap     = thread->io_cap;
-    tls.info.ioce       = (void *)(thread->tls_u + ((char *)thread->ioce - (char *)thread->tls));
-    tls.info.iocr       = (void *)(thread->tls_u + ((char *)thread->iocr - (char *)thread->tls));
-    tls.info.iocb       = (void *)(thread->tls_u + ((char *)thread->iocb - (char *)thread->tls));
-    tls.iocr_ctl.khead  = 0;
-    tls.iocr_ctl.utail  = 0;
-    tls.iocb_ctl.uhead  = 0;
-    tls.iocb_ctl.ktail  = 0;
-    
-    user_proc_arch_copy(thread->user_proc, thread->tls_u, &tls, sizeof(tls));
-#endif
     
     return 0;
 }
@@ -57,9 +43,11 @@ void
 user_thread_arch_jump(void)
 {
     proc_t proc = current;
-    if (USER_THREAD(proc)->arch.tf != NULL)
+    user_thread_t thread = USER_THREAD(proc);
+    
+    if (thread->arch.tf != NULL)
     {
-        __user_jump(USER_THREAD(proc)->arch.tf);
+        __user_jump(thread->arch.tf);
     }
     else
     {
@@ -69,14 +57,18 @@ user_thread_arch_jump(void)
         tf.tf_ss = GD_UDATA | 3;
         tf.tf_ds = GD_UDATA | 3;
         tf.tf_es = GD_UDATA | 3;
-        tf.tf_rflags = FL_IF ;
+        tf.tf_rflags = FL_IF;
+
         /* XXX: IOPL = 3 for test driver node */
         tf.tf_rflags |= FL_IOPL_3;
-        tf.tf_rip = USER_THREAD(proc)->arch.init_entry;
-        /* pass tls, start, end to user init */
-        tf.tf_regs.reg_rdi = USER_THREAD(proc)->tls_u;
-        tf.tf_regs.reg_rsi = USER_THREAD(proc)->user_proc->start;
-        tf.tf_regs.reg_rdx = USER_THREAD(proc)->user_proc->end;
+        tf.tf_rip = thread->arch.init_entry;
+        /* pass tls, tls_size, start, end to user init */
+        tf.tf_regs.reg_rdi = thread->tls_u;
+        tf.tf_regs.reg_rsi = thread->tls_size;
+        tf.tf_regs.reg_rdx = thread->user_proc->start;
+        tf.tf_regs.reg_rcx = thread->user_proc->end;
+        tf.tf_rsp = thread->arch.init_stack_ptr;
+        
         __user_jump(&tf);
     }
 }
