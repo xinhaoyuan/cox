@@ -41,9 +41,10 @@ frame_t frame_alloc(size_t num, unsigned int flags);
 void    frame_get(frame_t frame);
 void    frame_put(frame_t frame);
 
-#define FA_KERNEL     0x1
-#define FA_ATOMIC     0x2
-#define FA_CONTIGUOUS 0x4
+#define FA_NO         0x1
+#define FA_KERNEL     0x2
+#define FA_ATOMIC     0x4
+#define FA_CONTIGUOUS 0x8
 
 /* Implemented by ARCH */
 

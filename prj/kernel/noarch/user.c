@@ -2,6 +2,7 @@
 #include <proc.h>
 #include <user.h>
 #include <frame.h>
+#include <kmalloc.h>
 #include <irq.h>
 #include <string.h>
 #include <arch/irq.h>
@@ -32,7 +33,7 @@ user_thread_bin_exec(user_thread_t thread, void *bin, size_t bin_size)
     if (thread->proc.type != PROC_TYPE_USER_INIT) return -E_INVAL;
     if (PGOFF(start) || PGOFF(edata) || PGOFF(end)) return -E_INVAL;
     
-    user_proc_t   user_proc;
+    user_proc_t user_proc;
     if (thread->user_proc != NULL) return -E_INVAL;
     if ((user_proc = kmalloc(sizeof(user_proc_s), FA_KERNEL)) == NULL) return -E_NO_MEM;
     thread->user_proc = user_proc;

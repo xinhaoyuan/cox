@@ -3,7 +3,7 @@
 #include <proc.h>
 #include <irq.h>
 #include <lib/low_io.h>
-// #include <user.h>
+#include <user.h>
 
 #include "mem.h"
 #include "lapic.h"
@@ -128,7 +128,7 @@ trap_dispatch(struct trapframe *tf)
     bool from_user = !trap_in_kernel(tf);
     if (from_user)
     {
-        // USER_THREAD(current)->arch.tf = tf;
+        USER_THREAD(current)->arch.tf = tf;
     }
 
     if (tf->tf_trapno < EXCEPTION_COUNT) {
@@ -168,12 +168,14 @@ trap_dispatch(struct trapframe *tf)
 
     if (from_user)
     {
-        PANIC("KERN TEST");
-        /* __irq_enable(); */
-        /* user_process_io(current); */
-        /* __irq_disable(); */
-        /* if (PLS(__local_irq_save) != 0) cprintf("WARNING: return to user with irq saved\n"); */
-        /* user_thread_before_return(current); */
+#if 0        
+        __irq_enable();
+        user_process_io(current);
+        __irq_disable();
+#endif
+        
+        if (PLS(__local_irq_save) != 0) cprintf("WARNING: return to user with irq saved\n");
+        user_thread_before_return(current);
     }
 }
 

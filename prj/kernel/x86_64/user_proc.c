@@ -1,10 +1,4 @@
-#if ARCH_TEST
-
-#warning ARCH_TEST: user_proc.c ignored
-
-#else
-
-#include <cpu.h>
+#include <asm/cpu.h>
 #include <string.h>
 #include <error.h>
 #include <proc.h>
@@ -14,20 +8,21 @@
 #include <arch/user.h>
 #include <tls.h>
 
-#include "mem.h"
+#include "arch/mem.h"
 
 int
 user_proc_arch_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end)
 {
-    frame_t pgdir_frame = frame_alloc(1, AF_ATOMIC);
+    frame_t pgdir_frame = frame_alloc(1, FA_KERNEL);
     if (pgdir_frame == NULL) return -E_NO_MEM;
     uintptr_t pgdir_phys = FRAME_TO_PHYS(pgdir_frame);
 
     mutex_init(&user_proc->arch.pgflt_lock);
     user_proc->arch.cr3   = pgdir_phys;
     user_proc->arch.pgdir = VADDR_DIRECT(pgdir_phys);
-    /* copy from the scratch */
-    memset(user_proc->arch.pgdir, 0, PGSIZE);
+    
+    /* Copy from the scratch pgtab */
+    memset(user_proc->arch.pgdir, 0, _MACH_PAGE_SIZE);
     memmove(user_proc->arch.pgdir + PGX(PHYSBASE), pgdir_scratch + PGX(PHYSBASE), (NPGENTRY - PGX(PHYSBASE)) * sizeof(pgd_t));
     user_proc->arch.pgdir[PGX(VPT)] = pgdir_phys | PTE_W | PTE_P;
     user_proc->arch.mmio_root = NULL;
@@ -36,22 +31,24 @@ user_proc_arch_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end)
 }
 
 int
-user_proc_arch_copy_page(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, int flag)
+user_proc_arch_copy_page(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, unsigned int flag)
 {
-    pte_t *pte = get_pte(user_proc->arch.pgdir, addr, 1);
+    pte_t *pte = get_pte(user_proc->arch.pgdir, addr, FA_KERNEL);
+    if (pte == NULL) return -E_NO_MEM;
+
     if (!(*pte & PTE_P))
     {
-        uintptr_t phys = FRAME_TO_PHYS(frame_alloc(1, AF_ATOMIC));
+        frame_t frame  = frame_alloc(1, FA_KERNEL);
+        if (frame == NULL) return -E_NO_MEM;
+        
+        uintptr_t phys = FRAME_TO_PHYS(frame);
         *pte = phys | PTE_W | PTE_U | PTE_P;
     }
+    
     if (phys == 0)
-    {
-        memset(VADDR_DIRECT(PTE_ADDR(*pte)), 0, PGSIZE);
-    }
-    else
-    {
-        memmove(VADDR_DIRECT(PTE_ADDR(*pte)), VADDR_DIRECT(phys), PGSIZE);
-    }
+        memset(VADDR_DIRECT(PTE_ADDR(*pte)), 0, _MACH_PAGE_SIZE);
+    else memmove(VADDR_DIRECT(PTE_ADDR(*pte)), VADDR_DIRECT(phys), _MACH_PAGE_SIZE);
+    
     return 0;
 }
 
@@ -65,13 +62,13 @@ user_proc_arch_copy(user_proc_t user_proc, uintptr_t addr, void *src, size_t siz
 
     while (ptr < end)
     {
-        pte_t *pte = get_pte(user_proc->arch.pgdir, ptr, 0);
+        pte_t *pte = get_pte(user_proc->arch.pgdir, ptr, FA_NO);
         if (pte == NULL) return -E_INVAL;
         if ((*pte & (PTE_P | PTE_W | PTE_U)) != (PTE_P | PTE_W | PTE_U)) return -E_INVAL;
 
         if (ptr < addr)
         {
-            if (ptr + PGSIZE >= end)
+            if (ptr + _MACH_PAGE_SIZE >= end)
             {
                 memmove(VADDR_DIRECT(PTE_ADDR(*pte) + PGOFF(addr)),
                         __src + PGOFF(addr), size);
@@ -79,12 +76,12 @@ user_proc_arch_copy(user_proc_t user_proc, uintptr_t addr, void *src, size_t siz
             else
             {
                 memmove(VADDR_DIRECT(PTE_ADDR(*pte) + PGOFF(addr)),
-                        __src + PGOFF(addr), PGSIZE - PGOFF(addr));
+                        __src + PGOFF(addr), _MACH_PAGE_SIZE - PGOFF(addr));
             }
         }
         else
         {
-            if (ptr + PGSIZE >= end)
+            if (ptr + _MACH_PAGE_SIZE >= end)
             {
                 memmove(VADDR_DIRECT(PTE_ADDR(*pte)),
                         __src, end - ptr);
@@ -92,12 +89,12 @@ user_proc_arch_copy(user_proc_t user_proc, uintptr_t addr, void *src, size_t siz
             else
             {
                 memmove(VADDR_DIRECT(PTE_ADDR(*pte)),
-                        __src, PGSIZE);
+                        __src, _MACH_PAGE_SIZE);
             }
         }
 
-        ptr   += PGSIZE;
-        __src += PGSIZE;
+        ptr   += _MACH_PAGE_SIZE;
+        __src += _MACH_PAGE_SIZE;
     }
     
     return 0;
@@ -106,17 +103,19 @@ user_proc_arch_copy(user_proc_t user_proc, uintptr_t addr, void *src, size_t siz
 int
 user_proc_arch_brk(user_proc_t user_proc, uintptr_t end)
 {
+    int ret;
+    
     if (end > user_proc->end)
     {
         /* enlarge */
-#if 0   /* by demand now */
+        /* XXX: alloc by demand */
         uintptr_t cur = user_proc->end;
         while (cur != end)
         {
-            user_proc_arch_copy_page(user_proc, cur, 0, 0);
-            cur += PGSIZE;
+            if ((ret = user_proc_arch_copy_page(user_proc, cur, 0, 0)) != 0)
+                return ret;
+            cur += _MACH_PAGE_SIZE;
         }
-#endif
     }
     else if (end < user_proc->end)
     {
@@ -124,11 +123,11 @@ user_proc_arch_brk(user_proc_t user_proc, uintptr_t end)
         uintptr_t cur = end;
         while (cur != user_proc->end)
         {
-            pte_t *pte = get_pte(user_proc->arch.pgdir, cur, 0);
+            pte_t *pte = get_pte(user_proc->arch.pgdir, cur, FA_NO);
             /* XXX: to consider swap mach? */
             if (pte != NULL && (*pte & PTE_P))
-                frame_free(PHYS_TO_FRAME(PTE_ADDR(*pte)));
-            cur += PGSIZE;
+                frame_put(PHYS_TO_FRAME(PTE_ADDR(*pte)));
+            cur += _MACH_PAGE_SIZE;
         }
     }
     
@@ -235,19 +234,16 @@ user_area_update_inv(user_area_node_t node)
     else node->end = node->area.end;
 }
 
-int
-user_proc_arch_mmio_open(user_proc_t user_proc, uintptr_t addr, size_t size, uintptr_t *result)
+static user_area_node_t
+user_area_node_fit(user_area_node_t node, size_t size)
 {
-    if (addr & (PGSIZE - 1)) return -1;
-    if ((size & (PGSIZE - 1)) || size == 0) return -1;
-    user_area_node_t node = user_proc->arch.mmio_root;
-    size >>= PGSHIFT;
-
     user_area_node_t n = NULL;
    
     if (node == NULL)
     {
-        n = kmalloc(sizeof(user_area_node_s), 0);
+        n = kmalloc(sizeof(user_area_node_s), FA_KERNEL);
+        if (n == NULL) return NULL;
+        
         n->area.start = 0;
         n->area.end   = size;
     }
@@ -255,17 +251,21 @@ user_proc_arch_mmio_open(user_proc_t user_proc, uintptr_t addr, size_t size, uin
     {
         if (node->start >= size)
         {
-            n = kmalloc(sizeof(user_area_node_s), AF_ATOMIC);
+            n = kmalloc(sizeof(user_area_node_s), FA_KERNEL);
+            if (n == NULL) return NULL;
+            
             n->area.start = 0;
             n->area.end   = size;
         }
         else if ((UMMIO_SIZE >> PGSHIFT) - node->end >= size)
         {
-            n = kmalloc(sizeof(user_area_node_s), AF_ATOMIC);
+            n = kmalloc(sizeof(user_area_node_s), FA_KERNEL);
+            if (n == NULL) return NULL;
+            
             n->area.start = node->end;
             n->area.end   = n->area.start + size;
         }
-        else return -1;
+        else return NULL;
     }
 
     while (n == NULL)
@@ -279,7 +279,9 @@ user_proc_arch_mmio_open(user_proc_t user_proc, uintptr_t addr, size_t size, uin
             }
             else if (node->area.start - node->left->end >= size)
             {
-                n = kmalloc(sizeof(user_area_node_s), AF_ATOMIC);
+                n = kmalloc(sizeof(user_area_node_s), FA_KERNEL);
+                if (n == NULL) return NULL;
+                
                 n->area.start = node->left->end;
                 n->area.end   = n->area.start + size;
                 break;
@@ -295,7 +297,9 @@ user_proc_arch_mmio_open(user_proc_t user_proc, uintptr_t addr, size_t size, uin
             }
             else if (node->right->start - node->area.end >= size)
             {
-                n = kmalloc(sizeof(user_area_node_s), AF_ATOMIC);
+                n = kmalloc(sizeof(user_area_node_s), FA_KERNEL);
+                if (n == NULL) return NULL;
+                
                 n->area.start = node->area.end;
                 n->area.end   = n->area.start + size;
                 break;
@@ -303,22 +307,40 @@ user_proc_arch_mmio_open(user_proc_t user_proc, uintptr_t addr, size_t size, uin
         }
 
         /* should not happen */
-        return -1;
+        return NULL;
     }
 
-    /* map job */
+    return n;
+}
+
+int
+user_proc_arch_mmio_open(user_proc_t user_proc, uintptr_t addr, size_t size, uintptr_t *result)
+{
+    if (addr & (_MACH_PAGE_SIZE - 1)) return -1;
+    if ((size & (_MACH_PAGE_SIZE - 1)) || size == 0) return -1;
+
+    size >>= _MACH_PAGE_SHIFT;
+    user_area_node_t n = user_area_node_fit(user_proc->arch.mmio_root, size);
+    if (n == NULL) return -E_NO_MEM;
+        
+    /* MAP MEMORY PAGES */
     size_t i;
     for (i = n->area.start; i < n->area.end; ++ i)
     {
-        uintptr_t la = UMMIO_BASE + (i << PGSHIFT);
-        pte_t *pte = get_pte(user_proc->arch.pgdir, la, 1);
+        uintptr_t la = UMMIO_BASE + (i << _MACH_PAGE_SHIFT);
+        pte_t *pte = get_pte(user_proc->arch.pgdir, la, FA_KERNEL);
+        if (pte == NULL)
+        {
+            kfree(n);
+            return -E_NO_MEM;
+        }
         /* FIXME: process no mem */
-        *pte = (addr + ((i - n->area.start) << PGSHIFT)) | PTE_W | PTE_U | PTE_P;
+        *pte = (addr + ((i - n->area.start) << _MACH_PAGE_SHIFT)) | PTE_W | PTE_U | PTE_P;
     }
     
-    user_proc->arch.mmio_root = __RBT_Insert(node, n);
+    user_proc->arch.mmio_root = __RBT_Insert(user_proc->arch.mmio_root, n);
 
-    *result = UMMIO_BASE + (n->area.start << PGSHIFT);
+    *result = UMMIO_BASE + (n->area.start << _MACH_PAGE_SHIFT);
     return 0;
 }
 
@@ -345,7 +367,7 @@ user_proc_arch_mmio_close(user_proc_t user_proc, uintptr_t addr)
     for (i = node->area.start; i < node->area.end; ++ i)
     {
         uintptr_t la = UMMIO_BASE + (i << PGSHIFT);
-        pte_t *pte = get_pte(user_proc->arch.pgdir, la, 0);
+        pte_t *pte = get_pte(user_proc->arch.pgdir, la, FA_KERNEL);
         /* FIXME: process no mem */
         *pte = 0;
     }
@@ -355,5 +377,3 @@ user_proc_arch_mmio_close(user_proc_t user_proc, uintptr_t addr)
 
     return 0;
 }
-
-#endif

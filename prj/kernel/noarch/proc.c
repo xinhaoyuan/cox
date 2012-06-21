@@ -8,6 +8,7 @@
 #include <lib/low_io.h>
 #include <arch/context.h>
 #include <arch/irq.h>
+#include <user.h>
 
 #include "sched/idle.h"
 #include "sched/rr.h"
@@ -136,7 +137,7 @@ proc_switch(proc_t proc)
              prev->status != PROC_STATUS_RUNNABLE_STRONG)
     {
         /* prev no longer in current rq, save the user context */
-        // user_thread_save_context(prev);
+        user_thread_save_context(prev);
         proc->sched_prev_usr = NULL;
     }
     else proc->sched_prev_usr = prev;
