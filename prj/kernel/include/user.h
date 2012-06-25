@@ -8,7 +8,7 @@
 #include <arch/user.h>
 #include <spinlock.h>
 
-#define USER_KSTACK_SIZE 8192
+#define USER_KSTACK_DEFAULT_SIZE 8192
 
 struct user_proc_s
 {

@@ -41,13 +41,13 @@ kern_init(void)
     proc_notify(&init_proc);
 }
 
-static char          user_init_stack[USER_KSTACK_SIZE] __attribute__((aligned(_MACH_PAGE_SIZE)));
+static char          user_init_stack[USER_KSTACK_DEFAULT_SIZE] __attribute__((aligned(_MACH_PAGE_SIZE)));
 static user_thread_s user_init;
 
 static void
 kernel_start(void *__unused)
 {
-    user_thread_init(&user_init, "uinit", SCHED_CLASS_RR, user_init_stack, USER_KSTACK_SIZE);
+    user_thread_init(&user_init, "uinit", SCHED_CLASS_RR, user_init_stack, USER_KSTACK_DEFAULT_SIZE);
     
     extern char _binary_user_init_image_start[];
     extern char _binary_user_init_image_end[];
