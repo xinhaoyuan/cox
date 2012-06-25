@@ -8,6 +8,8 @@
 #include <arch/user.h>
 #include <spinlock.h>
 
+#define USER_KSTACK_SIZE 8192
+
 struct user_proc_s
 {
     /* address range */

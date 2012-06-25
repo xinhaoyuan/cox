@@ -8,10 +8,9 @@
 
 __init_entry:
         movq $0, %rbp
-        # use the initial stack if the arg0 in tls is zero
-        movq 32(%rdi), %rax
+        movq %rsp, %rax
         testq %rax, %rax
-        jz goinit
+        jnz goinit
         movq $init_stack, %rsp
 goinit: 
         call __init

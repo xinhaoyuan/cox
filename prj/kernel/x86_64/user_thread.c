@@ -15,7 +15,7 @@ user_thread_arch_state_init(user_thread_t thread, uintptr_t entry, uintptr_t sta
 {
     memset(&thread->arch, 0, sizeof(thread->arch));
     
-    thread->arch.init_entry = entry;
+    thread->arch.init_entry     = entry;
     thread->arch.init_stack_ptr = stack_ptr;
     
     size_t tls_pages = thread->tls_size >> _MACH_PAGE_SHIFT;

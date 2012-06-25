@@ -1,1 +1,1 @@
-${DEP_user}: ${OBJ_arch}
+${DEP_user_init}: ${OBJ_arch}

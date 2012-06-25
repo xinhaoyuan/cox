@@ -12,7 +12,7 @@
 
 #ifndef __KERN__
 
-#include <user/io.h>
+#include <uio.h>
 #define SYSENTRY static __attribute__((always_inline)) __inline
 
 SYSENTRY void

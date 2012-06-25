@@ -4,6 +4,7 @@
 #include <irq.h>
 #include <proc.h>
 #include <kmalloc.h>
+#include <user.h>
 
 void
 kern_sys_init_global(void)
@@ -40,8 +41,24 @@ kern_init(void)
     proc_notify(&init_proc);
 }
 
+static char          user_init_stack[USER_KSTACK_SIZE] __attribute__((aligned(_MACH_PAGE_SIZE)));
+static user_thread_s user_init;
+
 static void
 kernel_start(void *__unused)
 {
-    cprintf("Hello world!\n");
+    user_thread_init(&user_init, "uinit", SCHED_CLASS_RR, user_init_stack, USER_KSTACK_SIZE);
+    
+    extern char _binary_user_init_image_start[];
+    extern char _binary_user_init_image_end[];
+    int ret = user_thread_bin_exec(&user_init,
+                                   (void *)_binary_user_init_image_start,
+                                   _binary_user_init_image_end - _binary_user_init_image_start);
+    
+    if (ret == 0)
+        proc_notify(&user_init.proc);
+    else
+    {
+        PANIC("cannot load user init\n");
+    }
 }
