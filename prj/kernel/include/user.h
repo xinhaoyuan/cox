@@ -62,14 +62,18 @@ void user_thread_pgflt_handler(proc_t proc, unsigned int flags, uintptr_t la, ui
 
 void user_thread_jump(void) __attribute__((noreturn));
 
+void user_thread_after_leave(proc_t proc);
 void user_thread_before_return(proc_t proc);
-void user_thread_save_context(proc_t proc);
+void user_thread_save_context(proc_t proc, int hint);
 void user_thread_restore_context(proc_t proc);
+
+#define USER_THREAD_CONTEXT_HINT_URGENT 0x1
+#define USER_THREAD_CONTEXT_HINT_LAZY   0x2
 
 /* filled by arch */
 int  user_thread_arch_state_init(user_thread_t thread, uintptr_t entry, uintptr_t stack_ptr);
 void user_thread_arch_jump(void) __attribute__((noreturn));
-void user_thread_arch_save_context(proc_t proc);
+void user_thread_arch_save_context(proc_t proc, int hint);
 void user_thread_arch_restore_context(proc_t proc);
 
 #endif

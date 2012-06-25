@@ -74,8 +74,16 @@ user_thread_arch_jump(void)
 }
 
 void
-user_thread_arch_save_context(proc_t proc)
-{ }
+user_thread_arch_save_context(proc_t proc, int hint)
+{
+    if (hint & USER_THREAD_CONTEXT_HINT_URGENT)
+    {
+    }
+
+    if (hint & USER_THREAD_CONTEXT_HINT_LAZY)
+    {
+    }
+}
 
 void
 user_thread_arch_restore_context(proc_t proc)

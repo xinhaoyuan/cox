@@ -171,6 +171,12 @@ user_thread_jump(void)
 }
 
 void
+user_thread_after_leave(proc_t proc)
+{
+    user_thread_save_context(proc, USER_THREAD_CONTEXT_HINT_URGENT);
+}
+
+void
 user_thread_before_return(proc_t proc)
 {
     /* assume the irq is disabled, ensuring no switch */
@@ -178,7 +184,7 @@ user_thread_before_return(proc_t proc)
     if (proc->sched_prev_usr != proc)
     {
         if (proc->sched_prev_usr != NULL)
-            user_thread_save_context(proc->sched_prev_usr);
+            user_thread_save_context(proc->sched_prev_usr, USER_THREAD_CONTEXT_HINT_LAZY);
         user_thread_restore_context(proc);
     }
 }
@@ -190,8 +196,8 @@ user_thread_pgflt_handler(proc_t proc, unsigned int flag, uintptr_t la, uintptr_
 }
 
 void
-user_thread_save_context(proc_t proc)
-{ user_thread_arch_save_context(proc); }
+user_thread_save_context(proc_t proc, int hint)
+{ user_thread_arch_save_context(proc, hint); }
 
 void
 user_thread_restore_context(proc_t proc)

@@ -137,7 +137,7 @@ proc_switch(proc_t proc)
              prev->status != PROC_STATUS_RUNNABLE_STRONG)
     {
         /* prev no longer in current rq, save the user context */
-        user_thread_save_context(prev);
+        user_thread_save_context(prev, USER_THREAD_CONTEXT_HINT_LAZY);
         proc->sched_prev_usr = NULL;
     }
     else proc->sched_prev_usr = prev;

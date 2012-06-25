@@ -125,10 +125,13 @@ PLS_ATOM_DECLARE(int, __local_irq_save);
 static void
 trap_dispatch(struct trapframe *tf)
 {
+    proc_t p = current;
     bool from_user = !trap_in_kernel(tf);
+    
     if (from_user)
     {
-        USER_THREAD(current)->arch.tf = tf;
+        USER_THREAD(p)->arch.tf = tf;
+        user_thread_after_leave(p);
     }
 
     if (tf->tf_trapno < EXCEPTION_COUNT) {
@@ -170,12 +173,12 @@ trap_dispatch(struct trapframe *tf)
     {
 #if 0        
         __irq_enable();
-        user_process_io(current);
+        user_process_io(p);
         __irq_disable();
 #endif
         
         if (PLS(__local_irq_save) != 0) cprintf("WARNING: return to user with irq saved\n");
-        user_thread_before_return(current);
+        user_thread_before_return(p);
     }
 }
 
