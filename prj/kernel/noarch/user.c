@@ -24,6 +24,8 @@ static int user_thread_state_init(user_thread_t proc, uintptr_t entry, uintptr_t
 int
 user_thread_bin_exec(user_thread_t thread, void *bin, size_t bin_size)
 {
+    if (bin_size < sizeof(uintptr_t) * 4) return -E_INVAL;
+    
     uintptr_t *ptr   =  (uintptr_t *)bin;  
     uintptr_t  start = *(ptr ++);
     uintptr_t  entry = *(ptr ++);
@@ -173,6 +175,8 @@ user_thread_jump(void)
 void
 user_thread_after_leave(proc_t proc)
 {
+    /* assume the irq is disabled, ensuring no switch */
+    
     user_thread_save_context(proc, USER_THREAD_CONTEXT_HINT_URGENT);
 }
 
