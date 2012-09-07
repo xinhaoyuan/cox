@@ -1,6 +1,6 @@
 .PHONY: all
 
-include ${T_BASE}/config.mk
+include ${T_OBJ}/config.mk
 
 T_CC_OPT_FLAGS		:= -O2 
 T_CC_DEBUG_FLAGS	:= -Wall
@@ -8,8 +8,8 @@ SRCFILES			:= $(shell find . '(' '!' -regex '.*/_.*' ')' -and '(' -iname "*.c" -
 
 include ${T_BASE}/utl/template.mk
 
-all: ${T_OBJ}/tools-sign
+all: ${T_OBJ}/${PRJ}
 
-${T_OBJ}/tools-sign: ${OBJFILES}
+${T_OBJ}/${PRJ}: ${OBJFILES}
 	${PRINT} LD $@
 	${V}${CC} -o$@ $^

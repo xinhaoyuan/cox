@@ -6,9 +6,9 @@ smp=4
 mem=512m
 
 qemu_cmd="$qemu -smp $smp -m $mem \
-        -hda obj/bootimage \
-        -serial file:obj/serial.log \
-        -net nic,model=e1000 -net user,hostfwd=tcp::9999-:7 -net dump,file=obj/netdump.pcap"
+        -hda obj/cox-bootimage \
+        -serial file:obj/cox-serial.log \
+        -net nic,model=e1000 -net user,hostfwd=tcp::9999-:7 -net dump,file=obj/cox-netdump.pcap"
 
 if [ "$1" = "gdb" ]; then
     $qemu_cmd -vga std -s -S &

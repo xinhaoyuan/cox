@@ -49,11 +49,11 @@ kernel_start(void *__unused)
 {
     user_thread_init(&user_init, "uinit", SCHED_CLASS_RR, user_init_stack, USER_KSTACK_DEFAULT_SIZE);
     
-    extern char _binary_user_init_image_start[];
-    extern char _binary_user_init_image_end[];
+    extern char _binary_cox_user_init_image_start[];
+    extern char _binary_cox_user_init_image_end[];
     int ret = user_thread_bin_exec(&user_init,
-                                   (void *)_binary_user_init_image_start,
-                                   _binary_user_init_image_end - _binary_user_init_image_start);
+                                   (void *)_binary_cox_user_init_image_start,
+                                   _binary_cox_user_init_image_end - _binary_cox_user_init_image_start);
     
     if (ret == 0)
         proc_notify(&user_init.proc);
