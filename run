@@ -12,10 +12,10 @@ qemu_cmd="$qemu -smp $smp -m $mem \
 
 if [ "$1" = "gdb" ]; then
     $qemu_cmd -vga std -s -S &
-    ucore-mp64-gdb
+    ucore-mp64-gdb --command=cox/gdbinit
 elif [ "$1" = "console" ]; then
     $qemu_cmd -vga std -S -monitor stdio
 elif [ "$1" = "3w" ]; then
     $term -e $qemu_cmd -vga std -monitor stdio -s -S &
-    ucore-mp64-gdb
+    ucore-mp64-gdb --command=cox/gdbinit
 fi
