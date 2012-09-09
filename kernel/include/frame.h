@@ -9,6 +9,9 @@ struct frame_s
 {
     spinlock_s   lock;
     unsigned int ref_count;
+    
+    /* REGION HEAD: (__SIZE__)0 */
+    /* REGION BODY: (__HEAD__)1 */
     uintptr_t    region;
 
     frame_arch_s arch;
@@ -20,8 +23,8 @@ typedef frame_s *frame_t;
 extern size_t  frames_count;
 extern frame_t frames;
 
-#define FRAME_REGION_HEAD(frame) ({ frame_t p = (frame); p->region & 1 ? frames + (p->region & ~1) : p; })
-#define FRAME_REGION_SIZE(frame) ({ frame_t p = (frame); p->region & 1 ? (frames[(p->region & ~1)]->region >> 1) : (p->region >> 1); })
+#define FRAME_REGION_HEAD(frame) ({ frame_t p = (frame); (p->region & 1) ? (frames + (p->region >> 1)) : p; })
+#define FRAME_REGION_SIZE(frame) ({ frame_t p = (frame); (p->region & 1) ? (frames[(p->region >> 1)]->region >> 1) : (p->region >> 1); })
 
 #ifndef FRAME_ARCH_MAP
 #include <asm/mach.h>
