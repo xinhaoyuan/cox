@@ -358,7 +358,7 @@ memory_init(void)
     /* Mark the supervisor area and boot alloc area reserved */
     memmap_append(kern_start, kern_end, MEMMAP_FLAG_RESERVED);
 
-    frame_sys_init_struct(nr_pages, __boot_page_alloc);
+    frame_sys_early_init_struct(nr_pages, __boot_page_alloc);
     kv_buddy.node = boot_alloc(BUDDY_CALC_ARRAY_SIZE(KVSIZE >> PGSHIFT) * sizeof(struct buddy_node_s), PGSIZE, 0);
     buddy_build(&kv_buddy, KVSIZE >> PGSHIFT, kv_config);
     
@@ -370,7 +370,7 @@ memory_init(void)
 
     /* Initialize the page allocator with free areas */
 
-    frame_sys_init_layout(config_by_memmap);
+    frame_sys_early_init_layout(config_by_memmap);
     spinlock_init(&kv_lock);
     spinlock_init(&mmio_fix_lock);
 

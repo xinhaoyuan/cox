@@ -37,8 +37,8 @@ extern frame_t frames;
 /* or the arch defines the translation */
 #endif
 
-void frame_sys_init_struct(size_t pcount, void*(*init_alloc)(size_t));
-void frame_sys_init_layout(int(*layout)(uintptr_t frame_num));
+void frame_sys_early_init_struct(size_t pcount, void*(*init_alloc)(size_t));
+void frame_sys_early_init_layout(int(*layout)(uintptr_t frame_num));
 
 frame_t frame_alloc(size_t num, unsigned int flags);
 void    frame_get(frame_t frame);

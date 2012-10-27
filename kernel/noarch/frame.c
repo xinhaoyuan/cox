@@ -24,7 +24,7 @@ static void frame_free(frame_t frame);
 static void frame_alloc_wakeup_all(void);
 
 void
-frame_sys_init_struct(size_t pcount, void*(*init_alloc)(size_t))
+frame_sys_early_init_struct(size_t pcount, void*(*init_alloc)(size_t))
 {
     buddy_init();
     
@@ -38,7 +38,7 @@ frame_sys_init_struct(size_t pcount, void*(*init_alloc)(size_t))
 }
 
 void
-frame_sys_init_layout(int(*layout)(uintptr_t framenum))
+frame_sys_early_init_layout(int(*layout)(uintptr_t framenum))
 {
     buddy_build(&buddy, frames_count, layout);
 }

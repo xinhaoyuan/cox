@@ -1,8 +1,8 @@
 #ifndef __KERN_DEBUG_H__
 #define __KERN_DEBUG_H__
 
-#include <asm/cpu.h>
 #include <lib/low_io.h>
+#include <asm/cpu.h>
 
 #define DBG_IO     (1 << 0)
 #define DBG_SCHED  (1 << 1)
