@@ -1,3 +1,5 @@
+#define DEBUG_COMPONENT DBG_MEM
+
 #include <frame.h>
 #include <spinlock.h>
 #include <irq.h>
@@ -26,6 +28,7 @@ static void frame_alloc_wakeup_all(void);
 void
 frame_sys_early_init_struct(size_t pcount, void*(*init_alloc)(size_t))
 {
+    DEBUG("initialize frame management with %d frames\n", pcount);
     buddy_init();
     
     frames_count = pcount;

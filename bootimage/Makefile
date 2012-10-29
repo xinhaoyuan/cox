@@ -1,6 +1,6 @@
 .PHONY: all
 
-include ${T_OBJ}/config.mk
+include ${T_OBJ}/cox-config.mk
 
 unexport ARCH
 

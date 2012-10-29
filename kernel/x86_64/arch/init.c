@@ -1,8 +1,11 @@
+#define DEBUG_COMPONENT DBG_MISC
+
 #include <string.h>
 #include <init.h>
 #include <arch/local.h>
 #include <lib/low_io.h>
 #include <frame.h>
+#include <debug.h>
 
 #include "early_cons.h"
 #include "acpi_conf.h"
@@ -39,7 +42,7 @@ __kern_early_init(void) {
     if (!sysconf_x86.ioapic.enable ||
         !sysconf_x86.lapic.enable)
     {
-        cprintf("PANIC: ioapic and lapic must be enabled in this arch\n");
+        DEBUG("ERROR: ioapic and lapic must be enabled in this arch\n");
         goto err;
     }
 
@@ -59,7 +62,7 @@ __kern_early_init(void) {
     cpu_init();
 
   err:
-    cprintf("You should not be here. Spin now.\n");
+    DEBUG("You should not be here. Spin now.\n");
     while (1) __cpu_relax();
 }
 

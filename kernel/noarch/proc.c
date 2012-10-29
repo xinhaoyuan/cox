@@ -1,3 +1,5 @@
+#define DEBUG_COMPONENT DBG_SCHED
+
 #include <asm/cpu.h>
 #include <string.h>
 #include <error.h>
@@ -55,7 +57,7 @@ __proc_entry(void *arg)
     proc->status = PROC_STATUS_ZOMBIE;
     __schedule(0);
 
-    cprintf("PROC %p is dead. Should not be here.", proc);
+    DEBUG("PROC %p is dead. Should not be here.\n", proc);
     goto die;
 }
 

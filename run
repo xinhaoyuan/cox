@@ -1,21 +1,30 @@
 #!/bin/sh
 
+if [ ! -d "$1" ] || [ -z "$2" ]; then
+    echo Usage "$0 [obj-dir] [mode]"
+    exit 1
+fi
+
+local_dir=`cd $(dirname $0); pwd`
+obj_dir=`cd $1; pwd`
+mode="$2"
+
 term=urxvt
 qemu=qemu-system-x86_64
 smp=4
 mem=512m
 
 qemu_cmd="$qemu -smp $smp -m $mem \
-        -hda obj/cox-bootimage \
-        -serial file:obj/cox-serial.log \
-        -net nic,model=e1000 -net user,hostfwd=tcp::9999-:7 -net dump,file=obj/cox-netdump.pcap"
+        -hda ${obj_dir}/cox-bootimage \
+        -serial file:${obj_dir}/cox-serial.log \
+        -net nic,model=e1000 -net user,hostfwd=tcp::9999-:7 -net dump,file=${obj_dir}/cox-netdump.pcap"
 
-if [ "$1" = "gdb" ]; then
+if [ "$mode" = "gdb" ]; then
     $qemu_cmd -vga std -s -S &
-    ucore-mp64-gdb --command=cox/gdbinit
-elif [ "$1" = "console" ]; then
+    ucore-mp64-gdb --command=${local_dir}/gdbinit
+elif [ "$mode" = "console" ]; then
     $qemu_cmd -vga std -S -monitor stdio
-elif [ "$1" = "3w" ]; then
+elif [ "$mode" = "3w" ]; then
     $term -e $qemu_cmd -vga std -monitor stdio -s -S &
-    ucore-mp64-gdb --command=cox/gdbinit
+    ucore-mp64-gdb --command=${local_dir}/gdbinit
 fi

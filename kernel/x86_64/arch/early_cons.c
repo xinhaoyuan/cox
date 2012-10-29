@@ -1,8 +1,11 @@
+#define DEBUG_COMPONENT DBG_IO
+
 #include <types.h>
 #include <string.h>
 #include <asm/io.h>
 #include <lib/low_io.h>
 #include <arch/memlayout.h>
+#include <debug.h>
 
 #include "early_cons.h"
 #include "kbdreg.h"
@@ -391,7 +394,7 @@ kbd_proc_data(void) {
     // Process special keys
     // Ctrl-Alt-Del: reboot
     if (!(~shift & (CTL | ALT)) && c == KEY_DEL) {
-        cprintf("Rebooting!\n");
+        DEBUG("Rebooting!\n");
         __outb(0x92, 0x3); // courtesy of Chris Frost
     }
     return c;
@@ -448,10 +451,12 @@ early_cons_init(void) {
     low_io_putc = early_cons_putc;
     low_io_getc = early_cons_getc;
     
+    debug_io_set((void(*)(int,void*))early_cons_putc, (int(*)(void*))early_cons_getc, NULL);
+    
     cga_init();
     serial_init();
     kbd_init();
     if (!serial_exists) {
-        cprintf("serial port does not exist!!\n");
+        DEBUG("serial port does not exist!!\n");
     }
 }

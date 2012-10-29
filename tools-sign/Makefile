@@ -1,6 +1,6 @@
 .PHONY: all
 
-include ${T_OBJ}/config.mk
+include ${T_OBJ}/cox-config.mk
 
 T_CC_OPT_FLAGS		:= -O2 
 T_CC_DEBUG_FLAGS	:= -Wall

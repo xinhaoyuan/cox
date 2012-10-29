@@ -1,6 +1,9 @@
+#define DEBUG_COMPONENT DBG_IO
+
 #include <string.h>
 #include <asm/atom.h>
 #include <lib/low_io.h>
+#include <debug.h>
 
 #include "init.h"
 #include "sysconf_x86.h"
@@ -36,7 +39,7 @@ cpu_init(void)
     }
 
     if (old == sysconf_x86.cpu.count - 1)
-        cprintf("ALL CPU STARTED\n");
+        DEBUG("ALL CPU STARTED\n");
 
     /* A barrier that waits for all cpu ready */
     while (cpu_init_count != sysconf_x86.cpu.count) ;

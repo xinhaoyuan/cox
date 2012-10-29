@@ -1,9 +1,12 @@
+#define DEBUG_COMPONENT DBG_IO
+
 #include <string.h>
 #include <error.h>
 #include <asm/cpu.h>
 #include <asm/mmu.h>
 #include <lib/low_io.h>
 #include <arch/memlayout.h>
+#include <debug.h>
 
 #include "acpi_conf.h"
 
@@ -149,7 +152,7 @@ acpi_conf_init(acpi_conf_callbacks_t cb)
     struct acpi_rsdp_s *rsdp = acpi_rsdp_search();
     if (!rsdp)
     {
-        cprintf("NO RSDP IN MEMORY\n");
+        DEBUG("NO RSDP IN MEMORY\n");
         return -E_UNSPECIFIED;
     }
 
@@ -168,7 +171,7 @@ acpi_conf_init(acpi_conf_callbacks_t cb)
         else phys = *(uint32_t *)((uintptr_t)(sdt + 1) + (i << (xsdp ? 3 : 2)));
         struct acpi_sdth_s *cur = (struct acpi_sdth_s *)VADDR_DIRECT(phys);
         memmove(sign, (char *)&cur->signature, 4);
-        cprintf("ACPI_CONF: processing %s\n", sign);
+        DEBUG("ACPI_CONF: processing %s\n", sign);
         if (memcmp(cur->signature, "APIC", 4) == 0)
         {
             struct acpi_madt_s *madt = (struct acpi_madt_s *)(cur + 1);

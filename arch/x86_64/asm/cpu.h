@@ -9,27 +9,27 @@ struct pseudodesc {
     uintptr_t pd_base;      // Base address
 } __attribute__ ((packed));
 
-static inline void __cpu_relax(void) __attribute__((always_inline));
-static inline void __lidt(struct pseudodesc *pd) __attribute__((always_inline));
-static inline void __sti(void) __attribute__((always_inline));
-static inline void __cli(void) __attribute__((always_inline));
-static inline void __ltr(uint16_t sel) __attribute__((always_inline));
-static inline void __lcr0(uintptr_t cr0) __attribute__((always_inline));
-static inline void __lcr3(uintptr_t cr3) __attribute__((always_inline));
+static inline void      __cpu_relax(void) __attribute__((always_inline));
+static inline void      __lidt(struct pseudodesc *pd) __attribute__((always_inline));
+static inline void      __sti(void) __attribute__((always_inline));
+static inline void      __cli(void) __attribute__((always_inline));
+static inline void      __ltr(uint16_t sel) __attribute__((always_inline));
+static inline void      __lcr0(uintptr_t cr0) __attribute__((always_inline));
+static inline void      __lcr3(uintptr_t cr3) __attribute__((always_inline));
 static inline uintptr_t __rcr0(void) __attribute__((always_inline));
 static inline uintptr_t __rcr1(void) __attribute__((always_inline));
 static inline uintptr_t __rcr2(void) __attribute__((always_inline));
 static inline uintptr_t __rcr3(void) __attribute__((always_inline));
-static inline void __invlpg(void *addr) __attribute__((always_inline));
-static inline uint64_t __read_rbp(void) __attribute__((always_inline));
-static inline uint64_t __read_rflags(void) __attribute__((always_inline));
-static inline void __write_rflags(uint64_t rflags) __attribute__((always_inline));
-static inline void __write_msr(uint32_t idx, uint64_t value) __attribute__((always_inline));
+static inline void      __invlpg(void *addr) __attribute__((always_inline));
+static inline uint64_t  __read_rbp(void) __attribute__((always_inline));
+static inline uint64_t  __read_rflags(void) __attribute__((always_inline));
+static inline void      __write_rflags(uint64_t rflags) __attribute__((always_inline));
+static inline void      __write_msr(uint32_t idx, uint64_t value) __attribute__((always_inline));
 
 static inline void
 __cpu_relax(void)
 {
-	__asm__ __volatile__ ("pause");
+    __asm__ __volatile__ ("pause");
 }
 
 static inline void
@@ -119,24 +119,24 @@ __cpuid(uint32_t info, uint32_t *eaxp, uint32_t *ebxp, uint32_t *ecxp, uint32_t 
 {
      uint32_t eax, ebx, ecx, edx;
      asm volatile("cpuid" 
-		  : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx)
-		  : "a" (info));
+          : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx)
+          : "a" (info));
      if (eaxp)
-	  *eaxp = eax;
+      *eaxp = eax;
      if (ebxp)
-	  *ebxp = ebx;
+      *ebxp = ebx;
      if (ecxp)
-	  *ecxp = ecx;
+      *ecxp = ecx;
      if (edxp)
-	  *edxp = edx;
+      *edxp = edx;
 }
 
 
 static inline void
 __write_msr(uint32_t idx, uint64_t value)
 {
-	asm volatile("wrmsr"
-				 : : "a" (value & 0xFFFFFFFF), "c" (idx), "d" ((value >> 32) & 0xFFFFFFFF));
+    asm volatile("wrmsr"
+                 : : "a" (value & 0xFFFFFFFF), "c" (idx), "d" ((value >> 32) & 0xFFFFFFFF));
 }
 
 #endif

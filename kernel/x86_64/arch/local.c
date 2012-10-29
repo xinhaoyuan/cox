@@ -64,13 +64,12 @@ pls_init(void)
 
 #if 0
     /* Simple test */
-    cprintf("__pls_base = %x\n", PLS(__pls_base));
+    DEBUG("__pls_base = %x\n", PLS(__pls_base));
     uintptr_t test = 0x1234;
     __asm__ __volatile__("mov %%fs:(%1), %0": "=r"(test) : "r"((uintptr_t)&base - base));
     if (base != test)
     {
-        cprintf("PANIC: processor local storage failed to initailize.", base, test);
-        while (1) __cpu_relax();
+        PANIC("PANIC: processor local storage failed to initailize.", base, test);
     }
 #endif
 

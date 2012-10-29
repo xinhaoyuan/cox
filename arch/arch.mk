@@ -1,4 +1,4 @@
-include ${T_OBJ}/config.mk
+include ${T_OBJ}/cox-config.mk
 
 ifeq (${ARCH},x86_64)
 

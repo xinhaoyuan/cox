@@ -3,6 +3,7 @@
 
 #include <lib/low_io.h>
 #include <arch/memlayout.h>
+#include <debug.h>
 
 #include "memmap.h"
 #include "init.h"
@@ -41,9 +42,7 @@ memmap_process_e820(void)
         if ((_mb_info[0] & (1 << 6)) == 0)
         {
             /* What should I do? */
-            cprintf("PANIC: No MMAP from grub\n");
-            while (1) ;
-            return -E_UNSPECIFIED;
+            PANIC("No MMAP from grub\n");
         }
         else
         {

@@ -1,3 +1,5 @@
+#define DEBUG_COMPONENT DBG_MEM
+
 #include <types.h>
 #include <string.h>
 #include <frame.h>
@@ -9,6 +11,7 @@
 #include <ips.h>
 #include <arch/paging.h>
 #include <asm/cpu.h>
+#include <debug.h>
 
 #include "memmap.h"
 #include "e820.h"
@@ -213,13 +216,13 @@ print_pgdir_sub(int deep, size_t left, size_t right, char *s1[], size_t s2[], ui
         uint32_t perm;
         size_t l, r = left;
         while ((perm = get_pgtable_items(left, right, r, s3[0], &l, &r)) != 0) {
-            cprintf(s1[0], r - l);
+            DEBUG(s1[0], r - l);
             size_t lb = l * s2[0], rb = r * s2[0];
             if ((lb >> 32) & 0x8000) {
                 lb |= (0xFFFFLLU << 48);
                 rb |= (0xFFFFLLU << 48);
             }
-            cprintf(" %016llx-%016llx %016llx %s\n", lb, rb, rb - lb, perm2str(perm));
+            DEBUG(" %016llx-%016llx %016llx %s\n", lb, rb, rb - lb, perm2str(perm));
             print_pgdir_sub(deep - 1, l * NPGENTRY, r * NPGENTRY, s1 + 1, s2 + 1, s3 + 1);
         }
     }
@@ -236,9 +239,9 @@ print_pgdir(void) {
     };
     size_t s2[] = {PUSIZE, PMSIZE, PTSIZE, PGSIZE};
     uintptr_t *s3[] = {vgd, vud, vmd, vpt};
-    cprintf("-------------------- BEGIN --------------------\n");
+    DEBUG("-------------------- BEGIN --------------------\n");
     print_pgdir_sub(sizeof(s1) / sizeof(s1[0]), 0, NPGENTRY, s1, s2, s3);
-    cprintf("--------------------- END ---------------------\n");
+    DEBUG("--------------------- END ---------------------\n");
 }
 
 static void
@@ -260,8 +263,8 @@ mmu_init(void)
     phys_end = end;
     nr_pages = (phys_end + PGSIZE - 1) >> PGSHIFT;
 
-    cprintf("phys max boundary: %p\n", phys_end);
-    cprintf("number of pages: %d\n", nr_pages);
+    DEBUG("phys max boundary: %p\n", phys_end);
+    DEBUG("number of pages: %d\n", nr_pages);
 
     /* touch all pud page for PHYSBASE ~ PHYSBASE + PHYSSIZE, so all
      * page tables shares the same mmio mapping*/
@@ -294,7 +297,7 @@ mmu_init(void)
     extern char __text[], __end[];
     kern_start = (uintptr_t)__text;
     kern_end   = (uintptr_t)__end;
-    cprintf("kernel boundary: %p - %p\n", kern_start, kern_end);
+    DEBUG("kernel boundary: %p - %p\n", kern_start, kern_end);
     /* remap kernel self */
     boot_map_segment(boot_pgdir, KERNBASE + kern_start, kern_end - kern_start, kern_start, PTE_W);
 
@@ -478,8 +481,7 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
         if (err & 4)
         {
             /* MMIO AREA IS NOT ALLOWED FOR USER */
-            cprintf("PANIC: MMIO FROM USER\n");
-            while (1) ;
+            PANIC("MMIO FROM USER\n");
         }
         else
         {
@@ -505,9 +507,8 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
     {
         if (current->type != PROC_TYPE_USER)
         {
-            cprintf("PANIC: user area page fault by non-user thread %p\n", current);
-            cprintf("LA: %p, PC: %p\n", la, pc);
-            while (1) ;
+            PANIC("user area page fault by non-user thread %p\nLA: %p, PC: %p\n",
+                  current, la, pc);
         }
         else
         {

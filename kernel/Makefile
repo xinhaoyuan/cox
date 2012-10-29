@@ -1,6 +1,6 @@
 .PHONY: all
 
-include ${T_OBJ}/arch.mk
+include ${T_OBJ}/cox-arch.mk
 include ${PATH_cox-include}/${ARCH}/kern/comp.mk
 include ${PATH_cox-include}/${ARCH}/kern/user_init.mk
 

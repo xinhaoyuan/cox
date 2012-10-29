@@ -1,6 +1,9 @@
+#define DEBUG_COMPONENT DBG_SCHED
+
 #include <asm/cpu.h>
 #include <lib/low_io.h>
 #include <arch/context.h>
+#include <debug.h>
 
 /* Defined in context.S */
 extern void __context_switch(uintptr_t *from_esp, uintptr_t *from_pc, uintptr_t to_esp, uintptr_t to_pc);
@@ -10,8 +13,7 @@ extern void __context_deadend(void);
 void
 context_deadend(context_t ctx)
 {
-    cprintf("CONTEXT %p FALL INTO DEAD END\n", ctx);
-    while (1) __cpu_relax();
+    PANIC("CONTEXT %p FALL INTO DEAD END\n", ctx);
 }
 
 void

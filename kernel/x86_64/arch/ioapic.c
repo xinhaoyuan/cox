@@ -1,7 +1,10 @@
+#define DEBUG_COMPONENT DBG_IO
+
 #include <asm/io.h>
 #include <arch/memlayout.h>
 #include <lib/low_io.h>
 #include <frame.h>
+#include <debug.h>
 
 #include "intr.h"
 #include "sysconf_x86.h"
@@ -66,19 +69,19 @@ ioapic_init(void)
     {
         ioapic_id = ioapic_id_set[i];
 
-        // cprintf("IOAPIC %d phys %016x\n", ioapic_id, ioapic[ioapic_id].phys);
+        // DEBUG("IOAPIC %d phys %016x\n", ioapic_id, ioapic[ioapic_id].phys);
         ioapic[ioapic_id].mmio = kmmio_open(ioapic[ioapic_id].phys, sizeof(struct ioapic_mmio_s));
 
         int v = ioapic_read(ioapic[ioapic_id].mmio, REG_VER);
         maxintr = (v >> 16) & 0xFF;
-        cprintf("VERSION: %02x, MAXINTR: %d\n", v & 0xFF, maxintr);
+        DEBUG("VERSION: %02x, MAXINTR: %d\n", v & 0xFF, maxintr);
         if ((v & 0xFF) >= 0x20)
             sysconf_x86.ioapic.use_eoi = 1;
         else sysconf_x86.ioapic.use_eoi = 0;
         id = (ioapic_read(ioapic[ioapic_id].mmio, REG_ID) >> 24) & 0xF;
         if (id != ioapic_id)
         {
-            cprintf("ioapic_init: id %08x isn't equal to ioapic_id %08x ; Fixing\n",
+            DEBUG("ioapic_init: id %08x isn't equal to ioapic_id %08x ; Fixing\n",
                     id, ioapic_id);
             ioapic_write(ioapic[ioapic_id].mmio, REG_ID, ioapic_id << 24);
         }

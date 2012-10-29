@@ -1,9 +1,11 @@
+#define DEBUG_COMPONENT DBG_IO
+
 #include <types.h>
 #include <asm/cpu.h>
 #include <proc.h>
 #include <irq.h>
-#include <lib/low_io.h>
 #include <user.h>
+#include <debug.h>
 
 #include "mem.h"
 #include "lapic.h"
@@ -79,45 +81,45 @@ static const char *IA32flags[] = {
 void
 print_trapframe(struct trapframe *tf)
 {
-    cprintf("trapframe at %p\n", tf);
+    DEBUG("trapframe at %p\n", tf);
     print_regs(&tf->tf_regs);
-    cprintf("  trap 0x--------%08x %s\n", tf->tf_trapno, trapname(tf->tf_trapno));
-    cprintf("  err  0x%016llx\n", tf->tf_err);
-    cprintf("  rip  0x%016llx\n", tf->tf_rip);
-    cprintf("  cs   0x------------%04x\n", tf->tf_cs);
-    cprintf("  ds   0x------------%04x\n", tf->tf_ds);
-    cprintf("  es   0x------------%04x\n", tf->tf_es);
-    cprintf("  flag 0x%016llx\n", tf->tf_rflags);
-    cprintf("  rsp  0x%016llx\n", tf->tf_rsp);
-    cprintf("  ss   0x------------%04x\n", tf->tf_ss);
+    DEBUG("  trap 0x--------%08x %s\n", tf->tf_trapno, trapname(tf->tf_trapno));
+    DEBUG("  err  0x%016llx\n", tf->tf_err);
+    DEBUG("  rip  0x%016llx\n", tf->tf_rip);
+    DEBUG("  cs   0x------------%04x\n", tf->tf_cs);
+    DEBUG("  ds   0x------------%04x\n", tf->tf_ds);
+    DEBUG("  es   0x------------%04x\n", tf->tf_es);
+    DEBUG("  flag 0x%016llx\n", tf->tf_rflags);
+    DEBUG("  rsp  0x%016llx\n", tf->tf_rsp);
+    DEBUG("  ss   0x------------%04x\n", tf->tf_ss);
 
     int i, j;
     for (i = 0, j = 1; i < sizeof(IA32flags) / sizeof(IA32flags[0]); i ++, j <<= 1) {
         if ((tf->tf_rflags & j) && IA32flags[i] != NULL) {
-            cprintf("%s,", IA32flags[i]);
+            DEBUG("%s,", IA32flags[i]);
         }
     }
-    cprintf("IOPL=%d\n", (tf->tf_rflags & FL_IOPL_MASK) >> 12);
+    DEBUG("IOPL=%d\n", (tf->tf_rflags & FL_IOPL_MASK) >> 12);
 }
 
 void
 print_regs(struct pushregs *regs)
 {
-    cprintf("  rdi  0x%016llx\n", regs->reg_rdi);
-    cprintf("  rsi  0x%016llx\n", regs->reg_rsi);
-    cprintf("  rdx  0x%016llx\n", regs->reg_rdx);
-    cprintf("  rcx  0x%016llx\n", regs->reg_rcx);
-    cprintf("  rax  0x%016llx\n", regs->reg_rax);
-    cprintf("  r8   0x%016llx\n", regs->reg_r8);
-    cprintf("  r9   0x%016llx\n", regs->reg_r9);
-    cprintf("  r10  0x%016llx\n", regs->reg_r10);
-    cprintf("  r11  0x%016llx\n", regs->reg_r11);
-    cprintf("  rbx  0x%016llx\n", regs->reg_rbx);
-    cprintf("  rbp  0x%016llx\n", regs->reg_rbp);
-    cprintf("  r12  0x%016llx\n", regs->reg_r12);
-    cprintf("  r13  0x%016llx\n", regs->reg_r13);
-    cprintf("  r14  0x%016llx\n", regs->reg_r14);
-    cprintf("  r15  0x%016llx\n", regs->reg_r15);
+    DEBUG("  rdi  0x%016llx\n", regs->reg_rdi);
+    DEBUG("  rsi  0x%016llx\n", regs->reg_rsi);
+    DEBUG("  rdx  0x%016llx\n", regs->reg_rdx);
+    DEBUG("  rcx  0x%016llx\n", regs->reg_rcx);
+    DEBUG("  rax  0x%016llx\n", regs->reg_rax);
+    DEBUG("  r8   0x%016llx\n", regs->reg_r8);
+    DEBUG("  r9   0x%016llx\n", regs->reg_r9);
+    DEBUG("  r10  0x%016llx\n", regs->reg_r10);
+    DEBUG("  r11  0x%016llx\n", regs->reg_r11);
+    DEBUG("  rbx  0x%016llx\n", regs->reg_rbx);
+    DEBUG("  rbp  0x%016llx\n", regs->reg_rbp);
+    DEBUG("  r12  0x%016llx\n", regs->reg_r12);
+    DEBUG("  r13  0x%016llx\n", regs->reg_r13);
+    DEBUG("  r14  0x%016llx\n", regs->reg_r14);
+    DEBUG("  r15  0x%016llx\n", regs->reg_r15);
 }
 
 PLS_ATOM_DECLARE(int, __local_irq_save);
@@ -143,8 +145,7 @@ trap_dispatch(struct trapframe *tf)
             
         default:
             print_trapframe(tf);
-            cprintf("unhandled exception %d.\n", tf->tf_trapno);
-            while (1) ;
+            PANIC("unhandled exception %d.\n", tf->tf_trapno);
         }
     }
     else if (tf->tf_trapno >= IRQ_OFFSET &&
@@ -159,7 +160,7 @@ trap_dispatch(struct trapframe *tf)
         switch (tf->tf_regs.reg_rax)
         {
         case T_SYSCALL_DEBUG_PUTC:
-            low_io_putc(tf->tf_regs.reg_rbx);
+            debug_putc(tf->tf_regs.reg_rbx);
             break;
 
         case T_SYSCALL_GET_TICK:
@@ -177,7 +178,7 @@ trap_dispatch(struct trapframe *tf)
         __irq_disable();
 #endif
         
-        if (PLS(__local_irq_save) != 0) cprintf("WARNING: return to user with irq saved\n");
+        if (PLS(__local_irq_save) != 0) DEBUG("WARNING: return to user with irq saved\n");
         user_thread_before_return(p);
     }
 }

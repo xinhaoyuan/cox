@@ -1,3 +1,5 @@
+#define DEBUG_COMPONENT DBG_IO
+
 #include <frame.h>
 #include <lib/low_io.h>
 
@@ -54,7 +56,7 @@ hpet_init(void)
     uint32_t id_lo = hpet_regs[HR_GEN_CAP_ID];
     
 #if 0
-    cprintf("HPET INFO[%08x %08x]:\n    rev_id 0x%02x hpet_timers: %d width: %d period: %d (10^-15 s)\n",
+    DEBUG("HPET INFO[%08x %08x]:\n    rev_id 0x%02x hpet_timers: %d width: %d period: %d (10^-15 s)\n",
             id_hi, id_lo,
             id_lo & 0xff, (id_lo >> 8) & 0xf, (id_lo & (1 << 13)) ? 64 : 32, id_hi);
 #endif
@@ -68,7 +70,7 @@ hpet_init(void)
     hpet_tick = (volatile uint64_t *)(hpet_regs + HR_MAIN_COUNTER_VALUE);
     
     hpet_tick_freq = 1000000000000000.0 / hpet_period;
-    cprintf("HPET FREQ = %d\n", hpet_tick_freq);
+    DEBUG("HPET FREQ = %d\n", hpet_tick_freq);
     
     return 0;
 }

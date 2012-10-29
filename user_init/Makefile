@@ -1,6 +1,6 @@
 .PHONY: all
 
-include ${T_OBJ}/arch.mk
+include ${T_OBJ}/cox-arch.mk
 include ${PATH_cox-include}/${ARCH}/user/comp.mk
 
 T_CC_FLAGS       := -D ARCH=${ARCH} ${T_CC_ARCH_INC} -I ${PATH_cox-include}/ -I ${PATH_cox-include}/${ARCH} -I ${PATH_cox-include}/${ARCH}/user -I include
