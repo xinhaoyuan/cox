@@ -32,6 +32,12 @@ user_proc_arch_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end)
     return 0;
 }
 
+void
+user_proc_arch_destroy(user_proc_t user_proc)
+{
+    /* XXX */
+}
+
 int
 user_proc_arch_copy_page_to_user(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, unsigned int flags)
 {

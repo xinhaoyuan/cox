@@ -42,26 +42,23 @@ kern_init(void)
     proc_notify(&init_proc);
 }
 
-static char          user_init_stack[USER_KSTACK_DEFAULT_SIZE] __attribute__((aligned(_MACH_PAGE_SIZE)));
-static user_thread_s user_init;
-
 static void
 kernel_start(void *__unused)
 {
-    user_thread_init(&user_init, "uinit", SCHED_CLASS_RR, user_init_stack, USER_KSTACK_DEFAULT_SIZE);
-    
+    user_proc_sys_init();
+    user_thread_sys_init();
+
     extern char _user_init_image_start[];
     extern char _user_init_image_end[];
-    int ret = user_thread_bin_exec(&user_init,
-                                   (void *)_user_init_image_start,
-                                   _user_init_image_end - _user_init_image_start);
+    user_thread_t ut = user_thread_create_from_bin("uinit",
+                                          (void *)_user_init_image_start,
+                                          _user_init_image_end - _user_init_image_start);
+
+    DEBUG("!!!");
     
-    if (ret == 0)
-        proc_notify(&user_init.proc);
-    else
-    {
-        PANIC("cannot load user init\n");
-    }
+    if (ut)
+        proc_notify(&ut->proc);
+    else PANIC("cannot load user init\n");
 }
 
 void

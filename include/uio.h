@@ -1,5 +1,5 @@
-#ifndef __COX_UIO_H__
-#define __COX_UIO_H__
+#ifndef __UIO_H__
+#define __UIO_H__
 
 #include <types.h>
 #include <algo/list.h>

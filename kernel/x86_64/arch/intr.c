@@ -6,7 +6,7 @@
 #include <debug.h>
 #include <arch/local.h>
 #include <proc.h>
-#include <do_syscall.h>
+#include <do_service.h>
 #include <user.h>
 
 #include "mem.h"
@@ -27,7 +27,7 @@ idt_init(void) {
         SETGATE(idt[i], 0, GD_KTEXT, __vectors[i], DPL_KERNEL);
     }
     
-    SETGATE(idt[T_SYSCALL], 0, GD_KTEXT, __vectors[T_SYSCALL], DPL_USER);
+    SETGATE(idt[T_SERVICE], 0, GD_KTEXT, __vectors[T_SERVICE], DPL_USER);
     SETGATE(idt[T_IPI], 0, GD_KTEXT, __vectors[T_IPI], DPL_USER);
     SETGATE(idt[T_IPI_DOS], 0, GD_KTEXT, __vectors[T_IPI_DOS], DPL_USER);
 
@@ -157,9 +157,14 @@ trap_dispatch(struct trapframe *tf)
         lapic_eoi_send();
         irq_entry(tf->tf_trapno - IRQ_OFFSET);
     }
-    else if (tf->tf_trapno == T_SYSCALL)
+    else if (tf->tf_trapno == T_SERVICE)
     {
-        do_syscall(tf);
+        if (from_user)
+            do_service(tf);
+        else
+        {
+            DEBUG("service call from kernel\n");
+        }
     }
 
     if (from_user)

@@ -6,7 +6,7 @@
 #include <asm/mmu.h>
 #include <arch/irq.h>
 #include <arch/trapframe.h>
-#include <arch/syscall.h>
+#include <arch/service.h>
 
 /* Trap Numbers */
 #define T_IPI                   0x81

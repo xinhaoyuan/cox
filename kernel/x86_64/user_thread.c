@@ -43,6 +43,12 @@ user_thread_arch_state_init(user_thread_t thread, uintptr_t entry, uintptr_t sta
     return 0;
 }
 
+void
+user_thread_arch_destroy(user_thread_t user_thread)
+{
+    /* XXX */
+}
+
 void __user_jump(struct trapframe *tf) __attribute__((noreturn));
 
 void

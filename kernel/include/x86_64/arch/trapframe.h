@@ -1,6 +1,8 @@
 #ifndef __KERN_ARCH_TRAPFRAME_H__
 #define __KERN_ARCH_TRAPFRAME_H__
 
+#include <types.h>
+
 /* registers as pushed by pushal */
 struct pushregs {
     uint64_t reg_r15;

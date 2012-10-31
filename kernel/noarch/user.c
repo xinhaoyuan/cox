@@ -8,127 +8,222 @@
 #include <arch/irq.h>
 #include <algo/list.h>
 #include <debug.h>
+#include <ips.h>
+#include <spinlock.h>
 
-int
-user_thread_init(user_thread_t thread, const char *name, int class, void *stack_base, size_t stack_size)
+#define USER_PROC_COUNT 4096
+spinlock_s  up_free_lock;
+user_proc_t up_free;
+user_proc_s up_pool[USER_PROC_COUNT];
+
+#define USER_THREAD_COUNT 8192
+spinlock_s    ut_free_lock;
+user_thread_t ut_free;
+user_thread_s ut_pool[USER_THREAD_COUNT];
+
+void
+user_proc_sys_init(void)
 {
-    proc_init(&thread->proc, name, class, (void(*)(void *))user_thread_jump, NULL, stack_base, stack_size);
-    thread->proc.type = PROC_TYPE_USER_INIT;
-    return 0;
-}
-
-static int user_proc_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end);
-static int user_thread_state_init(user_thread_t proc, uintptr_t entry, uintptr_t tls, size_t tls_size, uintptr_t stack_ptr);
-
-int
-user_thread_bin_exec(user_thread_t thread, void *bin, size_t bin_size)
-{
-    if (bin_size < sizeof(uintptr_t) * 4) return -E_INVAL;
-    
-    uintptr_t *ptr   =  (uintptr_t *)bin;  
-    uintptr_t  start = *(ptr ++);
-    uintptr_t  entry = *(ptr ++);
-    uintptr_t  edata = *(ptr ++);
-    uintptr_t  end   = *(ptr ++);
-
-    if (thread->proc.type != PROC_TYPE_USER_INIT) return -E_INVAL;
-    if (PGOFF(start) || PGOFF(edata) || PGOFF(end)) return -E_INVAL;
-    
-    user_proc_t user_proc;
-    if (thread->user_proc != NULL) return -E_INVAL;
-    if ((user_proc = kmalloc(sizeof(user_proc_s))) == NULL) return -E_NO_MEM;
-    thread->user_proc = user_proc;
-
-    size_t   tls_size = 2 * _MACH_PAGE_SIZE;
-    uintptr_t __start = start;
-    uintptr_t __end   = end + tls_size;
-
-    int ret;
-    if ((ret = user_proc_init(user_proc, &__start, &__end)) != 0) return ret;
-    if ((ret = user_thread_state_init(thread, entry + __start - start, __end - tls_size, tls_size, 0)) != 0) return ret;
-
-    /* Touch the target memory space */
-    uintptr_t now = start;
-    while (now < end)
+    int i;
+    for (i = 0; i < USER_PROC_COUNT; ++ i)
     {
-        if (now < edata)
-        {
-            /* DATA */
-            if ((ret = user_proc_copy_page_to_user(user_proc, now + __start - start, 0, 0))) return ret;
-        }
-        else
-        {
-            /* BSS */
-            /* XXX: on demand */
-            if ((ret = user_proc_copy_page_to_user(user_proc, now + __start - start, 0, 0))) return ret;
-        }
-        now += _MACH_PAGE_SIZE;
+        spinlock_init(&up_pool[i].ref_lock);
+        up_pool[i].ref_count = 0;
+        up_pool[i].free_next = &up_pool[i + 1];
     }
-    
-    /* copy the binary */
-    user_proc_copy_to_user(user_proc, __start, bin, bin_size);
-
-    return 0;
+    up_pool[USER_PROC_COUNT - 1].free_next = NULL;
+    up_free = &up_pool[0];
 }
 
-int
-user_thread_exec(user_thread_t thread, uintptr_t entry, uintptr_t start, uintptr_t end)
+static user_proc_t
+user_proc_create(uintptr_t *start, uintptr_t *end)
 {
-    if (thread->proc.type != PROC_TYPE_USER_INIT) return -E_INVAL;
-    if (PGOFF(start) || PGOFF(end)) return -E_INVAL;
+    user_proc_t up;
     
-    user_proc_t   user_proc;
-    
-    if (thread->user_proc != NULL) return -E_INVAL;
-    if ((user_proc = kmalloc(sizeof(user_proc_s))) == NULL) return -E_NO_MEM;
-    thread->user_proc = user_proc;
-
-    size_t   tls_size = 2 * _MACH_PAGE_SIZE;
-    uintptr_t __start = start;
-    uintptr_t __end   = end + tls_size;
-
-    int ret;
-    if ((ret = user_proc_init(user_proc, &__start, &__end)) != 0) return ret;
-    if ((ret = user_thread_state_init(thread, entry + __start - start, __end - tls_size, tls_size, 0)) != 0) return ret;
-    
-    return 0;
-}
-
-int
-user_thread_create(user_thread_t thread, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t stack_ptr, user_thread_t from)
-{
-    if (thread->proc.type != PROC_TYPE_USER_INIT) return -E_INVAL;
-    if (PGOFF(tls_u) || PGOFF(tls_size) || tls_size < 2 * _MACH_PAGE_SIZE) return -E_INVAL;
-
-    int ret;
-    
-    thread->user_proc = from->user_proc;
-    
-    if ((ret = user_thread_state_init(thread, entry, tls_u, tls_size, stack_ptr)) != 0) return ret;
-
-    return 0;
-}
-
-
-int
-user_proc_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end)
-{
-    int ret;
-        
-    if ((ret = user_proc_arch_init(user_proc, start, end)))
+    int irq = __irq_save();
+    spinlock_acquire(&up_free_lock);
+    if ((up = up_free) != NULL)
     {
-        return ret;
+        up_free = up_free->free_next;
+    }
+    spinlock_release(&up_free_lock);
+    __irq_restore(irq);
+
+    if (up == NULL) return NULL;
+
+    spinlock_init(&up->ref_lock);
+    up->ref_count = 1;
+
+    int ret;
+    if ((ret = user_proc_arch_init(up, start, end)))
+    {
+        user_proc_put(up);
+        return NULL;
     }
 
-    user_proc->start = *start;
-    user_proc->end =   *end;
+    up->start = *start;
+    up->end   = *end;
 
-    return 0;
+    return up;
 }
 
-int
+static void
+user_proc_free(user_proc_t up)
+{
+    user_proc_arch_destroy(up);
+    
+    int irq = __irq_save();
+    spinlock_acquire(&up_free_lock);
+    up->free_next = up_free;
+    up_free = up;
+    spinlock_release(&up_free_lock);
+    __irq_restore(irq);
+}
+
+void
+user_proc_get(user_proc_t up)
+{
+    int irq = __irq_save();
+    spinlock_acquire(&up->ref_lock);
+    ++ up->ref_count;
+    spinlock_release(&up->ref_lock);
+    __irq_restore(irq);
+}
+
+void
+user_proc_put(user_proc_t up)
+{
+    int irq = __irq_save();
+    spinlock_acquire(&up->ref_lock);
+    unsigned rc = -- up->ref_count;
+    spinlock_release(&up->ref_lock);
+    __irq_restore(irq);
+
+    if (rc == 0)
+        user_proc_free(up);
+}
+
+void
+user_thread_sys_init(void)
+{
+    int i;
+    for (i = 0; i < USER_THREAD_COUNT; ++ i)
+    {
+        spinlock_init(&ut_pool[i].ref_lock);
+        ut_pool[i].ref_count = 0;
+        ut_pool[i].free_next = &ut_pool[i + 1];
+        ut_pool[i].tid = i + 1;
+    }
+    ut_pool[USER_THREAD_COUNT - 1].free_next = NULL;
+    ut_free = &ut_pool[0];
+}
+
+static user_thread_t
+user_thread_create(const char *name, int class)
+{
+    size_t stack_size = USER_KSTACK_DEFAULT_SIZE;
+    void  *stack_base = frame_arch_kopen((stack_size + _MACH_PAGE_SIZE - 1) >> _MACH_PAGE_SHIFT);
+
+    if (stack_base == NULL) return NULL;
+    user_thread_t ut;
+    
+    int irq = __irq_save();
+    spinlock_acquire(&ut_free_lock);
+    if ((ut = ut_free) != NULL)
+    {
+        ut_free = ut_free->free_next;
+    }
+    spinlock_release(&ut_free_lock);
+    __irq_restore(irq);
+
+    if (ut == NULL)
+    {
+        frame_arch_kclose(stack_base);
+        return NULL;
+    }
+
+    ut->ref_count = 1;
+
+    proc_init(&ut->proc, name, class, (void(*)(void *))user_thread_jump, NULL, stack_base, stack_size);
+    ut->proc.type  = PROC_TYPE_USER_INIT;
+    ut->stack_base = stack_base;
+
+    ut->service_context = NULL;
+    ut->service_source  = NULL;
+    semaphore_init(&ut->service_wait_sem, 0);
+    semaphore_init(&ut->service_fill_sem, 0);
+
+    return ut;
+}
+
+static void
+user_thread_free(user_thread_t ut)
+{
+    user_thread_arch_destroy(ut);
+    if (ut->user_proc)
+        user_proc_put(ut->user_proc);
+    frame_arch_kclose(ut->stack_base);
+
+    int irq = __irq_save();
+    spinlock_acquire(&ut_free_lock);
+    ut->free_next = ut_free;
+    ut_free = ut;
+    spinlock_release(&ut_free_lock);
+    __irq_restore(irq);
+}
+
+void
+user_thread_get(user_thread_t ut)
+{
+    int irq = __irq_save();
+    spinlock_acquire(&ut->ref_lock);
+    ++ ut->ref_count;
+    spinlock_release(&ut->ref_lock);
+    __irq_restore(irq);
+}
+
+void
+user_thread_put(user_thread_t ut)
+{
+    int irq = __irq_save();
+    spinlock_acquire(&ut->ref_lock);
+    unsigned rc = -- ut->ref_count;
+    spinlock_release(&ut->ref_lock);
+    __irq_restore(irq);
+
+    if (rc == 0)
+        user_thread_free(ut);
+}
+
+user_thread_t
+user_thread_get_by_tid(int tid)
+{
+    if (tid < 1 || tid > USER_THREAD_COUNT)
+        return NULL;
+
+    user_thread_t ut = &ut_pool[tid - 1];
+    int irq = __irq_save();
+    spinlock_acquire(&ut->ref_lock);
+    
+    if (ut->ref_count == 0)
+    {
+        spinlock_acquire(&ut->ref_lock);
+        __irq_restore(irq);
+        return NULL;
+    }
+    
+    ++ ut->ref_count;
+    spinlock_acquire(&ut->ref_lock);
+    __irq_restore(irq);
+
+    return ut;
+    
+}
+
+static int
 user_thread_state_init(user_thread_t thread, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t stack_ptr)
 {
+    
     thread->tls_u = tls_u;
     thread->tls_size = tls_size;
 
@@ -160,6 +255,91 @@ user_proc_brk(user_proc_t user_proc, uintptr_t end)
     if (ret == 0)
         user_proc->end = end;
     return ret;
+}
+
+user_thread_t
+user_thread_create_from_bin(const char *name, void *bin, size_t bin_size)
+{
+    if (bin_size < sizeof(uintptr_t) * 4) return NULL;
+
+    uintptr_t *ptr   =  (uintptr_t *)bin;  
+    uintptr_t  start = *(ptr ++);
+    uintptr_t  entry = *(ptr ++);
+    uintptr_t  edata = *(ptr ++);
+    uintptr_t  end   = *(ptr ++);
+
+    if (PGOFF(start) || PGOFF(edata) || PGOFF(end)) return NULL;
+
+    user_thread_t thread = user_thread_create(name, SCHED_CLASS_RR);
+
+    size_t   tls_size = 2 * _MACH_PAGE_SIZE;
+    uintptr_t __start = start;
+    uintptr_t __end   = end + tls_size;
+
+    user_proc_t user_proc = thread->user_proc = user_proc_create(&__start, &__end);
+    if (user_proc == NULL)
+    {
+        user_thread_put(thread);
+        return NULL;
+    }
+
+    int ret;
+    if ((ret = user_thread_state_init(thread, entry + __start - start, __end - tls_size, tls_size, 0)) != 0)
+    {
+        user_thread_put(thread);
+        return NULL;
+    }
+
+    /* Touch the target memory space */
+    uintptr_t now = start;
+    while (now < end)
+    {
+        if (now < edata)
+        {
+            /* DATA */
+            if ((ret = user_proc_copy_page_to_user(user_proc, now + __start - start, 0, 0)))
+            {
+                user_thread_put(thread);
+                return NULL;
+            }
+        }
+        else
+        {
+            /* BSS */
+            /* XXX: on demand */
+            if ((ret = user_proc_copy_page_to_user(user_proc, now + __start - start, 0, 0)))
+            {
+                user_thread_put(thread);
+                return NULL;
+            }
+        }
+        now += _MACH_PAGE_SIZE;
+    }
+    
+    /* copy the binary */
+    user_proc_copy_to_user(user_proc, __start, bin, bin_size);
+
+    return thread;
+}
+
+user_thread_t
+user_thread_create_from_thread(const char *name, user_thread_t from, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t stack_ptr)
+{
+    if (PGOFF(tls_u) || PGOFF(tls_size) || tls_size < 2 * _MACH_PAGE_SIZE) return NULL;
+    
+    user_thread_t thread = user_thread_create(name, SCHED_CLASS_RR);
+    
+    int ret;
+    thread->user_proc = from->user_proc;
+    user_proc_get(from->user_proc);
+    
+    if ((ret = user_thread_state_init(thread, entry, tls_u, tls_size, stack_ptr)) != 0)
+    {
+        user_thread_put(thread);
+        return NULL;
+    }
+
+    return thread;
 }
 
 void

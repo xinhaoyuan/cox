@@ -6,57 +6,83 @@
 #include <timer.h>
 #include <uio.h>
 #include <arch/user.h>
+#include <ips.h>
 #include <spinlock.h>
+#include <arch/do_service.h>
 
 #define USER_KSTACK_DEFAULT_SIZE 8192
 
-struct user_proc_s
+typedef struct user_proc_s *user_proc_t;
+typedef struct user_proc_s
 {
+    spinlock_s ref_lock;
+    unsigned   ref_count;
+
+    user_proc_t free_next;
+    
     /* address range */
     uintptr_t start;
     uintptr_t end;
 
     /* arch data */
     user_proc_arch_s arch;
-};
+} user_proc_s;
 
-typedef struct user_proc_s  user_proc_s;
-typedef struct user_proc_s *user_proc_t;
+void user_proc_get(user_proc_t up);
+void user_proc_put(user_proc_t up);
 
+void user_proc_sys_init(void);
 int user_proc_copy_page_to_user(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, unsigned int flags);
 int user_proc_copy_to_user(user_proc_t user_proc, uintptr_t addr, void *src, size_t size);
 int user_proc_brk(user_proc_t user_proc, uintptr_t end);
 
 /* filled by arch */
 int user_proc_arch_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end);
+void user_proc_arch_destroy(user_proc_t user_proc);
 int user_proc_arch_copy_page_to_user(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, unsigned int flags);
 int user_proc_arch_copy_to_user(user_proc_t user_proc, uintptr_t addr, void *src, size_t size);
 int user_proc_arch_mmio_open(user_proc_t user_proc, uintptr_t addr, size_t size, uintptr_t *result);
 int user_proc_arch_mmio_close(user_proc_t user_proc, uintptr_t addr);
 int user_proc_arch_brk(user_proc_t user_proc, uintptr_t end);
 
-struct user_thread_s
+typedef struct user_thread_s *user_thread_t;
+typedef struct user_thread_s
 {
+    spinlock_s    ref_lock;
+    unsigned      ref_count;
+
+    union
+    {
+        int           tid;
+        user_thread_t free_next;
+    };
+    
     proc_s        proc;
-    int           pid;
+    void         *stack_base;
     user_proc_t   user_proc;
     
     void         *tls;
     uintptr_t     tls_u;
     size_t        tls_size;
+    
+    /* service */
+    service_context_t service_context;
+    semaphore_s       service_wait_sem;
+    user_thread_t     service_source;
+    semaphore_s       service_fill_sem;
 
     user_thread_arch_s arch;    /* arch data */
-};
-
-typedef struct user_thread_s  user_thread_s;
-typedef struct user_thread_s *user_thread_t;
+} user_thread_s;
 
 #define USER_THREAD(__proc) (CONTAINER_OF(__proc, user_thread_s, proc))
 
-int user_thread_sys_init(void);
-int user_thread_init(user_thread_t thread, const char *name, int class, void *stack_base, size_t stack_size);
-int user_thread_bin_exec(user_thread_t thread, void *bin, size_t bin_size);
-int user_thread_create(user_thread_t thread, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t stack_ptr, user_thread_t from);
+void user_thread_get(user_thread_t ut);
+void user_thread_put(user_thread_t ut);
+user_thread_t user_thread_get_by_tid(int tid);
+
+void user_thread_sys_init(void);
+user_thread_t user_thread_create_from_bin(const char *name, void *bin, size_t bin_size);
+user_thread_t user_thread_create_from_thread(const char *name, user_thread_t from, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t stack_ptr);
 
 void user_thread_pgflt_handler(proc_t proc, unsigned int flags, uintptr_t la, uintptr_t pc);
 
@@ -71,6 +97,7 @@ void user_thread_restore_context(proc_t proc);
 #define USER_THREAD_CONTEXT_HINT_LAZY   0x2
 
 /* filled by arch */
+void user_thread_arch_destroy(user_thread_t user_thread);
 int  user_thread_arch_state_init(user_thread_t thread, uintptr_t entry, uintptr_t stack_ptr);
 void user_thread_arch_jump(void) __attribute__((noreturn));
 void user_thread_arch_save_context(proc_t proc, int hint);
