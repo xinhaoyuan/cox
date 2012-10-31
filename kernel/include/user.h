@@ -23,7 +23,7 @@ struct user_proc_s
 typedef struct user_proc_s  user_proc_s;
 typedef struct user_proc_s *user_proc_t;
 
-int user_proc_copy_page_to_user(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, int flag);
+int user_proc_copy_page_to_user(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, unsigned int flags);
 int user_proc_copy_to_user(user_proc_t user_proc, uintptr_t addr, void *src, size_t size);
 int user_proc_brk(user_proc_t user_proc, uintptr_t end);
 

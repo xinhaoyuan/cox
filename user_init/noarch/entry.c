@@ -1,5 +1,5 @@
 #include <asm/cpu.h>
-#include <syscall.h>
+#include <arch/syscall.h>
 
 void
 __init(void *tls, size_t tls_size, void *start, void *end)

@@ -16,6 +16,7 @@
 #include "ioapic.h"
 #include "mp.h"
 #include "cpu.h"
+#include "hpet.h"
 
 #include "init.h"
 

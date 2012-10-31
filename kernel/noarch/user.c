@@ -140,9 +140,9 @@ user_thread_state_init(user_thread_t thread, uintptr_t entry, uintptr_t tls_u, s
 }
 
 int
-user_proc_copy_page_to_user(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, int flag)
+user_proc_copy_page_to_user(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, unsigned int flags)
 {
-    return user_proc_arch_copy_page_to_user(user_proc, addr, phys, flag);
+    return user_proc_arch_copy_page_to_user(user_proc, addr, phys, flags);
 }
 
 int
