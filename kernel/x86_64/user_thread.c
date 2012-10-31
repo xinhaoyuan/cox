@@ -7,6 +7,7 @@
 #include <arch/user.h>
 #include <tls.h>
 
+#include "arch/cpu.h"
 #include "arch/intr.h"
 #include "arch/mem.h"
 
@@ -78,6 +79,9 @@ user_thread_arch_save_context(proc_t proc, int hint)
 void
 user_thread_arch_restore_context(proc_t proc)
 {
+    /* set the U->K stack */
+    cpu_set_trap_stacktop((uintptr_t)(USER_THREAD(proc)->stack_base));
+        
     /* change the gs base for TLS */
     __write_msr(0xC0000101, USER_THREAD(proc)->arch.tls);
     __lcr3(USER_THREAD(proc)->user_proc->arch.cr3);

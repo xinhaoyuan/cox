@@ -3,6 +3,7 @@
 #include <debug.h>
 #include <service.h>
 #include <do_service.h>
+#include <proc.h>
 #include <user.h>
 #include <ips.h>
 
@@ -15,56 +16,48 @@ do_service(service_context_t ctx)
     user_thread_t ut = USER_THREAD(current);
     uintptr_t dest = SERVICE_ARG0_GET(ctx);
 
-    if (ut->service_source != NULL)
-    {
-        /* Reply */
-        
-        SERVICE_ARG0_SET(ctx, ut->tid);
-        
-        service_context_transfer(ut->service_source->service_context, ctx);
-        semaphore_release(&ut->service_source->service_fill_sem);
-
-        ut->service_source = NULL;
-        return;
-    }
-
     if (dest == 0)
     {
         int func = SERVICE_ARG1_GET(ctx);
-        DEBUG("System service cal with func = %d\n", func);
+        DEBUG("System service call from tid %d with func = %d\n", ut->tid, func);
         switch (func)
         {
         case SERVICE_SYS_LISTEN:
             /* Listen for any request */
             semaphore_release(&ut->service_wait_sem);
-            semaphore_acquire(&ut->service_fill_sem, NULL);
-            service_context_transfer(ctx, ut->service_source->service_context);
+            semaphore_acquire(&ut->service_ack_sem, NULL);
+            service_context_transfer(ctx, ut->service_client->service_context);
+            SERVICE_ARG0_SET(ctx, ut->service_client->tid);
+            semaphore_release(&ut->service_client->service_ack_sem);
             break;
         case SERVICE_SYS_THREAD_CREATE:
             SERVICE_ARG1_SET(ctx, do_thread_create(SERVICE_ARG2_GET(ctx), SERVICE_ARG3_GET(ctx), SERVICE_ARG4_GET(ctx)));
             break;
         case SERVICE_SYS_THREAD_EXIT:
             do_thread_exit(SERVICE_ARG2_GET(ctx));
+            break;
         }
     }
     else
     {
-        user_thread_t target = user_thread_get_by_tid(SERVICE_ARG0_GET(ctx));
+        int tid = SERVICE_ARG0_GET(ctx);
+        user_thread_t target = user_thread_get_by_tid(tid);
+        
         if (target == NULL)
         {
-            /* XXX failed */
+            /* XXX: more information */
             SERVICE_ARG0_SET(ctx, 0);
         }
         else
         {
-            semaphore_acquire(&target->service_wait_sem, NULL);
             ut->service_context = ctx;
-            target->service_source = ut;
-            semaphore_release(&target->service_fill_sem);
-            /* Wait for sync reply */
-            semaphore_acquire(&ut->service_fill_sem, NULL);
+            semaphore_acquire(&target->service_wait_sem, NULL);
+            target->service_client = ut;
+            semaphore_release(&target->service_ack_sem);
+            semaphore_acquire(&ut->service_ack_sem, NULL);
+            
+            user_thread_put(target);
         }
-        user_thread_put(target);
     }
 }
 
@@ -72,7 +65,14 @@ int
 do_thread_create(uintptr_t entry, uintptr_t tls, uintptr_t stack)
 {
     user_thread_t ut = USER_THREAD(current);
-    return user_thread_create_from_thread(ut->proc.name, ut, entry, tls, stack) == NULL;
+    user_thread_t thread = NULL;
+    if (ut)
+    {
+        thread = user_thread_create_from_thread(ut->proc.name, ut, entry, tls, stack);
+        if (thread != NULL)
+            proc_notify(&thread->proc);
+    }
+    return thread == NULL ? 0 : thread->tid;
 }
 
 void

@@ -1,3 +1,5 @@
+#define DEBUG_COMPONENT DBG_SCHED
+
 #include <ips.h>
 #include <proc.h>
 #include <irq.h>
@@ -269,6 +271,8 @@ semaphore_ac_break(semaphore_t semaphore, ips_node_t node)
     IPS_NODE_AC_WAIT_CLEAR(node);
 }
 
+#include <user.h>
+
 int
 semaphore_release(semaphore_t semaphore)
 {
@@ -280,8 +284,9 @@ semaphore_release(semaphore_t semaphore)
     {
         ips_node_t node = SEMAPHORE_PTR(semaphore);
         IPS_NODE_WAIT_CLEAR(node);
-          
+
         notify = IPS_NODE_PTR(node);
+
         node->next->prev = node->prev;
         node->prev->next = node->next;
         if (node->next == node)

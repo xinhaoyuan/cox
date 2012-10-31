@@ -72,10 +72,6 @@ __kern_early_init(void) {
 
 volatile int __cpu_global_init = 0;
 
-#define TRAP_STACK_SIZE (_MACH_PAGE_SIZE * 4)
-
-PLS_PREALLOC(char, __trap_stack[TRAP_STACK_SIZE]) __attribute__((aligned(_MACH_PAGE_SIZE)));
-
 void
 __kern_cpu_init(void)
 {
@@ -92,9 +88,6 @@ __kern_cpu_init(void)
 
     /* Stage 1: local */
     kern_sys_init_local();
-
-    /* SETUP U->K TRAP STACK */
-    cpu_set_trap_stacktop((uintptr_t)ARCH_STACKTOP(PLS_PREALLOC_PTR(__trap_stack), TRAP_STACK_SIZE));
 
     /* All base systems should be ready */
     if (lapic_id() == sysconf_x86.cpu.boot)

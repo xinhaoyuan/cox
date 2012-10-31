@@ -51,21 +51,23 @@ typedef struct user_thread_s
     spinlock_s    ref_lock;
     unsigned      ref_count;
 
+    int           tid;
     union
     {
-        int           tid;
         user_thread_t free_next;
+        struct
+        {
+            proc_s        proc;
+            void         *stack_base;
+            user_proc_t   user_proc;
+        };
     };
-    
-    proc_s        proc;
-    void         *stack_base;
-    user_proc_t   user_proc;
-    
+        
     /* service */
     service_context_t service_context;
+    user_thread_t     service_client;
     semaphore_s       service_wait_sem;
-    user_thread_t     service_source;
-    semaphore_s       service_fill_sem;
+    semaphore_s       service_ack_sem;
 
     user_thread_arch_s arch;    /* arch data */
 } user_thread_s;

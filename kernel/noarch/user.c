@@ -1,3 +1,5 @@
+#define DEBUG_COMPONENT DBG_SCHED
+
 #include <error.h>
 #include <proc.h>
 #include <user.h>
@@ -33,6 +35,7 @@ user_proc_sys_init(void)
     }
     up_pool[USER_PROC_COUNT - 1].free_next = NULL;
     up_free = &up_pool[0];
+    spinlock_init(&up_free_lock);
 }
 
 static user_proc_t
@@ -116,6 +119,7 @@ user_thread_sys_init(void)
     }
     ut_pool[USER_THREAD_COUNT - 1].free_next = NULL;
     ut_free = &ut_pool[0];
+    spinlock_init(&ut_free_lock);
 }
 
 static user_thread_t
@@ -126,7 +130,7 @@ user_thread_create(const char *name, int class)
 
     if (stack_base == NULL) return NULL;
     user_thread_t ut;
-    
+
     int irq = __irq_save();
     spinlock_acquire(&ut_free_lock);
     if ((ut = ut_free) != NULL)
@@ -149,9 +153,9 @@ user_thread_create(const char *name, int class)
     ut->stack_base = stack_base;
 
     ut->service_context = NULL;
-    ut->service_source  = NULL;
+    ut->service_client  = NULL;
     semaphore_init(&ut->service_wait_sem, 0);
-    semaphore_init(&ut->service_fill_sem, 0);
+    semaphore_init(&ut->service_ack_sem, 0);
 
     return ut;
 }
@@ -207,13 +211,13 @@ user_thread_get_by_tid(int tid)
     
     if (ut->ref_count == 0)
     {
-        spinlock_acquire(&ut->ref_lock);
+        spinlock_release(&ut->ref_lock);
         __irq_restore(irq);
         return NULL;
     }
     
     ++ ut->ref_count;
-    spinlock_acquire(&ut->ref_lock);
+    spinlock_release(&ut->ref_lock);
     __irq_restore(irq);
 
     return ut;
@@ -317,11 +321,11 @@ user_thread_t
 user_thread_create_from_thread(const char *name, user_thread_t from, uintptr_t entry, uintptr_t tls, uintptr_t stack)
 {
     user_thread_t thread = user_thread_create(name, SCHED_CLASS_RR);
+    if (thread == NULL) return NULL;
     
     int ret;
     thread->user_proc = from->user_proc;
     user_proc_get(from->user_proc);
-    
     if ((ret = user_thread_state_init(thread, entry, tls, stack)) != 0)
     {
         user_thread_put(thread);
