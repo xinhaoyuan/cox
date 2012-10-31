@@ -6,6 +6,7 @@
 #include <proc.h>
 #include <user.h>
 #include <ips.h>
+#include <arch/irq.h>
 
 static int  do_thread_create(uintptr_t entry, uintptr_t tls, uintptr_t stack);
 static void do_thread_exit(int code);
@@ -15,7 +16,8 @@ do_service(service_context_t ctx)
 {
     user_thread_t ut = USER_THREAD(current);
     uintptr_t dest = SERVICE_ARG0_GET(ctx);
-
+    int irq;
+    
     if (dest == 0)
     {
         int func = SERVICE_ARG1_GET(ctx);
@@ -23,12 +25,21 @@ do_service(service_context_t ctx)
         switch (func)
         {
         case SERVICE_SYS_LISTEN:
+            ut->service_client = NULL;
             /* Listen for any request */
             semaphore_release(&ut->service_wait_sem);
-            semaphore_acquire(&ut->service_ack_sem, NULL);
+
+            irq = __irq_save();
+            while ((volatile user_thread_t)ut->service_client == NULL) {
+                __irq_restore(irq);
+                yield();
+                irq = __irq_save();
+            }
             service_context_transfer(ctx, ut->service_client->service_context);
             SERVICE_ARG0_SET(ctx, ut->service_client->tid);
-            semaphore_release(&ut->service_client->service_ack_sem);
+            ut->service_client->service_context = NULL;
+            __irq_restore(irq);
+            
             break;
         case SERVICE_SYS_THREAD_CREATE:
             SERVICE_ARG1_SET(ctx, do_thread_create(SERVICE_ARG2_GET(ctx), SERVICE_ARG3_GET(ctx), SERVICE_ARG4_GET(ctx)));
@@ -53,8 +64,7 @@ do_service(service_context_t ctx)
             ut->service_context = ctx;
             semaphore_acquire(&target->service_wait_sem, NULL);
             target->service_client = ut;
-            semaphore_release(&target->service_ack_sem);
-            semaphore_acquire(&ut->service_ack_sem, NULL);
+            while ((volatile service_context_t)ut->service_context != NULL) yield();
             
             user_thread_put(target);
         }

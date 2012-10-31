@@ -106,5 +106,6 @@ void proc_notify(proc_t proc);
 int  sched_sys_init(void);
 int  sched_sys_init_mp(void);
 void schedule(void);
+void yield();
 
 #endif

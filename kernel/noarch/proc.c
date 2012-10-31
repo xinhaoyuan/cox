@@ -242,3 +242,6 @@ __post_schedule(proc_t proc)
 
 void
 schedule(void) { __schedule(1); }
+
+void
+yield(void) { schedule(); }
