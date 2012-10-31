@@ -7,6 +7,6 @@
 void
 do_syscall(syscall_context_t ctx)
 {
-    DEBUG("syscall %d.", SYSCALL_ARG0_GET(ctx));
+    DEBUG("syscall %d.\n", SYSCALL_ARG0_GET(ctx));
     SYSCALL_ARG0_SET(ctx, 0);
 }

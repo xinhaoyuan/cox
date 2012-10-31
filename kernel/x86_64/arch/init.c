@@ -51,6 +51,11 @@ __kern_early_init(void) {
     err = lapic_init();  if (err) goto err;
     err = ioapic_init(); if (err) goto err;
 
+    if (sysconf_x86.hpet.enable)
+    {
+        err = hpet_init(); if (err) goto err;
+    }
+
     if (sysconf_x86.cpu.count > 1)
     {
         err = mp_init(); if (err) goto err;
