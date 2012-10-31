@@ -1,7 +1,7 @@
-ecruos-arch:prj/ecruos/arch:
-ecruos-tools-sign:prj/ecruos/tools-sign:ecruos-arch
-ecruos-include:prj/ecruos/include:
-ecruos-user_init:prj/ecruos/user_init:ecruos-arch ecruos-include
-ecruos-kernel:prj/ecruos/kernel:ecruos-arch ecruos-user_init ecruos-include
-ecruos-bootimage:prj/ecruos/bootimage:ecruos-tools-sign ecruos-kernel
-ecruos:prj/ecruos:ecruos-bootimage
+cox-arch:prj/cox/arch:
+cox-tools-sign:prj/cox/tools-sign:cox-arch
+cox-include:prj/cox/include:
+cox-user_init:prj/cox/user_init:cox-arch cox-include
+cox-kernel:prj/cox/kernel:cox-arch cox-user_init cox-include
+cox-bootimage:prj/cox/bootimage:cox-tools-sign cox-kernel
+cox:prj/cox:cox-bootimage
