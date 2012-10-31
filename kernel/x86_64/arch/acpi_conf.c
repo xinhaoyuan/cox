@@ -4,7 +4,6 @@
 #include <error.h>
 #include <asm/cpu.h>
 #include <asm/mmu.h>
-#include <lib/low_io.h>
 #include <arch/memlayout.h>
 #include <debug.h>
 

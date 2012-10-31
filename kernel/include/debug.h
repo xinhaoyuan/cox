@@ -24,13 +24,15 @@
         __DEBUG_MSG(DEBUG_COMPONENT, INFO);     \
     } while (0)
 
-#define __DEBUG_MSG(BITS,INFO ...) do {             \
-        if ((DEBUG_BITS) & (BITS)) {                \
-            debug_printf(INFO);                     \
-        }                                           \
+#define __DEBUG_MSG(BITS,INFO ...) do {         \
+        if ((DEBUG_BITS) & (BITS)) {            \
+            debug_printf(INFO);                 \
+        }                                       \
     } while (0)
 
 #define PANIC(x ...) do { debug_printf("PANIC: " x); while (1) __cpu_relax(); } while (0)
+
+#define assert(x) do { if (!(x)) PANIC("assertion %s failed\n", #x); } while (0);
 
 void debug_io_set(void(*putc)(int ch, void *priv),
                   int (*getc)(void *priv),
@@ -39,5 +41,6 @@ void debug_putc(int ch);
 void debug_printf(const char *fmt, ...);
 void debug_vprintf(const char *fmt, va_list ap);
 int  debug_getc(void);
+int  debug_readline(char *buf, int size);
         
 #endif

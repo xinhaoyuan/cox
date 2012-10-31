@@ -1,6 +1,6 @@
 #include <asm/mmu.h>
 #include <arch/memlayout.h>
-#include "seg.h"
+#include "seg_boot.h"
 #include "boot_ap.S.h"
 
               .text

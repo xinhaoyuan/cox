@@ -1,3 +1,5 @@
+#define DEBUG_COMPONENT DBG_IO
+
 #include <asm/io.h>
 #include <frame.h>
 
@@ -114,7 +116,7 @@ lapic_init(void)
 {
     if (!sysconf_x86.lapic.enable) return 0;
 
-    lapic_mmio = kmmio_open(sysconf_x86.lapic.phys, PGSIZE);
+    lapic_mmio = mmio_arch_kopen(sysconf_x86.lapic.phys, PGSIZE);
     
     // Enable local APIC; set spurious interrupt vector.
     lapicw(SVR, ENABLE | (IRQ_OFFSET + IRQ_SPURIOUS));

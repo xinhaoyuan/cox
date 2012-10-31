@@ -30,8 +30,9 @@ pic_enable(unsigned int irq) {
 }
 
 /* pic_init - initialize the 8259A interrupt controllers */
-void
+int
 pic_init(void) {
+    if (did_init) return 0;
     did_init = 1;
 
     // mask all interrupts
@@ -90,5 +91,7 @@ pic_init(void) {
     __outb(0x43, 0x30);
     __outb(0x40, 0);
     __outb(0x40, 0);
+
+    return 0;
 }
 

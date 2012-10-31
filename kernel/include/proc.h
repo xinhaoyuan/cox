@@ -3,7 +3,6 @@
 
 #include <types.h>
 #include <spinlock.h>
-#include <timer.h>
 #include <frame.h>
 #include <arch/context.h>
 #include <arch/local.h>
@@ -78,7 +77,7 @@ typedef struct proc_s
 
     proc_t sched_prev_usr;
     proc_t sched_prev;
-    
+
 } proc_s;
 
 #define PROC_TYPE_FREE      0
@@ -94,6 +93,9 @@ typedef struct proc_s
 PLS_PTR_DECLARE(proc_s, __current);
 #define current (PLS(__current))
 
+/* The initial value of __current */
+extern proc_s __current_init;
+
 int  proc_init(proc_t proc, const char *name, int class, void (*entry)(void *arg), void *arg, void *stack_base, size_t stack_size);
 void proc_wait_pretend(void);
 void proc_wait_try(void);
@@ -104,7 +106,5 @@ void proc_notify(proc_t proc);
 int  sched_sys_init(void);
 int  sched_sys_init_mp(void);
 void schedule(void);
-
-void do_idle(void);
 
 #endif

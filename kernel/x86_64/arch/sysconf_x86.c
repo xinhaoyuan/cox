@@ -1,11 +1,9 @@
 #include <string.h>
-#include <lib/low_io.h>
 #include <error.h>
+#include <asm/cpu.h>
 
 #include "acpi_conf.h"
 #include "sysconf_x86.h"
-#include "ioapic.h"
-#include "cpu.h"
 
 sysconf_x86_s sysconf_x86;
 
@@ -13,7 +11,8 @@ static void
 __detect_cpu(acpi_conf_callbacks_t cb, int apic_id)
 {
     int id = sysconf_x86.cpu.count ++;
-    cpu_id_set[id] = apic_id;
+    sysconf_x86.cpu_id_set[id] = apic_id;
+    sysconf_x86.cpus[apic_id].logic_id = id;
 }
 
 static void
@@ -29,10 +28,10 @@ __detect_ioapic(acpi_conf_callbacks_t cb, int apic_id, uintptr_t phys, int intr_
     sysconf_x86.ioapic.enable = TRUE;
     
     int id = sysconf_x86.ioapic.count ++;
-    ioapic_id_set[id]          = apic_id;
-    ioapic[apic_id].id         = id;
-    ioapic[apic_id].phys       = phys;
-    ioapic[apic_id].intr_base  = intr_base;
+    sysconf_x86.ioapic_id_set[id]          = apic_id;
+    sysconf_x86.ioapics[apic_id].logic_id  = id;
+    sysconf_x86.ioapics[apic_id].phys      = phys;
+    sysconf_x86.ioapics[apic_id].intr_base = intr_base;
 }
 
 static void

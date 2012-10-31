@@ -1,5 +1,5 @@
-#ifndef __PROC_ARCH_LOCAL_H__
-#define __PROC_ARCH_LOCAL_H__
+#ifndef __KERN_ARCH_LOCAL_H__
+#define __KERN_ARCH_LOCAL_H__
 
 #define PLS_PREALLOC(type, name) __attribute__((section(".pls"))) type name
 #define PLS_PTR_DEFINE(type, name, init)  __attribute__((section(".pls"))) type * name = (init)

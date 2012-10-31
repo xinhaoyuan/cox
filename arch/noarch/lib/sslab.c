@@ -17,7 +17,7 @@ sslab_init(sslab_ctrl_t ctrl)
 }
 
 static void *
-sslab_class_alloc(sslab_ctrl_t sslab, unsigned int size_index, unsigned int flags)
+sslab_class_alloc(sslab_ctrl_t sslab, unsigned int size_index, void *alloc_data)
 {
     sslab_class_ctrl_t class = sslab->class_ctrls + size_index;
     
@@ -25,7 +25,7 @@ sslab_class_alloc(sslab_ctrl_t sslab, unsigned int size_index, unsigned int flag
     
     if (class->head == (uintptr_t)-1)
     {
-        void *block = sslab->page_alloc(sslab, size_index, flags);
+        void *block = sslab->page_alloc(sslab, size_index, alloc_data);
          
         if (block == NULL)
         {
@@ -53,14 +53,14 @@ sslab_class_alloc(sslab_ctrl_t sslab, unsigned int size_index, unsigned int flag
 }
 
 void *
-sslab_alloc(sslab_ctrl_t sslab, size_t size, uintptr_t flags)
+sslab_alloc(sslab_ctrl_t sslab, size_t size, void *alloc_data)
 {
     int size_index = BIT_SEARCH_LAST(size + SSLAB_META_SIZE - 1) - SSLAB_MIN_SHIFT + 1;
      
     void *result;
     if (size_index < 0 || size_index > SSLAB_ALLOC_DELTA_SHIFT)
         result = NULL;
-    else result = sslab_class_alloc(sslab, size_index, flags);
+    else result = sslab_class_alloc(sslab, size_index, alloc_data);
 
     return result;
 }

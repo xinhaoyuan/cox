@@ -1,23 +1,22 @@
 #define DEBUG_COMPONENT DBG_MISC
 
+#include <asm/cpu.h>
 #include <string.h>
-#include <init.h>
 #include <arch/local.h>
-#include <lib/low_io.h>
-#include <frame.h>
+#include <lib/buddy.h>
 #include <debug.h>
+#include <init.h>
 
 #include "early_cons.h"
-#include "acpi_conf.h"
 #include "mem.h"
 #include "sysconf_x86.h"
-#include "ioapic.h"
-#include "lapic.h"
-#include "cpu.h"
-#include "mp.h"
-#include "pic.h"
 #include "intr.h"
-#include "hpet.h"
+#include "pic.h"
+#include "lapic.h"
+#include "ioapic.h"
+#include "mp.h"
+#include "cpu.h"
+
 #include "init.h"
 
 /* GRUB info filled by entry32.S */
@@ -28,17 +27,20 @@ uint32_t __attribute__((section(".data"))) mb_info_phys = 0;
 void
 __kern_early_init(void) {
     /* Here we jump into C world */
-
+    int err = 0;
+    
     /* Initialize zero zone */
     extern char __bss[], __end[];
     memset(__bss, 0, __end - __bss);
 
     early_cons_init();
-    memory_init();
-    sysconf_init();
-    idt_init();
-    pic_init();
+    buddy_init();
     
+    err = mem_init();     if (err) goto err;
+    err = sysconf_init(); if (err) goto err;
+    err = idt_init();     if (err) goto err;
+    err = pic_init();     if (err) goto err;
+
     if (!sysconf_x86.ioapic.enable ||
         !sysconf_x86.lapic.enable)
     {
@@ -46,25 +48,21 @@ __kern_early_init(void) {
         goto err;
     }
 
-    lapic_init();
-    ioapic_init();
-    
-    /* enable kdb intr for test */
-    ioapic_enable(ioapic_id_set[0], IRQ_KBD, sysconf_x86.cpu.boot);
-    
-    if (sysconf_x86.hpet.enable)
-        hpet_init();
+    err = lapic_init();  if (err) goto err;
+    err = ioapic_init(); if (err) goto err;
 
     if (sysconf_x86.cpu.count > 1)
-        mp_init();
+    {
+        err = mp_init(); if (err) goto err;
+    }
 
     /* all cpus jump to __kern_cpu_init */
     cpu_init();
 
   err:
-    DEBUG("You should not be here. Spin now.\n");
-    while (1) __cpu_relax();
+    PANIC("You should not be here. Spin now.\n");
 }
+
 
 volatile int __cpu_global_init = 0;
 

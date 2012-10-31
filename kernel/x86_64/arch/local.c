@@ -1,17 +1,18 @@
+#define DEBUG_COMPONENT DBG_MEM
+
 #include <asm/mach.h>
 #include <asm/cpu.h>
 #include <asm/atom.h>
 #include <asm/mmu.h>
 #include <string.h>
 #include <frame.h>
-#include <lib/low_io.h>
 #include <arch/memlayout.h>
 #include <arch/local.h>
 #include <error.h>
 
+#include "sysconf_x86.h"
 #include "mem.h"
 #include "lapic.h"
-#include "sysconf_x86.h"
 
 extern char pls_start[];
 extern char pls_end[];
@@ -34,7 +35,8 @@ pls_init(void)
     }
     else
     {
-        pls_area = kframe_open(pls_pages, FA_ATOMIC | FA_KERNEL);
+        pls_area = frame_arch_kopen(pls_pages);
+        
         if (pls_area == NULL) return -E_NO_MEM;
         
         /* copy the initial data */
@@ -62,16 +64,14 @@ pls_init(void)
 
     PLS_SET(__pls_base, base);
 
-#if 0
     /* Simple test */
-    DEBUG("__pls_base = %x\n", PLS(__pls_base));
+    // DEBUG("__pls_base = %x\n", PLS(__pls_base));
     uintptr_t test = 0x1234;
     __asm__ __volatile__("mov %%fs:(%1), %0": "=r"(test) : "r"((uintptr_t)&base - base));
     if (base != test)
     {
         PANIC("PANIC: processor local storage failed to initailize.", base, test);
     }
-#endif
 
     return 0;
 }

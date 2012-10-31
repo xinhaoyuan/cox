@@ -2,10 +2,9 @@
 #include <string.h>
 #include <irq.h>
 #include <error.h>
-#include <proc.h>
-#include <lib/low_io.h>
 #include <arch/local.h>
 #include <arch/irq.h>
+#include <proc.h>
 
 PLS_ATOM_DEFINE(int, __local_irq_save, 0);
 
@@ -55,7 +54,6 @@ irq_process(void)
         h      = info->handler[irq_no];
         acc    = info->accumulate[irq_no];
 
-        // if (h == NULL) h = mbox_irq_handler;
         if (h && acc)
         {
             info->accumulate[irq_no] = 0;

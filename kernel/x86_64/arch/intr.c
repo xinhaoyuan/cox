@@ -2,10 +2,12 @@
 
 #include <types.h>
 #include <asm/cpu.h>
-#include <proc.h>
 #include <irq.h>
-#include <user.h>
 #include <debug.h>
+#include <arch/local.h>
+#include <proc.h>
+#include <do_syscall.h>
+#include <user.h>
 
 #include "mem.h"
 #include "lapic.h"
@@ -17,7 +19,7 @@ struct pseudodesc idt_pd = {
     sizeof(idt) - 1, (uintptr_t)idt
 };
 
-void
+int
 idt_init(void) {
     extern uintptr_t __vectors[];
     int i;
@@ -31,6 +33,7 @@ idt_init(void) {
 
     /* Load IDT for BOOT CPU */
     __lidt(&idt_pd);
+    return 0;
 }
 
 static const char *
@@ -156,18 +159,7 @@ trap_dispatch(struct trapframe *tf)
     }
     else if (tf->tf_trapno == T_SYSCALL)
     {
-        /* additional syscalls */
-        switch (tf->tf_regs.reg_rax)
-        {
-        case T_SYSCALL_DEBUG_PUTC:
-            debug_putc(tf->tf_regs.reg_rbx);
-            break;
-
-        case T_SYSCALL_GET_TICK:
-            /* XXX: */
-            tf->tf_regs.reg_rax = timer_tick_get();
-            break;
-        }
+        do_syscall(tf);
     }
 
     if (from_user)

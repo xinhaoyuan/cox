@@ -6,7 +6,6 @@
 #include <irq.h>
 #include <string.h>
 #include <arch/irq.h>
-#include <lib/low_io.h>
 #include <algo/list.h>
 #include <debug.h>
 
@@ -37,7 +36,7 @@ user_thread_bin_exec(user_thread_t thread, void *bin, size_t bin_size)
     
     user_proc_t user_proc;
     if (thread->user_proc != NULL) return -E_INVAL;
-    if ((user_proc = kmalloc(sizeof(user_proc_s), FA_KERNEL)) == NULL) return -E_NO_MEM;
+    if ((user_proc = kmalloc(sizeof(user_proc_s))) == NULL) return -E_NO_MEM;
     thread->user_proc = user_proc;
 
     size_t   tls_size = 2 * _MACH_PAGE_SIZE;
@@ -55,19 +54,19 @@ user_thread_bin_exec(user_thread_t thread, void *bin, size_t bin_size)
         if (now < edata)
         {
             /* DATA */
-            if ((ret = user_proc_copy_page(user_proc, now + __start - start, 0, 0))) return ret;
+            if ((ret = user_proc_copy_page_to_user(user_proc, now + __start - start, 0, 0))) return ret;
         }
         else
         {
             /* BSS */
             /* XXX: on demand */
-            if ((ret = user_proc_copy_page(user_proc, now + __start - start, 0, 0))) return ret;
+            if ((ret = user_proc_copy_page_to_user(user_proc, now + __start - start, 0, 0))) return ret;
         }
         now += _MACH_PAGE_SIZE;
     }
     
     /* copy the binary */
-    user_proc_copy(user_proc, __start, bin, bin_size);
+    user_proc_copy_to_user(user_proc, __start, bin, bin_size);
 
     return 0;
 }
@@ -81,7 +80,7 @@ user_thread_exec(user_thread_t thread, uintptr_t entry, uintptr_t start, uintptr
     user_proc_t   user_proc;
     
     if (thread->user_proc != NULL) return -E_INVAL;
-    if ((user_proc = kmalloc(sizeof(user_proc_s), FA_KERNEL)) == NULL) return -E_NO_MEM;
+    if ((user_proc = kmalloc(sizeof(user_proc_s))) == NULL) return -E_NO_MEM;
     thread->user_proc = user_proc;
 
     size_t   tls_size = 2 * _MACH_PAGE_SIZE;
@@ -136,20 +135,20 @@ user_thread_state_init(user_thread_t thread, uintptr_t entry, uintptr_t tls_u, s
     /* Touch the memory */
     int i;
     for (i = 0; i < (tls_size >> _MACH_PAGE_SHIFT); ++ i)
-        user_proc_arch_copy_page(thread->user_proc, thread->tls_u + (i << _MACH_PAGE_SHIFT), 0, 0);
+        user_proc_arch_copy_page_to_user(thread->user_proc, thread->tls_u + (i << _MACH_PAGE_SHIFT), 0, 0);
     return user_thread_arch_state_init(thread, entry, stack_ptr);
 }
 
 int
-user_proc_copy_page(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, int flag)
+user_proc_copy_page_to_user(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, int flag)
 {
-    return user_proc_arch_copy_page(user_proc, addr, phys, flag);
+    return user_proc_arch_copy_page_to_user(user_proc, addr, phys, flag);
 }
 
 int
-user_proc_copy(user_proc_t user_proc, uintptr_t addr, void *src, size_t size)
+user_proc_copy_to_user(user_proc_t user_proc, uintptr_t addr, void *src, size_t size)
 {
-    return user_proc_arch_copy(user_proc, addr, src, size);
+    return user_proc_arch_copy_to_user(user_proc, addr, src, size);
 }
 
 int

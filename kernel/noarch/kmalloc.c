@@ -1,7 +1,6 @@
 #include <string.h>
 #include <frame.h>
 #include <kmalloc.h>
-#include <ips.h>
 #include <lib/sslab.h>
 #include <irq.h>
 #include <spinlock.h>
@@ -12,16 +11,16 @@ static int        cs_saved_irq[SSLAB_CLASS_COUNT];
 static spinlock_s cs_lock[SSLAB_CLASS_COUNT];
 
 static void *
-__sslab_page_alloc(struct sslab_ctrl_s *ctrl, unsigned int class, unsigned int flags)
+__sslab_page_alloc(struct sslab_ctrl_s *ctrl, unsigned int class, void *alloc_data)
 {
-    void *result = kframe_open(1, flags);
+    void *result = frame_arch_kopen(1);
     return result;
 }
 
 static void
 __sslab_page_free(struct sslab_ctrl_s *ctrl, unsigned int class, void *page)
 {
-    kframe_close(page);
+    frame_arch_kclose(page);
 }
 
 static void
@@ -59,7 +58,7 @@ kmalloc_sys_init(void)
 }
 
 void *
-kmalloc(size_t size, unsigned int flags)
+kmalloc(size_t size)
 {
     if (size == 0) return NULL;
     if (size < 8) size = 8;
@@ -69,11 +68,11 @@ kmalloc(size_t size, unsigned int flags)
     if (size + SSLAB_META_SIZE > SSLAB_MAX_ALLOC)
     {
         size_t pagesize = (size + _MACH_PAGE_SIZE - 1) >> _MACH_PAGE_SHIFT;
-        result = kframe_open(pagesize, flags);
+        result = frame_arch_kopen(pagesize);
     }
     else
     {
-        result = sslab_alloc(&sslab_ctrl, size, flags);
+        result = sslab_alloc(&sslab_ctrl, size, NULL);
     }
 
     return result;
@@ -86,7 +85,7 @@ kfree(void *ptr)
     
     if (((uintptr_t)ptr & (_MACH_PAGE_SIZE - 1)) == 0)
     {
-        kframe_close(ptr);
+        frame_arch_kclose(ptr);
     }
     else
     {

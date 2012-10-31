@@ -1,7 +1,6 @@
 #define DEBUG_COMPONENT DBG_SCHED
 
 #include <asm/cpu.h>
-#include <lib/low_io.h>
 #include <arch/context.h>
 #include <debug.h>
 

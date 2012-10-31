@@ -2,7 +2,6 @@
 #include <irq.h>
 #include <proc.h>
 #include <arch/local.h>
-#include <lib/low_io.h>
 #include <arch/irq.h>
 
 static int __tick_handler(int irq_no, uint64_t acc);
@@ -81,11 +80,11 @@ timer_tick_get(void)
 {
     tick_t result;
     
-    int irq = irq_save();
+    int irq = __irq_save();
     spinlock_acquire(&timer_lock);
     result = timer_tick;
     spinlock_release(&timer_lock);
-    irq_restore(irq);
+    __irq_restore(irq);
 
     return result;
 }

@@ -1,6 +1,7 @@
 .PHONY: all
 
-include ${T_OBJ}/cox-config.mk
+CODENAME := $(shell cd ..; basename `pwd`)
+include ${T_OBJ}/${CODENAME}-config.mk
 
 T_CC_OPT_FLAGS		:= -O2 
 T_CC_DEBUG_FLAGS	:= -Wall

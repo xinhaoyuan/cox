@@ -1,6 +1,5 @@
 #define DEBUG_COMPONENT DBG_MEM
 
-#include <lib/low_io.h>
 #include <arch/memlayout.h>
 #include <debug.h>
 

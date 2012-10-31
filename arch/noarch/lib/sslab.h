@@ -30,7 +30,7 @@ struct sslab_ctrl_s
     void  (*critical_section_enter)(struct sslab_ctrl_s *ctrl, unsigned int class);
     void  (*critical_section_leave)(struct sslab_ctrl_s *ctrl, unsigned int class);
     
-    void *(*page_alloc)(struct sslab_ctrl_s *ctrl, unsigned int class, unsigned int flags);
+    void *(*page_alloc)(struct sslab_ctrl_s *ctrl, unsigned int class, void *alloc_data);
     void  (*page_free) (struct sslab_ctrl_s *ctrl, unsigned int class, void *addr);
     
     sslab_class_ctrl_s class_ctrls[SSLAB_CLASS_COUNT];
@@ -42,7 +42,7 @@ typedef struct sslab_ctrl_s sslab_ctrl_s;
 typedef sslab_ctrl_s *sslab_ctrl_t;
 
 int   sslab_init(sslab_ctrl_t ctrl);
-void *sslab_alloc(sslab_ctrl_t sslab, size_t size, uintptr_t flags);
+void *sslab_alloc(sslab_ctrl_t sslab, size_t size, void *alloc_data);
 void  sslab_free(void *ptr);
 
 #endif

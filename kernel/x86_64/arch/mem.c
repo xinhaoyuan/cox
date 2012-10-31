@@ -1,42 +1,26 @@
 #define DEBUG_COMPONENT DBG_MEM
 
-#include <types.h>
 #include <string.h>
-#include <frame.h>
-#include <irq.h>
-#include <spinlock.h>
-#include <lib/buddy.h>
-#include <lib/low_io.h>
-#include <proc.h>
-#include <ips.h>
 #include <arch/paging.h>
 #include <asm/cpu.h>
 #include <debug.h>
+#include <spinlock.h>
+#include <lib/buddy.h>
+#include <frame.h>
+#include <irq.h>
 
-#include "memmap.h"
-#include "e820.h"
-#include "boot_alloc.h"
-#include "sysconf_x86.h"
-#include "ioapic.h"
 #include "mem.h"
+#include "mem_early.h"
+#include "seg.h"
+#include "memmap.h"
+#include "boot_alloc.h"
 
-uintptr_t kern_start;
-uintptr_t kern_end;
-uintptr_t phys_end;
-uintptr_t nr_pages;
-
-// virtual address of boot-time page directory
-pgd_t *pgdir_scratch = NULL;
-static pgd_t *boot_pgdir = NULL;
-// physical address of boot-time page directory
-static uintptr_t boot_cr3;
+pgd_t *pgdir_kernel = NULL;
 
 pte_t * const vpt = (pte_t *)VPT;
 pmd_t * const vmd = (pmd_t *)PGADDR(PGX(VPT), PGX(VPT), 0, 0, 0);
 pud_t * const vud = (pud_t *)PGADDR(PGX(VPT), PGX(VPT), PGX(VPT), 0, 0);
 pgd_t * const vgd = (pgd_t *)PGADDR(PGX(VPT), PGX(VPT), PGX(VPT), PGX(VPT), 0);
-
-static struct taskstate ts_boot = {0};
 
 /* *
  * Global Descriptor Table:
@@ -51,7 +35,7 @@ static struct taskstate ts_boot = {0};
  *   - 0x40:  user data segment
  *   - 0x50:  defined for boot tss, initialized in gdt_init
  * */
-struct segdesc gdt[SEG_COUNT + 1] = {
+struct segdesc gdt[SEG_COUNT] = {
     SEG_NULL,
     [SEG_KTEXT]    = SEG(STA_X | STA_R, DPL_KERNEL),
     [SEG_KDATA]    = SEG(STA_W, DPL_KERNEL),
@@ -64,87 +48,11 @@ struct pseudodesc gdt_pd = {
     sizeof(gdt) - 1, (uintptr_t)gdt
 };
 
-/* INIT CODE ================================================== */
-
-static pgd_t *
-boot_get_pgd(pgd_t *pgdir, uintptr_t la, bool create) {
-    return &pgdir[PGX(la)];
-}
-
-static pud_t *
-boot_get_pud(pgd_t *pgdir, uintptr_t la, bool create) {
-    pgd_t *pgdp;
-    if ((pgdp = boot_get_pgd(pgdir, la, create)) == NULL) {
-        return NULL;
-    }
-    if (!(*pgdp & PTE_P)) {
-        pud_t *pud;
-        if (!create || (pud = boot_alloc(PGSIZE, PGSIZE, 0)) == NULL) {
-            return NULL;
-        }
-        uintptr_t pa = PADDR_DIRECT(pud);
-        memset(pud, 0, PGSIZE);
-        *pgdp = pa | PTE_U | PTE_W | PTE_P;
-    }
-    return &((pud_t *)VADDR_DIRECT(PGD_ADDR(*pgdp)))[PUX(la)];
-}
-
-static pmd_t *
-boot_get_pmd(pgd_t *pgdir, uintptr_t la, bool create) {
-    pud_t *pudp;
-    if ((pudp = boot_get_pud(pgdir, la, create)) == NULL) {
-        return NULL;
-    }
-    if (!(*pudp & PTE_P)) {
-        pmd_t *pmd;
-        if (!create || (pmd = boot_alloc(PGSIZE, PGSIZE, 0)) == NULL) {
-            return NULL;
-        }
-        uintptr_t pa = PADDR_DIRECT(pmd);
-        memset(pmd, 0, PGSIZE);
-        *pudp = pa | PTE_U | PTE_W | PTE_P;
-    }
-    return &((pmd_t *)VADDR_DIRECT(PUD_ADDR(*pudp)))[PMX(la)];
-}
-
-static pte_t *
-boot_get_pte(pgd_t *pgdir, uintptr_t la, bool create) {
-    pmd_t *pmdp;
-    if ((pmdp = boot_get_pmd(pgdir, la, create)) == NULL) {
-        return NULL;
-    }
-    
-    if (!(*pmdp & PTE_P)) {
-        pte_t *pte;
-        if (!create || (pte = boot_alloc(PGSIZE, PGSIZE, 0)) == NULL) {
-            return NULL;
-        }
-        uintptr_t pa = PADDR_DIRECT(pte);
-        memset(pte, 0, PGSIZE);
-        *pmdp = pa | PTE_U | PTE_W | PTE_P;
-    }
-
-    return &((pte_t *)VADDR_DIRECT(PMD_ADDR(*pmdp)))[PTX(la)];
-}
-
-static void
-boot_map_segment(pgd_t *pgdir, uintptr_t la, size_t size, uintptr_t pa, uint32_t perm) {
-    assert(PGOFF(la) == PGOFF(pa));
-    size_t n = (size + PGOFF(la) + PGSIZE - 1) / PGSIZE;
-    la = la & ~(uintptr_t)(PGSIZE - 1);
-    pa = pa & ~(uintptr_t)(PGSIZE - 1);
-    for (; n > 0; n --, la += PGSIZE, pa += PGSIZE) {
-        pte_t *ptep = boot_get_pte(pgdir, la, 1);
-        assert(ptep != NULL);
-        *ptep = pa | PTE_P | perm;
-    }
-}
-
 /* *
  * lgdt - load the global descriptor table register and reset the
  * data/code segement registers for kernel.
  * */
-static inline void
+void
 lgdt(struct pseudodesc *pd) {
     asm volatile ("lgdt (%0)" :: "r" (pd));
     asm volatile ("movw %%ax, %%es" :: "a" (KERNEL_DS));
@@ -244,92 +152,6 @@ print_pgdir(void) {
     DEBUG("--------------------- END ---------------------\n");
 }
 
-static void
-mmu_init(void)
-{
-    int i;
-        
-    pgdir_scratch = boot_pgdir = boot_alloc(PGSIZE, PGSIZE, 0);
-    memset(boot_pgdir, 0, PGSIZE);
-    boot_cr3 = PADDR_DIRECT(boot_pgdir);
-
-    // recursively insert boot_pgdir in itself
-    // to form a virtual page table at virtual address VPT
-    boot_pgdir[PGX(VPT)] = PADDR_DIRECT(boot_pgdir) | PTE_P | PTE_W;
-
-    int id = 0;
-    uintptr_t start, end;
-    while (memmap_enumerate(id, &start, &end) == 0) ++ id;
-    phys_end = end;
-    nr_pages = (phys_end + PGSIZE - 1) >> PGSHIFT;
-
-    DEBUG("phys max boundary: %p\n", phys_end);
-    DEBUG("number of pages: %d\n", nr_pages);
-
-    /* touch all pud page for PHYSBASE ~ PHYSBASE + PHYSSIZE, so all
-     * page tables shares the same mmio mapping*/
-    int num_of_pudtables = (PHYSSIZE + PUSIZE - 1) / PUSIZE;
-    for (i = 0; i < num_of_pudtables; ++ i)
-    {
-        boot_get_pud(boot_pgdir, PHYSBASE + PUSIZE * i, 1);
-    }
-    
-    /* same for kv mapping */
-    num_of_pudtables = (KVSIZE + PUSIZE - 1) / PUSIZE;
-    for (i = 0; i < num_of_pudtables; ++ i)
-    {
-        boot_get_pud(boot_pgdir, KVBASE + PUSIZE * i, 1);
-    }
-    
-    
-    /* map all physical memory at PHYSBASE by 2m pages*/
-    int num_of_2m_pages = (phys_end + 0x1fffff) / 0x200000;
-    for (i = 0; i < num_of_2m_pages; ++ i)
-    {
-        uintptr_t phys = i << 21;
-        pmd_t *pmd = boot_get_pmd(boot_pgdir, PHYSBASE + phys, 1);
-        *pmd = phys | PTE_PS | PTE_W | PTE_P;
-    }
-
-    /* and map the first 1MB for the application processor booting */
-    boot_map_segment(boot_pgdir, 0, 0x100000, 0, PTE_W);
-    
-    extern char __text[], __end[];
-    kern_start = (uintptr_t)__text;
-    kern_end   = (uintptr_t)__end;
-    DEBUG("kernel boundary: %p - %p\n", kern_start, kern_end);
-    /* remap kernel self */
-    boot_map_segment(boot_pgdir, KERNBASE + kern_start, kern_end - kern_start, kern_start, PTE_W);
-
-    __lcr3(boot_cr3);
-
-    // set CR0
-    uint64_t cr0 = __rcr0();
-    cr0 |= CR0_PE | CR0_PG | CR0_AM | CR0_WP | CR0_NE | CR0_TS | CR0_EM | CR0_MP;
-    cr0 &= ~(CR0_TS | CR0_EM);
-    __lcr0(cr0);
-
-    memset(&ts_boot, sizeof(ts_boot), 0);
-    // initialize the BOOT TSS
-    gdt[SEG_TSS_BOOT] = SEGTSS(STS_T32A, (uintptr_t)&ts_boot, sizeof(ts_boot), DPL_KERNEL);
-    // then for mp
-    /* 6 for start of dynamic segment */
-    for (i = 6; i <= SEG_COUNT; ++ i)
-    {
-        gdt[i] = SEG_NULL;
-    }
-
-    // reload all segment registers
-    lgdt(&gdt_pd);
-    
-    // load the TSS, a little work around about gcc -O
-    // ltr(GD_TSS_BOOT); // may crash
-    volatile uint16_t tss = GD_TSS_BOOT;
-    __ltr(tss);
-
-    // print_pgdir();
-}
-
 static int
 config_by_memmap(uintptr_t num)
 {
@@ -344,43 +166,27 @@ static struct buddy_context_s kv_buddy;
 static spinlock_s kv_lock;
 static spinlock_s mmio_fix_lock;
 
-static void *
-__boot_page_alloc(size_t size)
+void
+valloc_early_init_struct(void)
 {
-    return boot_alloc(size, PGSIZE, 0);
+    kv_buddy.node = boot_alloc(BUDDY_CALC_ARRAY_SIZE(KVSIZE >> PGSHIFT) * sizeof(struct buddy_node_s), PGSIZE, 0);
 }
 
 int
-memory_init(void)
+mem_init(void)
 {
-    memmap_process_e820();
-    boot_alloc_init();
-
-    mmu_init();
-
-    /* Mark the supervisor area and boot alloc area reserved */
-    memmap_append(kern_start, kern_end, MEMMAP_FLAG_RESERVED);
-
-    frame_sys_early_init_struct(nr_pages, __boot_page_alloc);
-    kv_buddy.node = boot_alloc(BUDDY_CALC_ARRAY_SIZE(KVSIZE >> PGSHIFT) * sizeof(struct buddy_node_s), PGSIZE, 0);
-    buddy_build(&kv_buddy, KVSIZE >> PGSHIFT, kv_config);
-    
-    uintptr_t start, end;
-    boot_alloc_get_area(&start, &end);
-
-    memmap_append(start, end, MEMMAP_FLAG_RESERVED);
-    memmap_process(1);
-
-    /* Initialize the page allocator with free areas */
+    int err;
+    err = mem_early_init();
+    if (err) return err;
 
     frame_sys_early_init_layout(config_by_memmap);
+    buddy_build(&kv_buddy, KVSIZE >> PGSHIFT, kv_config);
+    
     spinlock_init(&kv_lock);
     spinlock_init(&mmio_fix_lock);
 
     return 0;
 }
-
-/* INIT CODE END ================================================== */
 
 static pgd_t *
 get_pgd(pgd_t *pgdir, uintptr_t la)
@@ -389,7 +195,7 @@ get_pgd(pgd_t *pgdir, uintptr_t la)
 }
 
 static pud_t *
-get_pud(pgd_t *pgdir, uintptr_t la, unsigned int flags)
+get_pud(pgd_t *pgdir, uintptr_t la, int create)
 {
     pgd_t *pgdp;
     if ((pgdp = get_pgd(pgdir, la)) == NULL)
@@ -399,13 +205,14 @@ get_pud(pgd_t *pgdir, uintptr_t la, unsigned int flags)
     
     if (!(*pgdp & PTE_P))
     {
+        if (!create)
+            return NULL;
+        
         pud_t *pud;
         frame_t frame;
         
-        if ((frame = frame_alloc(1, flags)) == NULL)
-        {
+        if ((frame = frame_alloc(1)) == NULL)
             return NULL;
-        }
         
         uintptr_t pa = FRAME_TO_PHYS(frame);
         pud = VADDR_DIRECT(pa);
@@ -417,25 +224,26 @@ get_pud(pgd_t *pgdir, uintptr_t la, unsigned int flags)
 }
 
 static pmd_t *
-get_pmd(pgd_t *pgdir, uintptr_t la, unsigned int flags)
+get_pmd(pgd_t *pgdir, uintptr_t la, int create)
 {
     pud_t *pudp;
     
-    if ((pudp = get_pud(pgdir, la, flags)) == NULL)
+    if ((pudp = get_pud(pgdir, la, create)) == NULL)
     {
         return NULL;
     }
     
     if (!(*pudp & PTE_P))
     {
+        if (!create)
+            return NULL;
+        
         pmd_t *pmd;
         frame_t frame;
         
-        if ((frame = frame_alloc(1, flags)) == NULL)
-        {
+        if ((frame = frame_alloc(1)) == NULL)
             return NULL;
-        }
-        
+            
         uintptr_t pa = FRAME_TO_PHYS(frame);
         pmd = VADDR_DIRECT(pa);
         memset(pmd, 0, PGSIZE);
@@ -446,24 +254,24 @@ get_pmd(pgd_t *pgdir, uintptr_t la, unsigned int flags)
 }
 
 pte_t *
-get_pte(pgd_t *pgdir, uintptr_t la, unsigned int flags)
+get_pte(pgd_t *pgdir, uintptr_t la, int create)
 {
     pmd_t *pmdp;
-    if ((pmdp = get_pmd(pgdir, la, flags)) == NULL)
-    {
+
+    if ((pmdp = get_pmd(pgdir, la, create)) == NULL)
         return NULL;
-    }
-    
+
     if (!(*pmdp & PTE_P))
     {
+        if (!create)
+            return NULL;
+
         pte_t *pte;
         frame_t frame;
         
-        if ((frame = frame_alloc(1, flags)) == 0)
-        {
+        if ((frame = frame_alloc(1)) == 0)
             return NULL;
-        }
-        
+
         uintptr_t pa = FRAME_TO_PHYS(frame);
         pte = VADDR_DIRECT(pa);
         memset(pte, 0, PGSIZE);
@@ -471,51 +279,6 @@ get_pte(pgd_t *pgdir, uintptr_t la, unsigned int flags)
     }
 
     return &((pte_t *)VADDR_DIRECT(PMD_ADDR(*pmdp)))[PTX(la)];
-}
-
-void
-pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
-{
-    if (PHYSBASE <= la && la < PHYSBASE + PHYSSIZE)
-    {
-        if (err & 4)
-        {
-            /* MMIO AREA IS NOT ALLOWED FOR USER */
-            PANIC("MMIO FROM USER\n");
-        }
-        else
-        {
-            /* KERNEL MMIO PG FAULT, fix it */
-            la = la & ~(uintptr_t)0x1fffff;
-           
-            spinlock_acquire(&mmio_fix_lock);
-            pmd_t *pmd = get_pmd(boot_pgdir, la, FA_ATOMIC);
-            spinlock_release(&mmio_fix_lock);
-
-            /* All mmio mappings are the same across all page tables, so just
-             * modify it for one place */
-            if (pmd)
-                *pmd = PADDR_DIRECT(la) | PTE_PS | PTE_W | PTE_P;
-            else
-            {
-                PANIC("Cannot alloc frames for kernel MMIO mapping\n");
-            }
-        }
-    }
-    /* in user area ? */
-    else if (la < UTOP)
-    {
-        if (current->type != PROC_TYPE_USER)
-        {
-            PANIC("user area page fault by non-user thread %p\nLA: %p, PC: %p\n",
-                  current, la, pc);
-        }
-        else
-        {
-            PANIC("PGFLT IN USERSPACE");
-            // user_thread_pgflt_handler(current, err, la, pc);
-        }
-    }
 }
 
 void *
@@ -546,4 +309,51 @@ vfree(void *addr)
     
     spinlock_release(&kv_lock);
     irq_restore(irq);
+}
+
+void
+pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
+{
+    if (PHYSBASE <= la && la < PHYSBASE + PHYSSIZE)
+    {
+        if (err & 4)
+        {
+            /* MMIO AREA IS NOT ALLOWED FOR USER */
+            PANIC("MMIO FROM USER\n");
+        }
+        else
+        {
+            /* KERNEL MMIO PG FAULT, fix it */
+            la = la & ~(uintptr_t)0x1fffff;
+           
+            spinlock_acquire(&mmio_fix_lock);
+            pmd_t *pmd = get_pmd(pgdir_kernel, la, 1);
+            spinlock_release(&mmio_fix_lock);
+
+            /* All mmio mappings are the same across all page tables, so just
+             * modify it for one place */
+            if (pmd)
+                *pmd = PADDR_DIRECT(la) | PTE_PS | PTE_W | PTE_P;
+            else
+            {
+                PANIC("Cannot alloc frames for kernel MMIO mapping\n");
+            }
+        }
+    }
+#if 0
+    /* in user area ? */
+    else if (la < UTOP)
+    {
+        if (current->type != PROC_TYPE_USER)
+        {
+            PANIC("user area page fault by non-user thread %p\nLA: %p, PC: %p\n",
+                  current, la, pc);
+        }
+        else
+        {
+            PANIC("PGFLT IN USERSPACE");
+            // user_thread_pgflt_handler(current, err, la, pc);
+        }
+    }
+#endif
 }

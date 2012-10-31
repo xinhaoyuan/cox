@@ -21,13 +21,19 @@ user_thread_arch_state_init(user_thread_t thread, uintptr_t entry, uintptr_t sta
     size_t tls_pages = thread->tls_size >> _MACH_PAGE_SHIFT;
 
     /* XXX to cleanup */
-    /* Map tls to kernel */
+    /* Before this call we should have TLS allocated in user */
+    /* Now map it to kernel */
     thread->tls = valloc(tls_pages);
     int i;
     for (i = 0; i < tls_pages; ++ i)
     {
-        *get_pte(pgdir_scratch, (uintptr_t)thread->tls + (i << PGSHIFT), FA_KERNEL) =
-            *get_pte(thread->user_proc->arch.pgdir, thread->tls_u + (i << PGSHIFT), 0);
+        pte_t *pte_k = get_pte(pgdir_kernel, (uintptr_t)thread->tls + (i << PGSHIFT), 1);
+        pte_t *pte_u = get_pte(thread->user_proc->arch.pgdir, thread->tls_u + (i << PGSHIFT), 0);
+
+        if (pte_k == NULL ||
+            pte_u == NULL)
+            return -1;
+        *pte_k = *pte_u;
     }
 
     /* flush the page map */

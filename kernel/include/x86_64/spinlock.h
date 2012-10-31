@@ -1,5 +1,5 @@
-#ifndef __ARCH_SPINLOCK_H__
-#define __ARCH_SPINLOCK_H__
+#ifndef __KERN_ARCH_SPINLOCK_H__
+#define __KERN_ARCH_SPINLOCK_H__
 
 #include <types.h>
 #include <asm/atom.h>

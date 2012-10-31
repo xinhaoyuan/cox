@@ -1,94 +1,79 @@
-#include <types.h>
 #include <frame.h>
-
 #include "arch/mem.h"
 
 volatile void *
-kmmio_open(uintptr_t addr, size_t size)
+mmio_arch_kopen(uintptr_t addr, size_t size)
 {
     return VADDR_DIRECT(addr);
 }
 
 void
-kmmio_close(volatile void *addr)
+mmio_arch_kclose(volatile void *addr)
 { }
 
 void *
-kframe_open(size_t num, unsigned int flags)
+frame_arch_kopen(size_t num)
 {
     void *start = valloc(num);
     if (start == NULL) return NULL;
 
-    /* Touch the map first */
+    /* Touch the address space */
     size_t i;
     for (i = 0; i < num; ++ i)
-        if (get_pte(pgdir_scratch, (uintptr_t)start + (i << _MACH_PAGE_SHIFT), flags) == NULL)
-        {
-            vfree(start);
-            return NULL;
-        }
-    
-    if (flags & FA_CONTIGUOUS)
-    {
-        frame_t head = frame_alloc(num, flags);
-        if (head == NULL)
+        if (get_pte(pgdir_kernel, (uintptr_t)start + (i << _MACH_PAGE_SHIFT), 1) == NULL)
         {
             vfree(start);
             return NULL;
         }
 
-        for (i = 0; i < num; ++ i)
-        {
-            pte_t *pte = get_pte(pgdir_scratch, (uintptr_t)start + (i << _MACH_PAGE_SHIFT), 0);
-            *pte = FRAME_TO_PHYS(head + i) | PTE_W | PTE_P;
-
-            if (i == (num - 1)) *pte |= PTE_KME;
-        }
-    }
-    else
+    for (i = 0; i < num; ++ i)
     {
-        for (i = 0; i < num; ++ i)
+        frame_t frame = frame_alloc(1);
+        if (frame == NULL)
         {
-            frame_t frame = frame_alloc(1, flags);
-            if (frame == NULL)
+            /* If failed, clear all frame allocated. But may remain
+             * frames for page-table */
+            while (1)
             {
-                while (1)
-                {
-                    if (i == 0) break;
-                    else --i;
+                if (i == 0) break;
+                else --i;
                     
-                    pte_t *pte = get_pte(pgdir_scratch, (uintptr_t)start + (i << _MACH_PAGE_SHIFT), 0);
-                    frame_put(PHYS_TO_FRAME(PTE_ADDR(*pte)));
-                    *pte = 0;
-                }
-                vfree(start);
-
-                return NULL;
+                pte_t *pte = get_pte(pgdir_kernel, (uintptr_t)start + (i << _MACH_PAGE_SHIFT), 0);
+                frame_put(PHYS_TO_FRAME(PTE_ADDR(*pte)));
+                *pte = 0;
             }
-            
-            pte_t *pte = get_pte(pgdir_scratch, (uintptr_t)start + (i << _MACH_PAGE_SHIFT), 0);
-            *pte = FRAME_TO_PHYS(frame) | PTE_W | PTE_P;
-
-            if (i == (num - 1)) *pte |= PTE_KME;
+                
+            vfree(start);
+            return NULL;
         }
+            
+        pte_t *pte = get_pte(pgdir_kernel, (uintptr_t)start + (i << _MACH_PAGE_SHIFT), 0);
+        *pte = FRAME_TO_PHYS(frame) | PTE_W | PTE_P;
+
+        if (i == (num - 1)) *pte |= PTE_KME;
     }
 
     return start;
 }
 
 void
-kframe_close(void *head)
+frame_arch_kclose(void *head)
 {
     while ((uintptr_t)head >= KVBASE && (uintptr_t)head < KVBASE + KVSIZE)
     {
-        pte_t *pte = get_pte(pgdir_scratch, (uintptr_t)head, 0);
-        if (pte == NULL) break;
-        frame_put(PHYS_TO_FRAME(PTE_ADDR(*pte)));
+        pte_t *pte = get_pte(pgdir_kernel, (uintptr_t)head, 0);
+        if (!pte) break;
+        
+        frame_t cur = PHYS_TO_FRAME(PTE_ADDR(*pte));
+        
         int kme = *pte & PTE_KME;
         *pte = 0;
 
+        /* Only put head frames */
+        if ((cur->region & 1) == 0) frame_put(cur);
         head += _MACH_PAGE_SIZE;
-
-        if (kme) break;
+        if (kme) return;
     }
+
+    PANIC("Invalid frame area for frame_arch_kclose");
 }

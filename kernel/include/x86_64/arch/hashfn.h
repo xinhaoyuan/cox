@@ -1,5 +1,5 @@
-#ifndef __KERN_HASHFN_H__
-#define __KERN_HASHFN_H__
+#ifndef __KERN_ARCH_HASHFN_H__
+#define __KERN_ARCH_HASHFN_H__
 
 #include <types.h>
 

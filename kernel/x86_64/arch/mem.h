@@ -4,20 +4,22 @@
 #include <types.h>
 #include <asm/mmu.h>
 #include <arch/memlayout.h>
-
 #include "seg.h"
 
 extern struct pseudodesc gdt_pd;
-extern struct segdesc gdt[SEG_COUNT + 1];
-extern pgd_t *pgdir_scratch;
+extern struct segdesc gdt[SEG_COUNT];
+extern pgd_t *pgdir_kernel;
 
-int    memory_init(void);
+void   lgdt(struct pseudodesc *pd);
 void   print_pgdir(void);
 void   pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc);
-pte_t *get_pte(pgd_t *pgdir, uintptr_t la, unsigned int flags);
+pte_t *get_pte(pgd_t *pgdir, uintptr_t la, int create);
+
+int    mem_init(void);
 
 /* allocate for virtual address space */
-void *valloc(size_t num);
-void  vfree(void *addr);
+void   valloc_early_init_struct(void);
+void  *valloc(size_t num);
+void   vfree(void *addr);
 
 #endif

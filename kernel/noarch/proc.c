@@ -7,7 +7,6 @@
 #include <irq.h>
 #include <spinlock.h>
 #include <arch/memlayout.h>
-#include <lib/low_io.h>
 #include <arch/context.h>
 #include <arch/irq.h>
 #include <user.h>
@@ -18,7 +17,12 @@
 PLS_PTR_DEFINE(runqueue_s, __runqueue, NULL);
 #define runqueue (PLS(__runqueue))
 
-PLS_PTR_DEFINE(proc_s, __current, NULL);
+proc_s __current_init =
+{
+    .name = "__CURRENT_INIT",
+};
+
+PLS_PTR_DEFINE(proc_s, __current, &__current_init);
 #define current_set(proc) PLS_SET(__current, proc)
 
 static inline void __schedule(int external);
@@ -238,9 +242,3 @@ __post_schedule(proc_t proc)
 
 void
 schedule(void) { __schedule(1); }
-
-void
-do_idle(void)
-{
-    while (1) __cpu_relax();
-}

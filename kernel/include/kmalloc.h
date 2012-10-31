@@ -4,7 +4,7 @@
 #include <types.h>
 
 int   kmalloc_sys_init(void);
-void *kmalloc(size_t size, unsigned int flags);
+void *kmalloc(size_t size);
 void  kfree(void *ptr);
 
 

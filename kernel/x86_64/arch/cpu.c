@@ -2,7 +2,6 @@
 
 #include <string.h>
 #include <asm/atom.h>
-#include <lib/low_io.h>
 #include <debug.h>
 
 #include "init.h"
@@ -10,12 +9,6 @@
 #include "intr.h"
 #include "mem.h"
 #include "cpu.h"
-
-irq_control_s  irq_control[IRQ_COUNT];
-unsigned int   cpu_id_set[LAPIC_COUNT];
-unsigned int   cpu_id_inv[LAPIC_COUNT];
-cpu_static_s   cpu_static[LAPIC_COUNT];
-cpu_dynamic_s  cpu_dynamic[LAPIC_COUNT];
 
 static volatile int cpu_init_count = 0;
 static volatile int cpu_boot_pgtab_clean = 0;
@@ -47,7 +40,7 @@ cpu_init(void)
     /* clear the boot pgdir */
     if (lapic_id() == sysconf_x86.cpu.boot)
     {
-        memset(pgdir_scratch, 0, PGX(PHYSBASE) * sizeof(pgd_t));
+        memset(pgdir_kernel, 0, PGX(PHYSBASE) * sizeof(pgd_t));
         cpu_boot_pgtab_clean = 1;
     }
     else while (cpu_boot_pgtab_clean == 0) __cpu_relax();

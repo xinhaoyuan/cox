@@ -1,9 +1,10 @@
+/* This source code is originally from the JOS project, modified by
+ * Xinhao.Yuan for ECRUOS */
 #define DEBUG_COMPONENT DBG_IO
 
 #include <types.h>
 #include <string.h>
 #include <asm/io.h>
-#include <lib/low_io.h>
 #include <arch/memlayout.h>
 #include <debug.h>
 
@@ -448,9 +449,6 @@ early_cons_getc(void) {
 /* early_cons_init - initializes the console devices */
 void
 early_cons_init(void) {
-    low_io_putc = early_cons_putc;
-    low_io_getc = early_cons_getc;
-    
     debug_io_set((void(*)(int,void*))early_cons_putc, (int(*)(void*))early_cons_getc, NULL);
     
     cga_init();
