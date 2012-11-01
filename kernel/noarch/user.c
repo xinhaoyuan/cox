@@ -152,10 +152,11 @@ user_thread_create(const char *name, int class)
     ut->proc.type  = PROC_TYPE_USER_INIT;
     ut->stack_base = stack_base;
 
+    spinlock_init(&ut->service_lock);
+    ut->service_status  = USER_THREAD_SERVICE_STATUS_NO;
     ut->service_context = NULL;
     ut->service_client  = NULL;
-    semaphore_init(&ut->service_wait_sem, 0);
-    semaphore_init(&ut->service_ack_sem, 0);
+    semaphore_init(&ut->service_sem, 0);
 
     return ut;
 }

@@ -31,11 +31,13 @@ __init(void *tls, size_t tls_size, void *start, void *end)
 
     int tid = ctx.args[1];
 
-    ctx.args[0] = tid;
-    ctx.args[1] = 999;
-    ctx.args[2] = 999;
-    ctx.args[3] = 999;
-    __service(&ctx);
+    while (1)
+    {
+        ctx.args[0] = tid;
+        ctx.args[1] = 999;
+        __service(&ctx);
+        if (ctx.args[0] == tid) break;
+    }
     
     while (1) __cpu_relax();
 }

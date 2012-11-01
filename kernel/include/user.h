@@ -64,10 +64,15 @@ typedef struct user_thread_s
     };
         
     /* service */
-    service_context_t service_context;
-    user_thread_t     service_client;
-    semaphore_s       service_wait_sem;
-    semaphore_s       service_ack_sem;
+    spinlock_s                 service_lock;
+    volatile int               service_status;
+    
+#define USER_THREAD_SERVICE_STATUS_NO     0
+#define USER_THREAD_SERVICE_STATUS_LISTEN 1
+    
+    volatile service_context_t service_context;
+    volatile user_thread_t     service_client;
+    semaphore_s                service_sem;
 
     user_thread_arch_s arch;    /* arch data */
 } user_thread_s;
