@@ -6,7 +6,8 @@
 #include <user.h>
 #include <ips.h>
 
-static int do_thread_create(uintptr_t entry, uintptr_t tls, uintptr_t stack);
+static int  do_thread_create(uintptr_t entry, uintptr_t tls, uintptr_t stack);
+static void do_thread_exit(int code);
 
 void
 do_service(service_context_t ctx)
@@ -30,18 +31,20 @@ do_service(service_context_t ctx)
     if (dest == 0)
     {
         int func = SERVICE_ARG1_GET(ctx);
+        DEBUG("System service cal with func = %d\n", func);
         switch (func)
         {
         case SERVICE_SYS_LISTEN:
-            DEBUG("waiting\n");
             /* Listen for any request */
             semaphore_release(&ut->service_wait_sem);
             semaphore_acquire(&ut->service_fill_sem, NULL);
             service_context_transfer(ctx, ut->service_source->service_context);
             break;
         case SERVICE_SYS_THREAD_CREATE:
-            SERVICE_ARG1_SET(ctx, do_thread_create(SERVICE_ARG1_GET(ctx), SERVICE_ARG2_GET(ctx), SERVICE_ARG3_GET(ctx)));
+            SERVICE_ARG1_SET(ctx, do_thread_create(SERVICE_ARG2_GET(ctx), SERVICE_ARG3_GET(ctx), SERVICE_ARG4_GET(ctx)));
             break;
+        case SERVICE_SYS_THREAD_EXIT:
+            do_thread_exit(SERVICE_ARG2_GET(ctx));
         }
     }
     else
@@ -70,4 +73,10 @@ do_thread_create(uintptr_t entry, uintptr_t tls, uintptr_t stack)
 {
     user_thread_t ut = USER_THREAD(current);
     return user_thread_create_from_thread(ut->proc.name, ut, entry, tls, stack) == NULL;
+}
+
+void
+do_thread_exit(int code)
+{
+    /* XXX */
 }
