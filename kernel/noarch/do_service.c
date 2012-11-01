@@ -23,6 +23,9 @@ do_service(service_context_t ctx)
         int func = SERVICE_ARG1_GET(ctx);
         switch (func)
         {
+        case SERVICE_SYS_DEBUG_PUTC:
+            debug_putc(SERVICE_ARG2_GET(ctx));
+            break;
         case SERVICE_SYS_LISTEN:
             ut->service_client = NULL;
             /* Listen for any request */
@@ -33,10 +36,10 @@ do_service(service_context_t ctx)
             ut->service_client->service_context = NULL;
             break;
         case SERVICE_SYS_PROC_BRK:
-            SERVICE_ARG1_SET(ctx, do_proc_brk(SERVICE_ARG2_GET(ctx)));
+            SERVICE_ARG0_SET(ctx, do_proc_brk(SERVICE_ARG2_GET(ctx)));
             break;
         case SERVICE_SYS_THREAD_CREATE:
-            SERVICE_ARG1_SET(ctx, do_thread_create(SERVICE_ARG2_GET(ctx), SERVICE_ARG3_GET(ctx), SERVICE_ARG4_GET(ctx)));
+            SERVICE_ARG0_SET(ctx, do_thread_create(SERVICE_ARG2_GET(ctx), SERVICE_ARG3_GET(ctx), SERVICE_ARG4_GET(ctx)));
             break;
         case SERVICE_SYS_THREAD_EXIT:
             do_thread_exit(SERVICE_ARG2_GET(ctx));
