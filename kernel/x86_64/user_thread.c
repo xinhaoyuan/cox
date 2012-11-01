@@ -11,35 +11,14 @@
 #include "arch/mem.h"
 
 int
-user_thread_arch_state_init(user_thread_t thread, uintptr_t entry, uintptr_t stack_ptr)
+user_thread_arch_state_init(user_thread_t thread, uintptr_t entry, uintptr_t tls, uintptr_t stack)
 {
     memset(&thread->arch, 0, sizeof(thread->arch));
     
     thread->arch.init_entry     = entry;
-    thread->arch.init_stack_ptr = stack_ptr;
-    
-    size_t tls_pages = thread->tls_size >> _MACH_PAGE_SHIFT;
+    thread->arch.init_stack_ptr = stack;
+    thread->arch.tls            = tls;
 
-    /* XXX to cleanup */
-    /* Before this call we should have TLS allocated in user */
-    /* Now map it to kernel */
-    thread->tls = valloc(tls_pages);
-    int i;
-    for (i = 0; i < tls_pages; ++ i)
-    {
-        pte_t *pte_k = get_pte(pgdir_kernel, (uintptr_t)thread->tls + (i << PGSHIFT), 1);
-        pte_t *pte_u = get_pte(thread->user_proc->arch.pgdir, thread->tls_u + (i << PGSHIFT), 0);
-
-        if (pte_k == NULL ||
-            pte_u == NULL)
-            return -1;
-        *pte_k = *pte_u;
-    }
-
-    /* flush the page map */
-    __lcr3(__rcr3());
-
-    
     return 0;
 }
 
@@ -74,11 +53,10 @@ user_thread_arch_jump(void)
         /* XXX: IOPL = 3 for test driver node */
         tf.tf_rflags |= FL_IOPL_3;
         tf.tf_rip = thread->arch.init_entry;
-        /* pass tls, tls_size, start, end to user init */
-        tf.tf_regs.reg_rdi = thread->tls_u;
-        tf.tf_regs.reg_rsi = thread->tls_size;
-        tf.tf_regs.reg_rdx = thread->user_proc->start;
-        tf.tf_regs.reg_rcx = thread->user_proc->end;
+        /* pass tls, start, end to user init */
+        tf.tf_regs.reg_rdi = thread->arch.tls;
+        tf.tf_regs.reg_rsi = thread->user_proc->start;
+        tf.tf_regs.reg_rdx = thread->user_proc->end;
         tf.tf_rsp = thread->arch.init_stack_ptr;
         
         __user_jump(&tf);
@@ -101,6 +79,6 @@ void
 user_thread_arch_restore_context(proc_t proc)
 {
     /* change the gs base for TLS */
-    __write_msr(0xC0000101, USER_THREAD(proc)->tls_u);
+    __write_msr(0xC0000101, USER_THREAD(proc)->arch.tls);
     __lcr3(USER_THREAD(proc)->user_proc->arch.cr3);
 }

@@ -6,12 +6,11 @@
 #include <user.h>
 #include <ips.h>
 
+static int do_thread_create(uintptr_t entry, uintptr_t tls, uintptr_t stack);
+
 void
 do_service(service_context_t ctx)
 {
-    DEBUG("service\n");
-    return;
-    
     user_thread_t ut = USER_THREAD(current);
     uintptr_t dest = SERVICE_ARG0_GET(ctx);
 
@@ -19,7 +18,6 @@ do_service(service_context_t ctx)
     {
         /* Reply */
         
-        /* XXX */
         SERVICE_ARG0_SET(ctx, ut->tid);
         
         service_context_transfer(ut->service_source->service_context, ctx);
@@ -29,16 +27,24 @@ do_service(service_context_t ctx)
         return;
     }
 
-    switch (dest)
+    if (dest == 0)
     {
-    case 0:
-        /* Listen for any request */
-        semaphore_release(&ut->service_wait_sem);
-        semaphore_acquire(&ut->service_fill_sem, NULL);
-        service_context_transfer(ctx, ut->service_source->service_context);
-        break;
-
-    default:
+        int func = SERVICE_ARG1_GET(ctx);
+        switch (func)
+        {
+        case SERVICE_SYS_LISTEN:
+            DEBUG("waiting\n");
+            /* Listen for any request */
+            semaphore_release(&ut->service_wait_sem);
+            semaphore_acquire(&ut->service_fill_sem, NULL);
+            service_context_transfer(ctx, ut->service_source->service_context);
+            break;
+        case SERVICE_SYS_THREAD_CREATE:
+            SERVICE_ARG1_SET(ctx, do_thread_create(SERVICE_ARG1_GET(ctx), SERVICE_ARG2_GET(ctx), SERVICE_ARG3_GET(ctx)));
+            break;
+        }
+    }
+    else
     {
         user_thread_t target = user_thread_get_by_tid(SERVICE_ARG0_GET(ctx));
         if (target == NULL)
@@ -56,7 +62,12 @@ do_service(service_context_t ctx)
             semaphore_acquire(&ut->service_fill_sem, NULL);
         }
         user_thread_put(target);
-        break;
     }
-    }
+}
+
+int 
+do_thread_create(uintptr_t entry, uintptr_t tls, uintptr_t stack)
+{
+    user_thread_t ut = USER_THREAD(current);
+    return user_thread_create_from_thread(ut->proc.name, ut, entry, tls, stack) == NULL;
 }

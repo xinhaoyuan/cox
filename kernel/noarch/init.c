@@ -54,8 +54,6 @@ kernel_start(void *__unused)
                                           (void *)_user_init_image_start,
                                           _user_init_image_end - _user_init_image_start);
 
-    DEBUG("!!!");
-    
     if (ut)
         proc_notify(&ut->proc);
     else PANIC("cannot load user init\n");

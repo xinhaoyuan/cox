@@ -61,10 +61,6 @@ typedef struct user_thread_s
     void         *stack_base;
     user_proc_t   user_proc;
     
-    void         *tls;
-    uintptr_t     tls_u;
-    size_t        tls_size;
-    
     /* service */
     service_context_t service_context;
     semaphore_s       service_wait_sem;
@@ -82,7 +78,7 @@ user_thread_t user_thread_get_by_tid(int tid);
 
 void user_thread_sys_init(void);
 user_thread_t user_thread_create_from_bin(const char *name, void *bin, size_t bin_size);
-user_thread_t user_thread_create_from_thread(const char *name, user_thread_t from, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t stack_ptr);
+user_thread_t user_thread_create_from_thread(const char *name, user_thread_t from, uintptr_t entry, uintptr_t tls, uintptr_t stack);
 
 void user_thread_pgflt_handler(proc_t proc, unsigned int flags, uintptr_t la, uintptr_t pc);
 
@@ -98,7 +94,7 @@ void user_thread_restore_context(proc_t proc);
 
 /* filled by arch */
 void user_thread_arch_destroy(user_thread_t user_thread);
-int  user_thread_arch_state_init(user_thread_t thread, uintptr_t entry, uintptr_t stack_ptr);
+int  user_thread_arch_state_init(user_thread_t thread, uintptr_t entry, uintptr_t tls, uintptr_t stack);
 void user_thread_arch_jump(void) __attribute__((noreturn));
 void user_thread_arch_save_context(proc_t proc, int hint);
 void user_thread_arch_restore_context(proc_t proc);

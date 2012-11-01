@@ -221,17 +221,9 @@ user_thread_get_by_tid(int tid)
 }
 
 static int
-user_thread_state_init(user_thread_t thread, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t stack_ptr)
+user_thread_state_init(user_thread_t thread, uintptr_t entry, uintptr_t tls, uintptr_t stack)
 {
-    
-    thread->tls_u = tls_u;
-    thread->tls_size = tls_size;
-
-    /* Touch the memory */
-    int i;
-    for (i = 0; i < (tls_size >> _MACH_PAGE_SHIFT); ++ i)
-        user_proc_arch_copy_page_to_user(thread->user_proc, thread->tls_u + (i << _MACH_PAGE_SHIFT), 0, 0);
-    return user_thread_arch_state_init(thread, entry, stack_ptr);
+    return user_thread_arch_state_init(thread, entry, tls, stack);
 }
 
 int
@@ -272,9 +264,8 @@ user_thread_create_from_bin(const char *name, void *bin, size_t bin_size)
 
     user_thread_t thread = user_thread_create(name, SCHED_CLASS_RR);
 
-    size_t   tls_size = 2 * _MACH_PAGE_SIZE;
     uintptr_t __start = start;
-    uintptr_t __end   = end + tls_size;
+    uintptr_t __end   = end;
 
     user_proc_t user_proc = thread->user_proc = user_proc_create(&__start, &__end);
     if (user_proc == NULL)
@@ -284,7 +275,7 @@ user_thread_create_from_bin(const char *name, void *bin, size_t bin_size)
     }
 
     int ret;
-    if ((ret = user_thread_state_init(thread, entry + __start - start, __end - tls_size, tls_size, 0)) != 0)
+    if ((ret = user_thread_state_init(thread, entry + __start - start, 0, 0)) != 0)
     {
         user_thread_put(thread);
         return NULL;
@@ -323,17 +314,15 @@ user_thread_create_from_bin(const char *name, void *bin, size_t bin_size)
 }
 
 user_thread_t
-user_thread_create_from_thread(const char *name, user_thread_t from, uintptr_t entry, uintptr_t tls_u, size_t tls_size, uintptr_t stack_ptr)
+user_thread_create_from_thread(const char *name, user_thread_t from, uintptr_t entry, uintptr_t tls, uintptr_t stack)
 {
-    if (PGOFF(tls_u) || PGOFF(tls_size) || tls_size < 2 * _MACH_PAGE_SIZE) return NULL;
-    
     user_thread_t thread = user_thread_create(name, SCHED_CLASS_RR);
     
     int ret;
     thread->user_proc = from->user_proc;
     user_proc_get(from->user_proc);
     
-    if ((ret = user_thread_state_init(thread, entry, tls_u, tls_size, stack_ptr)) != 0)
+    if ((ret = user_thread_state_init(thread, entry, tls, stack)) != 0)
     {
         user_thread_put(thread);
         return NULL;
