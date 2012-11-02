@@ -96,8 +96,12 @@ __kern_cpu_init(void)
     }
 
     /* Enable the tick clock */
-    lapic_timer_set(100);
-    __irq_enable();
+
+    if (lapic_id() == sysconf_x86.cpu.boot)
+    {
+        lapic_timer_set(100);
+        __irq_enable();
+    }
 
     do_idle();
 }

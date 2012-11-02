@@ -2,7 +2,7 @@
 
 #include <ips.h>
 #include <proc.h>
-#include <irq.h>
+#include <arch/irq.h>
 
 void
 ips_wait_init(ips_node_t node, proc_t proc)
@@ -46,7 +46,7 @@ int
 mutex_try_acquire(mutex_t mutex)
 {
     int result;
-    int irq = irq_save();
+    int irq = __irq_save();
     spinlock_acquire(&mutex->lock);
     result = !MUTEX_HOLD(mutex);
     if (result)
@@ -55,7 +55,7 @@ mutex_try_acquire(mutex_t mutex)
         MUTEX_WAIT_CLEAR(mutex);
     }
     spinlock_release(&mutex->lock);
-    irq_restore(irq);
+    __irq_restore(irq);
      
     return result;
 }
@@ -75,7 +75,7 @@ mutex_acquire(mutex_t mutex, ips_node_t node)
     }
     else
     {
-        int irq = irq_save();
+        int irq = __irq_save();
         spinlock_acquire(&mutex->lock);
           
         if (!MUTEX_HOLD(mutex))
@@ -84,7 +84,7 @@ mutex_acquire(mutex_t mutex, ips_node_t node)
             MUTEX_WAIT_CLEAR(mutex);
                
             spinlock_release(&mutex->lock);
-            irq_restore(irq);
+            __irq_restore(irq);
                
             IPS_NODE_WAIT_CLEAR(node);
             
@@ -109,7 +109,7 @@ mutex_acquire(mutex_t mutex, ips_node_t node)
             }
                
             spinlock_release(&mutex->lock);
-            irq_restore(irq);
+            __irq_restore(irq);
 
             return 0;
         }
@@ -119,7 +119,7 @@ mutex_acquire(mutex_t mutex, ips_node_t node)
 void
 mutex_ac_break(mutex_t mutex, ips_node_t node)
 {
-    int irq = irq_save();
+    int irq = __irq_save();
     spinlock_acquire(&mutex->lock);
     if (IPS_NODE_WAIT(node) && IPS_NODE_AC_WAIT(node))
     {
@@ -134,7 +134,7 @@ mutex_ac_break(mutex_t mutex, ips_node_t node)
         }
     }
     spinlock_release(&mutex->lock);
-    irq_restore(irq);
+    __irq_restore(irq);
     
     IPS_NODE_AC_WAIT_CLEAR(node);
 }
@@ -145,7 +145,7 @@ mutex_release(mutex_t mutex)
     proc_t notify = NULL;
     if (!MUTEX_HOLD(mutex)) return;
     
-    int irq = irq_save();
+    int irq = __irq_save();
     spinlock_acquire(&mutex->lock);
     if (MUTEX_WAIT(mutex))
     {
@@ -162,7 +162,7 @@ mutex_release(mutex_t mutex)
     }
     else MUTEX_HOLD_CLEAR(mutex);
     spinlock_release(&mutex->lock);
-    irq_restore(irq);
+    __irq_restore(irq);
 
     if (notify != NULL)
         proc_notify(notify);
@@ -180,7 +180,7 @@ uintptr_t
 semaphore_try_acquire(semaphore_t semaphore)
 {
     uintptr_t result;
-    int irq = irq_save();
+    int irq = __irq_save();
     spinlock_acquire(&semaphore->lock);
     result = semaphore->count;
     if (result > 0)
@@ -189,7 +189,7 @@ semaphore_try_acquire(semaphore_t semaphore)
             SEMAPHORE_WAIT_CLEAR(semaphore);
     }
     spinlock_release(&semaphore->lock);
-    irq_restore(irq);
+    __irq_restore(irq);
     return result;
 }
 
@@ -208,7 +208,7 @@ semaphore_acquire(semaphore_t semaphore, ips_node_t node)
     }
     else
     {
-        int irq = irq_save();
+        int irq = __irq_save();
         spinlock_acquire(&semaphore->lock);
         result = semaphore->count;
         if (result > 0)
@@ -217,7 +217,7 @@ semaphore_acquire(semaphore_t semaphore, ips_node_t node)
                 SEMAPHORE_WAIT_CLEAR(semaphore);
           
             spinlock_release(&semaphore->lock);
-            irq_restore(irq);
+            __irq_restore(irq);
                
             IPS_NODE_WAIT_CLEAR(node);
           
@@ -242,7 +242,7 @@ semaphore_acquire(semaphore_t semaphore, ips_node_t node)
             }
 
             spinlock_release(&semaphore->lock);
-            irq_restore(irq);
+            __irq_restore(irq);
                
             return result;
         }         
@@ -252,7 +252,7 @@ semaphore_acquire(semaphore_t semaphore, ips_node_t node)
 void
 semaphore_ac_break(semaphore_t semaphore, ips_node_t node)
 {
-    int irq = irq_save();
+    int irq = __irq_save();
     spinlock_acquire(&semaphore->lock);
     if (IPS_NODE_WAIT(node) && IPS_NODE_AC_WAIT(node))
     {
@@ -266,19 +266,17 @@ semaphore_ac_break(semaphore_t semaphore, ips_node_t node)
         }
     }
     spinlock_release(&semaphore->lock);
-    irq_restore(irq);
+    __irq_restore(irq);
 
     IPS_NODE_AC_WAIT_CLEAR(node);
 }
-
-#include <user.h>
 
 int
 semaphore_release(semaphore_t semaphore)
 {
     int result = 0;
     proc_t notify = NULL;
-    int irq = irq_save();
+    int irq = __irq_save();
     spinlock_acquire(&semaphore->lock);
     if (SEMAPHORE_WAIT(semaphore))
     {
@@ -300,7 +298,7 @@ semaphore_release(semaphore_t semaphore)
         ++ semaphore->count;
     }
     spinlock_release(&semaphore->lock);
-    irq_restore(irq);
+    __irq_restore(irq);
 
     if (notify != NULL)
         proc_notify(notify);

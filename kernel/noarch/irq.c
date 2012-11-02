@@ -112,7 +112,7 @@ irq_entry(int irq)
         PLS_SET(__local_irq_save, 1);
         irq_process();
         PLS_SET(__local_irq_save, 0);
-        
+
         __irq_enable();
         schedule();
     }

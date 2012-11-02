@@ -151,11 +151,14 @@ user_thread_create(const char *name, int class)
     proc_init(&ut->proc, name, class, (void(*)(void *))user_thread_jump, NULL, stack_base, stack_size);
     ut->proc.type  = PROC_TYPE_USER_INIT;
     ut->stack_base = stack_base;
+    ut->stack_size = stack_size;
 
     ut->service_context = NULL;
     ut->service_client  = NULL;
     semaphore_init(&ut->service_wait_sem, 0);
     semaphore_init(&ut->service_fill_sem, 0);
+
+    debug_printf("tid %d with stack_base %p and size %d\n", ut->tid, stack_base, stack_size);
 
     return ut;
 }

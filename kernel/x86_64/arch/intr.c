@@ -148,7 +148,9 @@ trap_dispatch(struct trapframe *tf)
             
         default:
             print_trapframe(tf);
-            PANIC("unhandled exception %d.\n", tf->tf_trapno);
+            if (p->type == PROC_TYPE_USER)
+                PANIC("unhandled exception %d from tid %d\n", tf->tf_trapno, USER_THREAD(p)->tid);
+            else PANIC("unhandled exception %d from proc %s.\n", tf->tf_trapno, p->name);
         }
     }
     else if (tf->tf_trapno >= IRQ_OFFSET &&

@@ -135,6 +135,7 @@ proc_notify(proc_t proc)
 static inline void
 proc_switch(proc_t proc)
 {
+    // debug_printf("-> %p\n", proc);
     proc_t prev = current;  
     proc->sched_prev = prev;
     if (prev->type != PROC_TYPE_USER)
@@ -149,7 +150,6 @@ proc_switch(proc_t proc)
     else proc->sched_prev_usr = prev;
 
     current_set(proc);
-
     if (prev != proc)
     {
         context_switch(&prev->ctx, &proc->ctx);

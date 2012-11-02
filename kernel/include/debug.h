@@ -30,7 +30,7 @@
         }                                       \
     } while (0)
 
-#define PANIC(x ...) do { debug_printf("PANIC: " x); while (1) __cpu_relax(); } while (0)
+#define PANIC(x ...) do { debug_printf("PANIC: " x); while (1) ; } while (0)
 
 #define assert(x) do { if (!(x)) PANIC("assertion %s failed\n", #x); } while (0);
 

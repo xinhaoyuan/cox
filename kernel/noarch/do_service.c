@@ -7,6 +7,7 @@
 #include <user.h>
 #include <ips.h>
 #include <arch/irq.h>
+#include <error.h>
 
 static int  do_proc_brk(uintptr_t end);
 static int  do_thread_create(uintptr_t entry, uintptr_t tls, uintptr_t stack);
@@ -52,19 +53,25 @@ do_service(service_context_t ctx)
         user_thread_t target = user_thread_get_by_tid(tid);
         
         if (target == NULL)
-            goto err;
+        {
+            SERVICE_ARG0_SET(ctx, E_INVAL);
+            return;
+        }
 
+        if (semaphore_try_acquire(&target->service_wait_sem) == 0)
+        {
+            SERVICE_ARG0_SET(ctx, E_BUSY);            
+            user_thread_put(target);
+            return;
+        }
+        
         ut->service_context = ctx;
-        semaphore_acquire(&target->service_wait_sem, NULL);
         target->service_client = ut;
         semaphore_release(&target->service_fill_sem);
         while (ut->service_context != NULL) yield();
-            
         user_thread_put(target);
 
-      err:
-        /* XXX: more information */
-        SERVICE_ARG0_SET(ctx, 0);        
+        SERVICE_ARG0_SET(ctx, 0);
     }
 }
 

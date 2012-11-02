@@ -1,5 +1,5 @@
 /* This source code is originally from the JOS project, modified by
- * Xinhao.Yuan for ECRUOS */
+ * Xinhao.Yuan for COX */
 #define DEBUG_COMPONENT DBG_IO
 
 #include <types.h>
@@ -53,7 +53,7 @@ delay(void) {
 
 #define LPTPORT         0x378
 
-static uint16_t *crt_buf;
+static volatile uint16_t *crt_buf;
 static uint16_t crt_pos;
 static uint16_t addr_6845;
 
@@ -61,11 +61,11 @@ static uint16_t addr_6845;
 
 static void
 cga_init(void) {
-    volatile uint16_t *cp = (uint16_t *)(CGA_BUF + PHYSBASE);
+    volatile uint16_t *cp = (volatile uint16_t *)VADDR_DIRECT(CGA_BUF);
     uint16_t was = *cp;
     *cp = (uint16_t) 0xA55A;
     if (*cp != 0xA55A) {
-        cp = (uint16_t*)(MONO_BUF + PHYSBASE);
+        cp = (volatile uint16_t*)VADDR_DIRECT(MONO_BUF);
         addr_6845 = MONO_BASE;
     } else {
         *cp = was;
@@ -166,7 +166,7 @@ cga_putc(int c) {
     // What is the purpose of this?
     if (crt_pos >= CRT_SIZE) {
         int i;
-        memmove(crt_buf, crt_buf + CRT_COLS, (CRT_SIZE - CRT_COLS) * sizeof(uint16_t));
+        memmove((void *)crt_buf, (void *)(crt_buf + CRT_COLS), (CRT_SIZE - CRT_COLS) * sizeof(uint16_t));
         for (i = CRT_SIZE - CRT_COLS; i < CRT_SIZE; i ++) {
             crt_buf[i] = 0x0700 | ' ';
         }

@@ -59,6 +59,7 @@ typedef struct user_thread_s
         {
             proc_s        proc;
             void         *stack_base;
+            size_t        stack_size;
             user_proc_t   user_proc;
         };
     };

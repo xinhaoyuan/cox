@@ -2,6 +2,7 @@
 #include <asm/cpu.h>
 #include <frame.h>
 #include <error.h>
+#include <arch/memlayout.h>
 
 #include "mem.h"
 #include "boot_ap.S.h"
@@ -35,11 +36,13 @@ mp_init(void)
         if (apic_id > max_apic) max_apic = apic_id;
     }
 
-    void *boot_ap_stack = frame_arch_kopen(max_apic);
+    void *boot_ap_stack = frame_arch_kopen(max_apic + 1);
     
     if (boot_ap_stack == NULL) return -E_NO_MEM;
+
+    boot_ap_stack = ARCH_STACKTOP(boot_ap_stack, _MACH_PAGE_SIZE);
     
-    memset(VADDR_DIRECT(BOOT_AP_STACK_BASE), 0, 8);
+    memset(VADDR_DIRECT(BOOT_AP_STACK_BASE), 0, sizeof(boot_ap_stack));
     memmove(VADDR_DIRECT(BOOT_AP_STACK_BASE), &boot_ap_stack, sizeof(boot_ap_stack));
 
     int apic_id;
