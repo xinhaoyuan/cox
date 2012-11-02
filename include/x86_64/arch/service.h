@@ -16,13 +16,15 @@ typedef struct service_context_s
     uintptr_t args[6];
 } service_context_s;
 
-static __attribute__((always_inline)) __inline void
+static __attribute__((always_inline)) __inline uintptr_t
 __service_send(service_context_t ctx)
 {
-    __asm__ __volatile__("int %6"
-                         : "=a"(ctx->args[0]), "=b"(ctx->args[1]), "=d"(ctx->args[2]), "=c"(ctx->args[3]), "=D"(ctx->args[4]), "=S"(ctx->args[5])
+    uintptr_t result;
+    __asm__ __volatile__("int %1"
+                         : "=a"(result)
                          : "i" (T_SERVICE), "a"(ctx->args[0]), "b"(ctx->args[1]), "d"(ctx->args[2]), "c"(ctx->args[3]), "D"(ctx->args[4]), "S"(ctx->args[5])
                          : "cc", "memory");
+    return result;
 }
 
 static __attribute__((always_inline)) __inline void

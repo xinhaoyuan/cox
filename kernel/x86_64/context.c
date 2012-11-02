@@ -5,9 +5,9 @@
 #include <debug.h>
 
 /* Defined in context.S */
-extern void __context_switch(uintptr_t *from_esp, uintptr_t *from_pc, uintptr_t to_esp, uintptr_t to_pc) __attribute__ ((returns_twice));
-extern void __context_init(void);
-extern void __context_deadend(void);
+void __context_switch(uintptr_t *from_esp, uintptr_t *from_pc, uintptr_t to_esp, uintptr_t to_pc);
+void __context_init(void);
+void __context_deadend(void);
 
 void
 context_deadend(context_t ctx)

@@ -45,6 +45,9 @@ do_service(service_context_t ctx)
         case SERVICE_SYS_THREAD_EXIT:
             do_thread_exit(SERVICE_ARG2_GET(ctx));
             break;
+        case SERVICE_SYS_THREAD_YIELD:
+            yield();
+            break;
         }
     }
     else
