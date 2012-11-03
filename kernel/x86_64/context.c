@@ -36,6 +36,8 @@ context_fill(context_t ctx, void (*entry)(void *arg), void *arg, uintptr_t stk_t
     ctx->pc = (uintptr_t)__context_init;
 }
 
+#include <arch/irq.h>
+
 void
 context_switch(context_t old, context_t to)
 {

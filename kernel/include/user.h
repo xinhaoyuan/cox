@@ -10,7 +10,7 @@
 #include <spinlock.h>
 #include <arch/do_service.h>
 
-#define USER_KSTACK_DEFAULT_SIZE 8192
+#define USER_KSTACK_DEFAULT_SIZE (1 << 13) // 8 KB 
 
 typedef struct user_proc_s *user_proc_t;
 typedef struct user_proc_s

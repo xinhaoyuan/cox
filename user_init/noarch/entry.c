@@ -7,10 +7,10 @@ char foostack[4096];
 
 void foo(void)
 {
-    /* service_context_s ctx; */
-    /* __service_listen(&ctx); */
+    service_context_s ctx;
+    __service_listen(&ctx);
 
-    /* debug_printf("Recv from %d\n", ctx.args[0]); */
+    debug_printf("Recv from %d\n", ctx.args[0]);
 
     while (1) __cpu_relax();
 }
@@ -27,13 +27,13 @@ __init(void *tls, size_t tls_size, void *start, void *end)
     {
         debug_printf("Send to %d\n", tid);
         
-        /* service_context_s ctx; */
+        service_context_s ctx;
         
-        /* ctx.args[0] = tid; */
-        /* ctx.args[1] = 999; */
-        /* if (__service_send(&ctx) == 0) break; */
+        ctx.args[0] = tid;
+        ctx.args[1] = 999;
+        if (__service_send(&ctx) == 0) break;
 
-        /* __service_sys1(SERVICE_SYS_THREAD_YIELD); */
+        __service_sys1(SERVICE_SYS_THREAD_YIELD);
     }
     
     while (1) __cpu_relax();

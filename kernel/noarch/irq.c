@@ -113,12 +113,9 @@ irq_entry(int irq)
         irq_process();
         PLS_SET(__local_irq_save, 0);
 
-        debug_putc('?');
         __irq_enable();
         schedule();
-        debug_putc('!');
     }
-    
     __irq_restore(intr);
 }
 

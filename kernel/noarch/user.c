@@ -158,8 +158,6 @@ user_thread_create(const char *name, int class)
     semaphore_init(&ut->service_wait_sem, 0);
     semaphore_init(&ut->service_fill_sem, 0);
 
-    debug_printf("tid %d with stack_base %p and size %d\n", ut->tid, stack_base, stack_size);
-
     return ut;
 }
 

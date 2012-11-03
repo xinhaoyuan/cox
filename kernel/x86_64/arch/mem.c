@@ -8,6 +8,8 @@
 #include <lib/buddy.h>
 #include <frame.h>
 #include <irq.h>
+#include <proc.h>
+#include <user.h>
 
 #include "mem.h"
 #include "mem_early.h"
@@ -340,20 +342,10 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
             }
         }
     }
-#if 0
     /* in user area ? */
     else if (la < UTOP)
     {
-        if (current->type != PROC_TYPE_USER)
-        {
-            PANIC("user area page fault by non-user thread %p\nLA: %p, PC: %p\n",
-                  current, la, pc);
-        }
-        else
-        {
-            PANIC("PGFLT IN USERSPACE");
-            // user_thread_pgflt_handler(current, err, la, pc);
-        }
+        PANIC("user area page fault by proc %p\nLA: %p, PC: %p\n",
+              current, la, pc);
     }
-#endif
 }

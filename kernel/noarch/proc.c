@@ -135,7 +135,6 @@ proc_notify(proc_t proc)
 static inline void
 proc_switch(proc_t proc)
 {
-    // debug_printf("-> %p\n", proc);
     proc_t prev = current;  
     proc->sched_prev = prev;
     if (prev->type != PROC_TYPE_USER)
@@ -207,7 +206,6 @@ static inline void
 __schedule(int external)
 {
     int irq = irq_save();
-    debug_putc('%');
     proc_t self = current;
     runqueue_t rq = runqueue;
     if (external) spinlock_acquire(&self->lock);
@@ -229,7 +227,6 @@ __schedule(int external)
     
     /* May be on different CPU now */
     /* Should retrive the PLS variable again to update */
-
     __post_schedule(self);
 }
 
@@ -238,7 +235,6 @@ __post_schedule(proc_t proc)
 {
     spinlock_release(&proc->sched_prev->lock);
     spinlock_release(&runqueue->lock);
-    debug_putc('$');
     irq_restore(proc->irq);
 }
 

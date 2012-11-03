@@ -30,9 +30,9 @@ __irq_save(void) {
 
 static inline void
 __irq_restore(int flag) {
-    if (flag) {
+    if (flag)
         __irq_enable();
-    }
+    else __irq_disable();
 }
 
 #endif
