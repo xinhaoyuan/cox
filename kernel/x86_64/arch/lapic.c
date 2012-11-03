@@ -39,7 +39,7 @@
 #define TCCR    (0x0390/4)   // Timer Current Count
 #define TDCR    (0x03E0/4)   // Timer Divide Configuration
 
-#define LAPIC_PERIODIC 10000000
+#define LAPIC_PERIODIC 100000//00  // For debug
 
 static volatile uint32_t *lapic_mmio;
 

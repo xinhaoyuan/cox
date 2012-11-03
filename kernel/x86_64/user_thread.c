@@ -1,3 +1,5 @@
+#define DEBUG_COMPONENT DBG_MISC
+
 #include <asm/cpu.h>
 #include <string.h>
 #include <error.h>
@@ -80,10 +82,12 @@ user_thread_arch_save_context(proc_t proc, int hint)
 void
 user_thread_arch_restore_context(proc_t proc)
 {
+    assert(proc->type == PROC_TYPE_USER);
+    user_thread_t ut = USER_THREAD(proc);
     /* set the U->K stack */
-    cpu_set_trap_stacktop((uintptr_t)ARCH_STACKTOP(USER_THREAD(proc)->stack_base, (uintptr_t)USER_THREAD(proc)->stack_size));
+    cpu_set_trap_stacktop((uintptr_t)ARCH_STACKTOP(ut->stack_base, (uintptr_t)ut->stack_size));
     
     /* change the gs base for TLS */
-    __write_msr(0xC0000101, USER_THREAD(proc)->arch.tls);
-    __lcr3(USER_THREAD(proc)->user_proc->arch.cr3);
+    __write_msr(0xC0000101, ut->arch.tls);
+    __lcr3(ut->user_proc->arch.cr3);
 }

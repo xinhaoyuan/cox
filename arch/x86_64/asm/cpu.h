@@ -105,13 +105,13 @@ __read_rbp(void) {
 static inline uint64_t
 __read_rflags(void) {
     uint64_t rflags;
-    __asm__ __volatile__ ("pushfq; popq %0" : "=r" (rflags));
+    __asm__ __volatile__ ("pushfq; popq %0" : "=r" (rflags) :: "cc", "memory");
     return rflags;
 }
 
 static inline void
 __write_rflags(uint64_t rflags) {
-    __asm__ __volatile__ ("pushq %0; popfq" :: "r" (rflags));
+    __asm__ __volatile__ ("pushq %0; popfq" :: "r" (rflags) : "cc", "memory");
 }
 
 static inline void

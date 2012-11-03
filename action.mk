@@ -10,3 +10,6 @@ ${PRJ}-run-gdb: ${PRJ}
 
 ${PRJ}-run-3w: ${PRJ}
 	${V}${${PATH_VAR}}/run.sh $< ${T_OBJ} 3w
+
+${PRJ}-git-commit: ${PRJ}
+	${V}cd ${${PATH_VAR}}; git add . ; git commit -a -m "commit through action.mk"; git push

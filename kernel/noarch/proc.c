@@ -207,6 +207,7 @@ static inline void
 __schedule(int external)
 {
     int irq = irq_save();
+    debug_putc('%');
     proc_t self = current;
     runqueue_t rq = runqueue;
     if (external) spinlock_acquire(&self->lock);
@@ -229,7 +230,7 @@ __schedule(int external)
     /* May be on different CPU now */
     /* Should retrive the PLS variable again to update */
 
-    __post_schedule(current);
+    __post_schedule(self);
 }
 
 static inline void
@@ -237,6 +238,7 @@ __post_schedule(proc_t proc)
 {
     spinlock_release(&proc->sched_prev->lock);
     spinlock_release(&runqueue->lock);
+    debug_putc('$');
     irq_restore(proc->irq);
 }
 

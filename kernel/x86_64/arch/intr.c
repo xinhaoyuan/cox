@@ -135,6 +135,7 @@ trap_dispatch(struct trapframe *tf)
     
     if (from_user)
     {
+        // debug_putc('0' + USER_THREAD(p)->tid);
         USER_THREAD(p)->arch.tf = tf;
         user_thread_after_leave(p);
     }
@@ -157,7 +158,11 @@ trap_dispatch(struct trapframe *tf)
              tf->tf_trapno <  IRQ_OFFSET + IRQ_COUNT)
     {
         lapic_eoi_send();
+        // if (from_user)
+        //    debug_putc('#');
         irq_entry(tf->tf_trapno - IRQ_OFFSET);
+        // if (from_user)
+        //    debug_putc('%');
     }
     else if (tf->tf_trapno == T_SERVICE)
     {
@@ -176,9 +181,9 @@ trap_dispatch(struct trapframe *tf)
         user_process_io(p);
         __irq_disable();
 #endif
-        
         if (PLS(__local_irq_save) != 0) DEBUG("WARNING: return to user with irq saved\n");
         user_thread_before_return(p);
+        // debug_putc('!');
     }
 }
 

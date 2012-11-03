@@ -9,7 +9,7 @@ include ${${PATH_VAR_INCLUDE}}/${ARCH}/kern/comp.mk
 include ${${PATH_VAR_INCLUDE}}/${ARCH}/kern/user_init.mk
 
 T_CC_FLAGS       := -D __KERN__ -D ARCH=${ARCH} ${T_CC_ARCH_INC} -I ${${PATH_VAR_INCLUDE}} -I ${${PATH_VAR_INCLUDE}}/${ARCH} -I include -I include/${ARCH}
-T_CC_OPT_FLAGS   := -O2
+T_CC_OPT_FLAGS   := -O0
 T_CC_DEBUG_FLAGS := -Wall -ggdb
 
 SRCFILES := $(shell find ${ARCH} '(' '!' -regex '.*/_.*' ')' -and '(' -iname "*.c" -or -iname "*.S" ')' | sed -e 's!^\./!!g') \
