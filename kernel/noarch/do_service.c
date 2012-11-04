@@ -61,12 +61,20 @@ do_service(service_context_t ctx)
             return;
         }
 
-        if (semaphore_try_acquire(&target->service_wait_sem) == 0)
+        if (ut->service_io_mode == SERVICE_IO_MODE_ASYNC)
         {
-            SERVICE_ARG0_SET(ctx, E_BUSY);            
-            user_thread_put(target);
-            return;
+            if (semaphore_try_acquire(&target->service_wait_sem) == 0)
+            {
+                SERVICE_ARG0_SET(ctx, E_BUSY);            
+                user_thread_put(target);
+                return;
+            }
         }
+        else
+        {
+            semaphore_acquire(&target->service_wait_sem, NULL);
+        }
+
         
         ut->service_context = ctx;
         target->service_client = ut;

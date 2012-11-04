@@ -153,6 +153,7 @@ user_thread_create(const char *name, int class)
     ut->stack_base = stack_base;
     ut->stack_size = stack_size;
 
+    ut->service_io_mode = SERVICE_IO_MODE_SYNC;
     ut->service_context = NULL;
     ut->service_client  = NULL;
     semaphore_init(&ut->service_wait_sem, 0);

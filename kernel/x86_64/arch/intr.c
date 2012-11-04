@@ -139,6 +139,7 @@ trap_dispatch(struct trapframe *tf)
         USER_THREAD(p)->arch.tf = tf;
         user_thread_after_leave(p);
     }
+    /* Interrupt may be enabled */
 
     if (tf->tf_trapno < EXCEPTION_COUNT) {
         switch (tf->tf_trapno)
@@ -170,13 +171,9 @@ trap_dispatch(struct trapframe *tf)
         }
     }
 
+    /* Interrupt should be disabled here */
     if (from_user)
     {
-#if 0        
-        __irq_enable();
-        user_process_io(p);
-        __irq_disable();
-#endif
         if (PLS(__local_irq_save) != 0) DEBUG("WARNING: return to user with irq saved\n");
         user_thread_before_return(p);
     }

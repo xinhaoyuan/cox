@@ -65,6 +65,9 @@ typedef struct user_thread_s
     };
         
     /* service */
+    int                        service_io_mode;
+#define SERVICE_IO_MODE_SYNC  0
+#define SERVICE_IO_MODE_ASYNC 1
     volatile service_context_t service_context;
     volatile user_thread_t     service_client;
     semaphore_s                service_wait_sem;
