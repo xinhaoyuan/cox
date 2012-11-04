@@ -139,7 +139,6 @@ trap_dispatch(struct trapframe *tf)
         USER_THREAD(p)->arch.tf = tf;
         user_thread_after_leave(p);
     }
-    /* Interrupt may be enabled */
 
     if (tf->tf_trapno < EXCEPTION_COUNT) {
         switch (tf->tf_trapno)
@@ -163,15 +162,17 @@ trap_dispatch(struct trapframe *tf)
     }
     else if (tf->tf_trapno == T_SERVICE)
     {
+        __irq_enable();
         if (from_user)
             do_service(tf);
         else
         {
             DEBUG("service call from kernel\n");
         }
+        __irq_disable();
     }
 
-    /* Interrupt should be disabled here */
+    /* Interrupt should be disabled here, it's not interrupt-save */
     if (from_user)
     {
         if (PLS(__local_irq_save) != 0) DEBUG("WARNING: return to user with irq saved\n");
