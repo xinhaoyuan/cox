@@ -12,6 +12,7 @@
 #include "mem.h"
 #include "lapic.h"
 #include "intr.h"
+#include "seg.h"
 
 static struct gatedesc idt[256] = {{0}};
 
@@ -138,6 +139,10 @@ trap_dispatch(struct trapframe *tf)
         // debug_putc('0' + USER_THREAD(p)->tid);
         USER_THREAD(p)->arch.tf = tf;
         user_thread_after_leave(p);
+    }
+    else if (tf->tf_ss == 0 && (tf->tf_rsp & 0xf))
+    {
+        debug_printf("@ %p\n", tf->tf_rsp);
     }
 
     if (tf->tf_trapno < EXCEPTION_COUNT) {
