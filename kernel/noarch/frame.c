@@ -29,7 +29,7 @@ frame_sys_early_init_layout(int(*layout)(uintptr_t framenum))
 }
 
 frame_t
-frame_alloc(size_t num)
+frame_alloc(size_t num, int type)
 {
     int irq;
     frame_t frame;
@@ -48,8 +48,9 @@ frame_alloc(size_t num)
     frame = frames + result;
     
     size_t i;
+    frame->type      = type;
     frame->ref_count = 1;
-    frame->region = num << 1;
+    frame->region    = num << 1;
     for (i = 1; i < num; ++ i)
     {
         frame[i].region = ((frame - frames) << 1) | 1;

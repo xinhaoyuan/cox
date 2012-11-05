@@ -191,16 +191,16 @@ mem_init(void)
 }
 
 static pgd_t *
-get_pgd(pgd_t *pgdir, uintptr_t la)
+get_pgd(user_proc_t up, pgd_t *pgdir, uintptr_t la)
 {
     return &pgdir[PGX(la)];
 }
 
 static pud_t *
-get_pud(pgd_t *pgdir, uintptr_t la, int create)
+get_pud(user_proc_t up, pgd_t *pgdir, uintptr_t la, int create)
 {
     pgd_t *pgdp;
-    if ((pgdp = get_pgd(pgdir, la)) == NULL)
+    if ((pgdp = get_pgd(up, pgdir, la)) == NULL)
     {
         return NULL;
     }
@@ -209,12 +209,21 @@ get_pud(pgd_t *pgdir, uintptr_t la, int create)
     {
         if (!create)
             return NULL;
+
+        int type = la < UTOP ? FRAME_TYPE_UNNAMED : FRAME_TYPE_KERNEL;
+        if (la < UTOP && up == NULL) return NULL;
         
         pud_t *pud;
         frame_t frame;
         
-        if ((frame = frame_alloc(1)) == NULL)
+        if ((frame = frame_alloc(1, type)) == NULL)
             return NULL;
+
+        if (type == FRAME_TYPE_UNNAMED)
+        {
+            frame->arch.unnamed.up    = up;
+            frame->arch.unnamed.index = FRAME_ARCH_UNNAMED_INDEX(la, 3);
+        }
         
         uintptr_t pa = FRAME_TO_PHYS(frame);
         pud = VADDR_DIRECT(pa);
@@ -226,11 +235,11 @@ get_pud(pgd_t *pgdir, uintptr_t la, int create)
 }
 
 static pmd_t *
-get_pmd(pgd_t *pgdir, uintptr_t la, int create)
+get_pmd(user_proc_t up, pgd_t *pgdir, uintptr_t la, int create)
 {
     pud_t *pudp;
     
-    if ((pudp = get_pud(pgdir, la, create)) == NULL)
+    if ((pudp = get_pud(up, pgdir, la, create)) == NULL)
     {
         return NULL;
     }
@@ -239,12 +248,21 @@ get_pmd(pgd_t *pgdir, uintptr_t la, int create)
     {
         if (!create)
             return NULL;
-        
+
+        int type = la < UTOP ? FRAME_TYPE_UNNAMED : FRAME_TYPE_KERNEL;
+        if (la < UTOP && up == NULL) return NULL;
+
         pmd_t *pmd;
         frame_t frame;
         
-        if ((frame = frame_alloc(1)) == NULL)
+        if ((frame = frame_alloc(1, type)) == NULL)
             return NULL;
+
+        if (type == FRAME_TYPE_UNNAMED)
+        {
+            frame->arch.unnamed.up    = up;
+            frame->arch.unnamed.index = FRAME_ARCH_UNNAMED_INDEX(la, 2);
+        }
             
         uintptr_t pa = FRAME_TO_PHYS(frame);
         pmd = VADDR_DIRECT(pa);
@@ -256,11 +274,11 @@ get_pmd(pgd_t *pgdir, uintptr_t la, int create)
 }
 
 pte_t *
-get_pte(pgd_t *pgdir, uintptr_t la, int create)
+get_pte(user_proc_t up, pgd_t *pgdir, uintptr_t la, int create)
 {
     pmd_t *pmdp;
 
-    if ((pmdp = get_pmd(pgdir, la, create)) == NULL)
+    if ((pmdp = get_pmd(up, pgdir, la, create)) == NULL)
         return NULL;
 
     if (!(*pmdp & PTE_P))
@@ -268,11 +286,20 @@ get_pte(pgd_t *pgdir, uintptr_t la, int create)
         if (!create)
             return NULL;
 
+        int type = la < UTOP ? FRAME_TYPE_UNNAMED : FRAME_TYPE_KERNEL;
+        if (la < UTOP && up == NULL) return NULL;
+
         pte_t *pte;
         frame_t frame;
         
-        if ((frame = frame_alloc(1)) == 0)
+        if ((frame = frame_alloc(1, type)) == 0)
             return NULL;
+
+        if (type == FRAME_TYPE_UNNAMED)
+        {
+            frame->arch.unnamed.up    = up;
+            frame->arch.unnamed.index = FRAME_ARCH_UNNAMED_INDEX(la, 1);
+        }
 
         uintptr_t pa = FRAME_TO_PHYS(frame);
         pte = VADDR_DIRECT(pa);
@@ -329,7 +356,7 @@ pgflt_handler(unsigned int err, uintptr_t la, uintptr_t pc)
             la = la & ~(uintptr_t)0x1fffff;
            
             spinlock_acquire(&mmio_fix_lock);
-            pmd_t *pmd = get_pmd(pgdir_kernel, la, 1);
+            pmd_t *pmd = get_pmd(NULL, pgdir_kernel, la, 1);
             spinlock_release(&mmio_fix_lock);
 
             /* All mmio mappings are the same across all page tables, so just

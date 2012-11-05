@@ -20,7 +20,7 @@ frame_arch_kopen(size_t num)
     /* Touch the address space */
     size_t i;
     for (i = 0; i < num; ++ i)
-        if (get_pte(pgdir_kernel, (uintptr_t)start + (i << _MACH_PAGE_SHIFT), 1) == NULL)
+        if (get_pte(NULL, pgdir_kernel, (uintptr_t)start + (i << _MACH_PAGE_SHIFT), 1) == NULL)
         {
             vfree(start);
             return NULL;
@@ -28,7 +28,7 @@ frame_arch_kopen(size_t num)
 
     for (i = 0; i < num; ++ i)
     {
-        frame_t frame = frame_alloc(1);
+        frame_t frame = frame_alloc(1, FRAME_TYPE_KERNEL);
         if (frame == NULL)
         {
             /* If failed, clear all frame allocated. But may remain
@@ -38,7 +38,7 @@ frame_arch_kopen(size_t num)
                 if (i == 0) break;
                 else --i;
                     
-                pte_t *pte = get_pte(pgdir_kernel, (uintptr_t)start + (i << _MACH_PAGE_SHIFT), 0);
+                pte_t *pte = get_pte(NULL, pgdir_kernel, (uintptr_t)start + (i << _MACH_PAGE_SHIFT), 0);
                 frame_put(PHYS_TO_FRAME(PTE_ADDR(*pte)));
                 *pte = 0;
             }
@@ -47,7 +47,7 @@ frame_arch_kopen(size_t num)
             return NULL;
         }
             
-        pte_t *pte = get_pte(pgdir_kernel, (uintptr_t)start + (i << _MACH_PAGE_SHIFT), 0);
+        pte_t *pte = get_pte(NULL, pgdir_kernel, (uintptr_t)start + (i << _MACH_PAGE_SHIFT), 0);
         *pte = FRAME_TO_PHYS(frame) | PTE_W | PTE_P;
 
         if (i == (num - 1)) *pte |= PTE_KME;
@@ -61,7 +61,7 @@ frame_arch_kclose(void *head)
 {
     while ((uintptr_t)head >= KVBASE && (uintptr_t)head < KVBASE + KVSIZE)
     {
-        pte_t *pte = get_pte(pgdir_kernel, (uintptr_t)head, 0);
+        pte_t *pte = get_pte(NULL, pgdir_kernel, (uintptr_t)head, 0);
         if (!pte) break;
         
         frame_t cur = PHYS_TO_FRAME(PTE_ADDR(*pte));

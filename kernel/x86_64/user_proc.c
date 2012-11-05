@@ -14,7 +14,8 @@
 int
 user_proc_arch_init(user_proc_t user_proc, uintptr_t *start, uintptr_t *end)
 {
-    frame_t pgdir_frame = frame_alloc(1);
+    /* XXX: Should the frame type be KERNEL? */
+    frame_t pgdir_frame = frame_alloc(1, FRAME_TYPE_KERNEL);
     if (pgdir_frame == NULL) return -E_NO_MEM;
     
     uintptr_t pgdir_phys = FRAME_TO_PHYS(pgdir_frame);
@@ -41,15 +42,19 @@ user_proc_arch_destroy(user_proc_t user_proc)
 int
 user_proc_arch_copy_page_to_user(user_proc_t user_proc, uintptr_t addr, uintptr_t phys, unsigned int flags)
 {
-    pte_t *pte = get_pte(user_proc->arch.pgdir, addr, 1);
+    pte_t *pte = get_pte(user_proc, user_proc->arch.pgdir, addr, 1);
     if (pte == NULL) return -E_NO_MEM;
 
     if (!(*pte & PTE_P))
     {
-        frame_t frame  = frame_alloc(1);
+        frame_t frame  = frame_alloc(1, FRAME_TYPE_UNNAMED);
         if (frame == NULL) return -E_NO_MEM;
         
+        frame->arch.unnamed.up = user_proc;
+        frame->arch.unnamed.index = FRAME_ARCH_UNNAMED_INDEX(addr, 0);
+        
         uintptr_t phys = FRAME_TO_PHYS(frame);
+        /* XXX: Not proceed old frame link now */
         *pte = phys | PTE_W | PTE_U | PTE_P;
     }
     
@@ -70,7 +75,7 @@ user_proc_arch_copy_to_user(user_proc_t user_proc, uintptr_t addr, void *src, si
 
     while (ptr < end)
     {
-        pte_t *pte = get_pte(user_proc->arch.pgdir, ptr, 1);
+        pte_t *pte = get_pte(user_proc, user_proc->arch.pgdir, ptr, 1);
         if (pte == NULL) return -E_INVAL;
         if ((*pte & (PTE_P | PTE_W | PTE_U)) != (PTE_P | PTE_W | PTE_U)) return -E_INVAL;
 
@@ -131,7 +136,7 @@ user_proc_arch_brk(user_proc_t user_proc, uintptr_t end)
         uintptr_t cur = end;
         while (cur != user_proc->end)
         {
-            pte_t *pte = get_pte(user_proc->arch.pgdir, cur, 0);
+            pte_t *pte = get_pte(user_proc, user_proc->arch.pgdir, cur, 0);
             /* XXX: to consider swap mach? */
             if (pte != NULL && (*pte & PTE_P))
                 frame_put(PHYS_TO_FRAME(PTE_ADDR(*pte)));
@@ -336,7 +341,7 @@ user_proc_arch_mmio_open(user_proc_t user_proc, uintptr_t addr, size_t size, uin
     for (i = n->area.start; i < n->area.end; ++ i)
     {
         uintptr_t la = UMMIO_BASE + (i << _MACH_PAGE_SHIFT);
-        pte_t *pte = get_pte(user_proc->arch.pgdir, la, 1);
+        pte_t *pte = get_pte(user_proc, user_proc->arch.pgdir, la, 1);
         if (pte == NULL)
         {
             kfree(n);
@@ -375,7 +380,7 @@ user_proc_arch_mmio_close(user_proc_t user_proc, uintptr_t addr)
     for (i = node->area.start; i < node->area.end; ++ i)
     {
         uintptr_t la = UMMIO_BASE + (i << PGSHIFT);
-        pte_t *pte = get_pte(user_proc->arch.pgdir, la, 1);
+        pte_t *pte = get_pte(user_proc, user_proc->arch.pgdir, la, 1);
         /* FIXME: process no mem */
         if (pte)
             *pte = 0;

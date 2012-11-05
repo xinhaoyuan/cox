@@ -8,10 +8,9 @@
 typedef struct frame_s *frame_t;
 typedef struct frame_s
 {
+    int          type;
     spinlock_s   lock;
     uintptr_t    ref_count;
-    /* For frame pools */
-    frame_t      pool_last;
     
     /* REGION HEAD: (__SIZE__)0 */
     /* REGION BODY: (__HEAD__)1 */
@@ -20,6 +19,10 @@ typedef struct frame_s
 
     frame_arch_s arch;
 } frame_s;
+
+#define FRAME_TYPE_KERNEL  0
+#define FRAME_TYPE_UNNAMED 1
+#define FRAME_TYPE_OBJECT  2
 
 extern size_t  frames_count;
 extern frame_t frames;
@@ -42,7 +45,7 @@ extern frame_t frames;
 void frame_sys_early_init_struct(size_t pcount, void*(*init_alloc)(size_t));
 void frame_sys_early_init_layout(int(*layout)(uintptr_t frame_num));
 
-frame_t frame_alloc(size_t num);
+frame_t frame_alloc(size_t num, int type);
 void    frame_get(frame_t frame);
 void    frame_put(frame_t frame);
 
